@@ -29,7 +29,7 @@ jobs:
             -v "$PWD/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
             -v "$PWD/targets.example:/etc/prometheus/targets:ro" \
             -v "$PWD/secrets.example:/etc/prometheus/secrets:ro" \
-            --entrypoint promtool prom/prometheus:v3.14.0 \
+            --entrypoint promtool prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e \
             check config /etc/prometheus/prometheus.yml
 
       - name: blackbox_exporter config
