@@ -1,0 +1,11 @@
+# Every alert goes to Discord. Alerts are grouped per rule, so ten disks going
+# hot at once arrive as one message; firing alerts repeat every 12 hours.
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: Discord
+    group_by: [grafana_folder, alertname]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 12h

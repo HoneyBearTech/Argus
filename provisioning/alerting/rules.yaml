@@ -1,0 +1,678 @@
+# Grafana-managed alert rules, provisioned from this file (edit here, not in the UI).
+# Each rule: A = the raw PromQL measurement, C = the threshold on A; one alert per series.
+apiVersion: 1
+groups:
+- orgId: 1
+  name: Availability
+  folder: Argus
+  interval: 1m
+  rules:
+  - uid: argus-host-down
+    title: Host agent down
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: up{job="node"}
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.host }} isn''t reporting host metrics (node-exporter unreachable or the host is down).'
+    isPaused: false
+  - uid: argus-service-down
+    title: Service down
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min_over_time(probe_success{job="blackbox_http"}[5m]) unless on (instance) (max_over_time(probe_success{job="blackbox_http"}[7d])
+          == 0)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.service }} ({{ $labels.group }}) has failed every probe for 5 minutes.'
+    isPaused: false
+  - uid: argus-dns-down
+    title: DNS server not answering
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: probe_success{job="blackbox_dns"}
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.service }} isn''t resolving names.'
+    isPaused: false
+  - uid: argus-exporter-down
+    title: Monitoring target down
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: up{job!="node"}
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: Prometheus can't scrape {{ $labels.job }} at {{ $labels.instance }} — the dashboards relying on it are missing
+        data.
+    isPaused: false
+- orgId: 1
+  name: Capacity
+  folder: Argus
+  interval: 5m
+  rules:
+  - uid: argus-disk-full
+    title: Disk almost full
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|nsfs|ramfs|fuse.*|vfat"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|nsfs|ramfs|fuse.*|vfat"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 90
+    noDataState: OK
+    execErrState: Error
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }} {{ $labels.mountpoint }} is {{ printf "%.1f" $values.A.Value }}% full.'
+    isPaused: false
+  - uid: argus-pool-full
+    title: NAS storage pool almost full
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 100 * (1 - raidFreeSize / raidTotalSize)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 90
+    noDataState: OK
+    execErrState: Error
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }} {{ $labels.raidName }} is {{ printf "%.1f" $values.A.Value }}% full.'
+    isPaused: false
+  - uid: argus-cert-expiring
+    title: Certificate expiring
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (instance, service) ((probe_ssl_last_chain_expiry_timestamp_seconds{job="blackbox_http"} - time()) /
+          86400)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 14
+    noDataState: OK
+    execErrState: Error
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: The certificate for {{ $labels.service }} expires in {{ humanize $values.A.Value }} days.
+    isPaused: false
+- orgId: 1
+  name: Power and hardware
+  folder: Argus
+  interval: 1m
+  rules:
+  - uid: argus-ups-on-battery
+    title: UPS on battery
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (ups) (ups_input_voltage < bool 90)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: The UPS is running on battery — mains power is out.
+    isPaused: false
+  - uid: argus-ups-battery-low
+    title: UPS battery low
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: ups_battery_charge
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 50
+    noDataState: OK
+    execErrState: Error
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: UPS battery is at {{ printf "%.1f" $values.A.Value }}%.
+    isPaused: false
+  - uid: argus-nas-disk-unhealthy
+    title: NAS disk unhealthy
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, diskID) (diskHealthStatus) > 1 or max by (host, diskID) (diskStatus) > 1
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: A disk in {{ $labels.host }} reports a problem (health/status code {{ humanize $values.A.Value }}).
+    isPaused: false
+  - uid: argus-nas-pool-degraded
+    title: NAS storage pool degraded
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, raidName) (raidStatus)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 10
+    noDataState: OK
+    execErrState: Error
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.host }} {{ $labels.raidName }} is degraded or crashed (status {{ humanize $values.A.Value }}).'
+    isPaused: false
+  - uid: argus-nas-disk-hot
+    title: NAS disk hot
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, diskID) (diskTemperature)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 55
+    noDataState: OK
+    execErrState: Error
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: A disk in {{ $labels.host }} is at {{ humanize $values.A.Value }} °C.
+    isPaused: false
+  - uid: argus-unifi-hot
+    title: Network device hot
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (name) (unpoller_device_temperature_celsius)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 85
+    noDataState: OK
+    execErrState: Error
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.name }} is at {{ humanize $values.A.Value }} °C.'
+    isPaused: false
+- orgId: 1
+  name: Network
+  folder: Argus
+  interval: 1m
+  rules:
+  - uid: argus-wan-failover
+    title: Internet on backup WAN
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (wan_interface) (unpoller_wan_interface_state{wan_interface!="Internet 1"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: Traffic is going out over {{ $labels.wan_interface }} — the primary internet connection is down.
+    isPaused: false
+  - uid: argus-internet-drops
+    title: Internet dropped
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 900
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max(increase(unpoller_site_intenet_drops_total{subsystem="www"}[15m]))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: The gateway lost internet connectivity {{ humanize $values.A.Value }} time(s) in the last 15 minutes.
+    isPaused: false
+  - uid: argus-pihole-sync
+    title: Pi-hole blocklists out of sync
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: count(count_values("domains", pihole_domains_being_blocked))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 2h
+    labels:
+      severity: warning
+    annotations:
+      summary: The Pi-holes are blocking different numbers of domains — their blocklists have drifted apart.
+    isPaused: false
+- orgId: 1
+  name: Containers
+  folder: Argus
+  interval: 5m
+  rules:
+  - uid: argus-container-restarting
+    title: Container restarting repeatedly
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 3600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, name) (changes(container_start_time_seconds{job="cadvisor"}[1h]))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 3
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }} / {{ $labels.name }} restarted {{ humanize $values.A.Value }} times in the last hour.'
+    isPaused: false

@@ -1,0 +1,16 @@
+# Where alerts go. The webhook URL comes from the DISCORD_WEBHOOK_URL environment
+# variable (production .env only); the sandbox gets a dummy URL so it never posts.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Discord
+    receivers:
+      - uid: argus-discord
+        type: discord
+        disableResolveMessage: false
+        settings:
+          url: ${DISCORD_WEBHOOK_URL}
+          use_discord_username: false
+          title: '{{ template "default.title" . }}'
+          message: '{{ template "default.message" . }}'
