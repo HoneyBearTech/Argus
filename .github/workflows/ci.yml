@@ -28,8 +28,16 @@ jobs:
           docker run --rm \
             -v "$PWD/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
             -v "$PWD/targets.example:/etc/prometheus/targets:ro" \
+            -v "$PWD/secrets.example:/etc/prometheus/secrets:ro" \
             --entrypoint promtool prom/prometheus:v3.14.0 \
             check config /etc/prometheus/prometheus.yml
+
+      - name: blackbox_exporter config
+        run: |
+          docker run --rm \
+            -v "$PWD/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro" \
+            prom/blackbox-exporter:v0.28.0 \
+            --config.file=/etc/blackbox/blackbox.yml --config.check
 
       - name: Compose file
         run: GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet

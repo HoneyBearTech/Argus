@@ -2,25 +2,29 @@
 Grafana dashboards as code for my homelab. Version-controlled JSON dashboards for Docker hosts, the Plex/arr media stack, reverse proxy traffic, and network health, edited in VS Code and provisioned automatically.
 
 ## How it works
-Grafana and Prometheus run from [`docker-compose.yml`](docker-compose.yml). Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-host settings come from a gitignored `.env`.
+Grafana, Prometheus and blackbox_exporter run from [`docker-compose.yml`](docker-compose.yml). Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-host settings come from a gitignored `.env`.
 
 ```
 dashboards/          dashboard JSON, one folder per Grafana folder
 provisioning/        Grafana datasources (pinned uids) and the dashboard provider
 prometheus/          Prometheus config — scrape jobs, no addresses
-targets.example/     placeholder scrape targets; real ones go in targets/ (gitignored)
+blackbox/            blackbox_exporter probe modules (HTTP service check, DNS resolve)
+targets.example/     placeholder scrape/probe targets; real ones go in targets/ (gitignored)
+secrets.example/     placeholder credentials Prometheus scrapes with; real ones go in secrets/ (gitignored)
 scripts/             repo checks, run in CI
 ```
 
 ## Dashboards
 | Dashboard | Folder | Answers | Data |
 |---|---|---|---|
+| Homelab Overview (home page) | overview | Is everything up right now, and if not, what? | [Uptime Kuma](https://github.com/louislam/uptime-kuma) `/metrics`, blackbox_exporter HTTP + DNS probes |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Running it
 ```sh
 cp .env.example .env              # set GF_SECURITY_ADMIN_PASSWORD, ports, root URL
-mkdir -p targets && cp targets.example/*.json targets/   # then put real addresses in targets/
+mkdir -p targets secrets && cp targets.example/*.json targets/ && cp secrets.example/* secrets/
+# then put real addresses in targets/ and real credentials in secrets/
 docker compose up -d
 ```
 Grafana is on `GRAFANA_BIND` (default `127.0.0.1:3000`). Edits to dashboard JSON are picked up within 30 seconds; edits to `targets/*.json` are picked up by Prometheus without a restart.

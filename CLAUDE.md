@@ -27,10 +27,13 @@ Update these files as the project evolves — they're the source of truth for pr
 - Tag every dashboard `argus`; put the one-line "question it answers" from the Dashboard Catalog in its description.
 
 ## Layout
-- `docker-compose.yml` — Grafana (`grafana/grafana:13.2.2`) + Prometheus (`prom/prometheus:v3.14.0`), used unchanged for production and the local sandbox; per-host settings in a gitignored `.env` (template: `.env.example`). Bump image versions here and in `.github/workflows/ci.yml` together.
+- `docker-compose.yml` — Grafana (`grafana/grafana:13.2.2`) + Prometheus (`prom/prometheus:v3.14.0`) + blackbox_exporter (`prom/blackbox-exporter:v0.28.0`), used unchanged for production and the local sandbox; per-host settings in a gitignored `.env` (template: `.env.example`). Bump image versions here and in `.github/workflows/ci.yml` together.
 - `dashboards/<folder>/*.json` — provisioned with `foldersFromFilesStructure`, `allowUiUpdates: false`.
 - `provisioning/datasources/argus.yaml` — the only place datasource uids are defined.
 - `prometheus/prometheus.yml` — scrape jobs; each job reads `targets/<job>.json` (`file_sd`). `targets/` is gitignored; `targets.example/` holds placeholders that CI validates.
+- `blackbox/blackbox.yml` — probe modules only; which URLs/servers get probed lives in `targets/blackbox_*.json` (labels `service`, `group`).
+- `secrets/` (gitignored) — files Prometheus reads credentials from (`password_file` etc.), mounted read-only; placeholders in `secrets.example/`.
+- Grafana's home page is `dashboards/overview/homelab-overview.json` (`GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH`).
 
 ## Commands
 ```sh

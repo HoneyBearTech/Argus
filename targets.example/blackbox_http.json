@@ -1,0 +1,6 @@
+[
+  {
+    "targets": ["https://app.example.com"],
+    "labels": {"service": "app", "group": "apps"}
+  }
+]
