@@ -634,6 +634,87 @@ groups:
       summary: The Pi-holes are blocking different numbers of domains — their blocklists have drifted apart.
     isPaused: false
 - orgId: 1
+  name: Logs
+  folder: Argus
+  interval: 5m
+  rules:
+  - uid: argus-proxy-5xx
+    title: Site returning server errors
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: loki
+      model:
+        refId: A
+        expr: sum by (site) (count_over_time({job="npm", status=~"5.."}[10m]))
+        queryType: instant
+        intervalMs: 60000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 20
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.site }} returned {{ humanize $values.A.Value }} server errors (5xx) through the reverse proxy in
+        the last 10 minutes.'
+    isPaused: false
+  - uid: argus-log-pipeline-stalled
+    title: Log pipeline stalled
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 900
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: sum(rate(loki_distributor_lines_received_total[15m]))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 0.01
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Loki has received almost no log lines for 15 minutes — Alloy agents or Loki itself have stopped.
+    isPaused: false
+- orgId: 1
   name: Containers
   folder: Argus
   interval: 5m

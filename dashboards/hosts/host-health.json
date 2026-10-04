@@ -182,6 +182,23 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "Host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Logs for this host",
+                    "url": "/d/argus-logs/logs?var-host=${__data.fields.Host}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "Agent"
             },
             "properties": [

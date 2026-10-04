@@ -407,6 +407,23 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "Container"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Logs for this container",
+                    "url": "/d/argus-logs/logs?var-host=${__data.fields.Host}&var-container=${__data.fields.Container}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "Restarts"
             },
             "properties": [
@@ -511,6 +528,23 @@
           }
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Container"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Logs for this container",
+                    "url": "/d/argus-logs/logs?var-host=${__data.fields.Host}&var-container=${__data.fields.Container}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -795,6 +829,23 @@
               {
                 "id": "custom.width",
                 "value": 330
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Container"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Logs for this container",
+                    "url": "/d/argus-logs/logs?var-host=${__data.fields.Host}&var-container=${__data.fields.Container}&${__url_time_range}"
+                  }
+                ]
               }
             ]
           }

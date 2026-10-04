@@ -41,6 +41,7 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 | Power and hardware | UPS on battery, UPS battery < 50 %, NAS disk unhealthy, NAS pool degraded, NAS disk > 55 °C, network device > 85 °C |
 | Network | internet on backup WAN, internet dropped, Pi-hole blocklists out of sync |
 | Containers | container restarted more than 3 times in an hour |
+| Logs | a site returning > 20 server errors (5xx) in 10 minutes, log pipeline stalled (Loki receiving almost nothing for 15 minutes) |
 
 Alerts are grouped per rule and repeat every 12 hours while firing.
 
