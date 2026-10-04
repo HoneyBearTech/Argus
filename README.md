@@ -128,5 +128,8 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the dashboard c
 
 Alongside it: [CodeQL](https://codeql.github.com/) analyses the Python checks and the workflows on every push and pull request and weekly, [OpenSSF Scorecard](https://scorecard.dev/) scores the repo's supply-chain practices weekly (see the badge above), and Dependabot opens weekly PRs for the upstream images and GitHub Actions. Image updates are merged by hand after a sandbox run, since CI's static checks don't start Grafana.
 
+## Contributing
+Bug reports and ideas go in [GitHub Issues](https://github.com/HoneyBearTech/Argus/issues); see [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and pull request checks, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities privately.
+
 ## License
 [MIT](LICENSE)
