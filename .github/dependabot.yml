@@ -1,0 +1,34 @@
+version: 2
+# Update PRs are reviewed by hand, not auto-merged: a Grafana, Prometheus or
+# Loki bump can change provisioning or config behaviour that CI's static
+# checks don't exercise, so load it in the sandbox first. When bumping an
+# upstream image, bump the matching version in .github/workflows/ci.yml too.
+updates:
+  - package-ecosystem: "docker"
+    directories:
+      - "/agent"
+      - "/images/grafana"
+      - "/images/prometheus"
+      - "/images/blackbox"
+      - "/images/loki"
+    schedule:
+      interval: "weekly"
+
+  # Exporter images in the server and agent compose files.
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/"
+      - "/agent"
+      - "/logs"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
