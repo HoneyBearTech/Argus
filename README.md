@@ -4,10 +4,12 @@
 [![Release images](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml)
 [![CodeQL](https://github.com/HoneyBearTech/Argus/actions/workflows/codeql.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HoneyBearTech/Argus/badge)](https://scorecard.dev/viewer/?uri=github.com/HoneyBearTech/Argus)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15224/badge)](https://www.bestpractices.dev/projects/15224)
+[![OpenSSF Baseline](https://www.bestpractices.dev/projects/15224/baseline)](https://www.bestpractices.dev/projects/15224)
 [![Docker Pulls](https://img.shields.io/docker/pulls/honeybeartech/argus-grafana?logo=docker&logoColor=white)](https://hub.docker.com/r/honeybeartech/argus-grafana)
 [![Version](https://img.shields.io/github/v/tag/HoneyBearTech/Argus?sort=semver&logo=docker&logoColor=white&label=version)](https://hub.docker.com/r/honeybeartech/argus-grafana/tags)
 [![Agent image size](https://img.shields.io/docker/image-size/honeybeartech/argus-agent/latest?logo=docker&logoColor=white&label=agent%20image)](https://hub.docker.com/r/honeybeartech/argus-agent)
-[![Grafana](https://img.shields.io/badge/grafana-13.2.2-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
+[![Grafana](https://img.shields.io/badge/grafana-13.2.3-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
 [![License](https://img.shields.io/github/license/HoneyBearTech/Argus)](LICENSE)
 
 Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts, the Plex/arr media stack, reverse proxy traffic, DNS, network, storage, power and the smart home — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
