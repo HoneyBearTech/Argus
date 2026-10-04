@@ -72,7 +72,7 @@
       "id": 1,
       "type": "table",
       "title": "Fleet",
-      "description": "One row per host. Root disk is the first thing to watch; 'Root disk full in' extrapolates the last 6 hours of growth (it needs a few hours of data, and shows '> 1 year' when the disk isn't filling).",
+      "description": "One row per host; Agent shows DOWN for a host that reported in the last day but has gone silent. Root disk is the first thing to watch; 'Root disk full in' extrapolates the last 6 hours of growth (it needs a few hours of data, and shows '> 1 year' when the disk isn't filling).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -89,7 +89,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (host) (up{job=\"node\", host=~\"$host\"})",
+          "expr": "max by (host) (up{job=\"node\", host=~\"$host\"}) or max by (host) (max_over_time(up{job=\"node\", host=~\"$host\"}[1d])) * 0",
           "legendFormat": "__auto",
           "refId": "A",
           "instant": true,

@@ -1,6 +1,0 @@
-[
-  {
-    "targets": ["host.example:9338"],
-    "labels": {"host": "host"}
-  }
-]

@@ -46,14 +46,15 @@ jobs:
             grafana/loki:3.7.8 \
             -config.file=/etc/loki/loki.yaml -verify-config
 
-      - name: Alloy config
+      - name: Agent config and image
         run: |
           docker run --rm \
-            -v "$PWD/agents/alloy/config.alloy:/etc/alloy/config.alloy:ro" \
+            -v "$PWD/agent/config.alloy:/etc/alloy/config.alloy:ro" \
             grafana/alloy:v1.20.1 fmt /etc/alloy/config.alloy > /dev/null
+          docker build -t argus-agent:ci agent/
 
       - name: Compose file
         run: |
           GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
-          docker compose -f agents/compose.yml --profile logs --profile plex config --quiet
+          ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex config --quiet
           docker compose -f logs/compose.yml config --quiet

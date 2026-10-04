@@ -1,0 +1,179 @@
+// Argus agent: one container per monitored host. Collects host metrics
+// (embedded node_exporter), per-container metrics (embedded cAdvisor) and
+// container logs, and pushes them to the Argus server.
+//
+// Settings (environment variables):
+//   ARGUS_HOST            name this host reports as (required)
+//   ARGUS_PROMETHEUS_URL  Argus Prometheus, e.g. http://argus.lan:9090 (required)
+//   ARGUS_LOKI_URL        Argus Loki, e.g. http://argus.lan:3101 (required)
+// Optional: mount Nginx Proxy Manager's data/logs directory at /var/log/npm to
+// also ship its access logs.
+
+// ── Where everything goes ───────────────────────────────────────────────
+prometheus.remote_write "argus" {
+  endpoint {
+    url = sys.env("ARGUS_PROMETHEUS_URL") + "/api/v1/write"
+  }
+  external_labels = {
+    host = sys.env("ARGUS_HOST"),
+  }
+}
+
+loki.write "argus" {
+  endpoint {
+    url = sys.env("ARGUS_LOKI_URL") + "/loki/api/v1/push"
+  }
+  external_labels = {
+    host = sys.env("ARGUS_HOST"),
+  }
+}
+
+// ── Host metrics (node_exporter) ────────────────────────────────────────
+// The host's root filesystem is mounted at /rootfs; the container shares
+// the host's PID and network namespaces, so /proc and /sys are the host's.
+prometheus.exporter.unix "host" {
+  rootfs_path = "/rootfs"
+  procfs_path = "/proc"
+  sysfs_path  = "/sys"
+}
+
+discovery.relabel "host" {
+  targets = prometheus.exporter.unix.host.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "node"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("ARGUS_HOST")
+  }
+}
+
+prometheus.scrape "host" {
+  targets         = discovery.relabel.host.output
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.argus.receiver]
+}
+
+// ── Container metrics (cAdvisor) ────────────────────────────────────────
+prometheus.exporter.cadvisor "containers" {
+  docker_host            = "unix:///var/run/docker.sock"
+  docker_only            = true
+  store_container_labels = false
+  storage_duration       = "2m"
+  disabled_metrics       = [
+    "advtcp", "cpu_topology", "cpuset", "hugetlb", "memory_numa", "percpu",
+    "perf_event", "process", "referenced_memory", "resctrl", "sched", "tcp", "udp",
+  ]
+}
+
+discovery.relabel "containers" {
+  targets = prometheus.exporter.cadvisor.containers.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("ARGUS_HOST")
+  }
+}
+
+prometheus.scrape "containers" {
+  targets         = discovery.relabel.containers.output
+  scrape_interval = "30s"
+  forward_to      = [prometheus.relabel.containers.receiver]
+}
+
+// Keep only container_* series for named containers (drops raw cgroup
+// slices) — but not the scrape's own `up` series, which has no name.
+prometheus.relabel "containers" {
+  rule {
+    source_labels = ["__name__", "name"]
+    regex         = "container_.*;"
+    action        = "drop"
+  }
+  forward_to = [prometheus.remote_write.argus.receiver]
+}
+
+// ── Container logs ──────────────────────────────────────────────────────
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "30s"
+}
+
+discovery.relabel "logs" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  labels        = { job = "docker" }
+  relabel_rules = discovery.relabel.logs.rules
+  forward_to    = [loki.process.containers.receiver]
+}
+
+loki.process "containers" {
+  // On first start Alloy reads each container's whole log history; Loki
+  // rejects anything older than a week anyway, so only ship the last hour.
+  stage.drop {
+    older_than          = "1h"
+    drop_counter_reason = "too_old"
+  }
+  forward_to = [loki.write.argus.receiver]
+}
+
+// ── Nginx Proxy Manager access logs (only if /var/log/npm is mounted) ───
+local.file_match "npm" {
+  path_targets = [{
+    "__path__" = "/var/log/npm/proxy-host-*_access.log",
+    "job"      = "npm",
+  }]
+}
+
+loki.source.file "npm" {
+  targets       = local.file_match.npm.targets
+  tail_from_end = true
+  forward_to    = [loki.process.npm.receiver]
+}
+
+loki.process "npm" {
+  // Argus' own uptime probes would otherwise dominate the traffic.
+  stage.drop {
+    expression = ".*Blackbox-Exporter.*"
+  }
+
+  // [04/Oct/2026:18:07:35 +0000] - 302 302 - GET https site.example "/" [Client 1.2.3.4] [Length 29] ...
+  stage.regex {
+    expression = "^\\[(?P<time>[^\\]]+)\\] \\S+ \\S+ (?P<status>\\S+) - (?P<method>\\S+) \\S+ (?P<site>\\S+) \"[^\"]*\" \\[Client [^\\]]+\\] \\[Length \\d+\\]"
+  }
+  stage.timestamp {
+    source = "time"
+    format = "02/Jan/2006:15:04:05 -0700"
+  }
+  stage.labels {
+    values = {
+      site   = "",
+      status = "",
+      method = "",
+    }
+  }
+  forward_to = [loki.write.argus.receiver]
+}
