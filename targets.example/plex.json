@@ -1,0 +1,6 @@
+[
+  {
+    "targets": ["plex-host.example:9594"],
+    "labels": {"host": "plex-host"}
+  }
+]
