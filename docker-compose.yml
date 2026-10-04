@@ -31,6 +31,16 @@ services:
     volumes:
       - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
 
+  # Pi-hole v6 stats. Which Pi-holes, and their app passwords, come from the
+  # gitignored secrets/pihole-exporter.env (see secrets.example/); without that
+  # file the exporter starts but has nothing to scrape.
+  pihole-exporter:
+    image: ekofr/pihole-exporter:v1.2.0
+    restart: unless-stopped
+    env_file:
+      - path: ./secrets/pihole-exporter.env
+        required: false
+
   grafana:
     image: grafana/grafana:13.2.2
     restart: unless-stopped
