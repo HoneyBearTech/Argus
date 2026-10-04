@@ -57,6 +57,23 @@ scrape_configs:
       - regex: module|auth
         action: labeldrop
 
+  # Home Assistant's Prometheus integration. Authenticates with a long-lived
+  # access token from secrets/home_assistant_token. HA exports every entity
+  # (~17k series); only the families the Smart Home dashboard and alerts use
+  # are kept.
+  - job_name: homeassistant
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    metrics_path: /api/prometheus
+    authorization:
+      credentials_file: /etc/prometheus/secrets/home_assistant_token
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/homeassistant.json]
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: homeassistant_(climate_.+|sensor_temperature_celsius|sensor_humidity_percent|sensor_power_w|sensor_energy_kwh|sensor_battery_percent|person_state|lock_state|update_state|automation_triggered_count_total|entity_available|entity_info|area_info)
+        action: keep
+
   # Pi-hole query stats via pihole-exporter (one exporter, every Pi-hole;
   # each series carries the Pi-hole's address in its `hostname` label).
   - job_name: pihole
