@@ -11,3 +11,14 @@ datasources:
     editable: false
     jsonData:
       timeInterval: 15s
+
+  # Logs (logs/compose.yml). The URL is host-specific, so it comes from the
+  # LOKI_URL environment variable.
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: ${LOKI_URL}
+    editable: false
+    jsonData:
+      maxLines: 1000

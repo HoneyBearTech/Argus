@@ -98,6 +98,13 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/plex.json]
 
+  # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
+  # up as a down target like any other exporter.
+  - job_name: loki
+    scrape_interval: 60s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/loki.json]
+
   # Pi-hole query stats via pihole-exporter (one exporter, every Pi-hole;
   # each series carries the Pi-hole's address in its `hostname` label).
   - job_name: pihole

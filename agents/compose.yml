@@ -1,5 +1,5 @@
-# Argus agents for one monitored Docker host. Copy this file to the host
-# (e.g. ~/argus-agent/compose.yml) and run `docker compose up -d` there.
+# Argus agents for one monitored Docker host. Copy this directory to the host
+# (e.g. ~/argus-agent/) and run `docker compose up -d` there.
 # Prometheus scrapes node-exporter on :9100 and cAdvisor on :9338 (and, on a
 # Plex host with the `plex` profile enabled, the Plex exporter on :9594).
 name: argus-agent
@@ -56,3 +56,27 @@ services:
       PLEX_TOKEN: ${PLEX_TOKEN:-}
     ports:
       - 9594:9000
+
+  # Log shipping to Loki (logs/compose.yml): this host's Docker container logs,
+  # plus Nginx Proxy Manager access logs where NPM_LOG_DIR is set. Enable with
+  # the `logs` profile; needs LOKI_URL and ARGUS_HOST in this directory's .env.
+  alloy:
+    image: grafana/alloy:v1.20.1
+    container_name: argus-alloy
+    restart: unless-stopped
+    profiles: [logs]
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      LOKI_URL: ${LOKI_URL:-http://loki.invalid:3100}
+      ARGUS_HOST: ${ARGUS_HOST:-unknown}
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${NPM_LOG_DIR:-./no-npm-logs}:/var/log/npm:ro
+      - alloy_data:/var/lib/alloy/data
+
+volumes:
+  alloy_data:

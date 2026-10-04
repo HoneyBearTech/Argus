@@ -39,5 +39,21 @@ jobs:
             prom/blackbox-exporter:v0.28.0 \
             --config.file=/etc/blackbox/blackbox.yml --config.check
 
+      - name: Loki config
+        run: |
+          docker run --rm \
+            -v "$PWD/logs/loki.yaml:/etc/loki/loki.yaml:ro" \
+            grafana/loki:3.7.8 \
+            -config.file=/etc/loki/loki.yaml -verify-config
+
+      - name: Alloy config
+        run: |
+          docker run --rm \
+            -v "$PWD/agents/alloy/config.alloy:/etc/alloy/config.alloy:ro" \
+            grafana/alloy:v1.20.1 fmt /etc/alloy/config.alloy > /dev/null
+
       - name: Compose file
-        run: GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
+        run: |
+          GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
+          docker compose -f agents/compose.yml --profile logs --profile plex config --quiet
+          docker compose -f logs/compose.yml config --quiet
