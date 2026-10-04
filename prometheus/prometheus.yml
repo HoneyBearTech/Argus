@@ -74,6 +74,23 @@ scrape_configs:
         regex: homeassistant_(climate_.+|sensor_temperature_celsius|sensor_humidity_percent|sensor_power_w|sensor_energy_kwh|sensor_battery_percent|person_state|lock_state|update_state|automation_triggered_count_total|entity_available|entity_info|area_info)
         action: keep
 
+  # Media apps: exportarr (*arr, SABnzbd), qbittorrent-exporter and the Plex
+  # exporter that runs beside Plex (agents/compose.yml, `plex` profile).
+  # targets/media.json lists only the exporters enabled on this host, each
+  # with an `app` label. The *arr APIs are slow on big libraries, hence the
+  # long interval.
+  - job_name: media
+    scrape_interval: 2m
+    scrape_timeout: 90s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/media.json]
+    metric_relabel_configs:
+      # qbittorrent-exporter emits ~17 series per torrent (11k+ here); keep only
+      # the client-wide totals.
+      - source_labels: [__name__]
+        regex: qbittorrent_torrent_.+
+        action: drop
+
   # Pi-hole query stats via pihole-exporter (one exporter, every Pi-hole;
   # each series carries the Pi-hole's address in its `hostname` label).
   - job_name: pihole

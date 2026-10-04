@@ -23,6 +23,7 @@ scripts/             repo checks, run in CI
 | Host Health | hosts | Is any machine running out of disk, memory or CPU? | node_exporter on each host (`agents/compose.yml`) |
 | Docker Containers | hosts | Which containers are restarting, stopped, or eating resources? | cAdvisor on each Docker host (`agents/compose.yml`) |
 | Network / UniFi | network | How's the internet connection, and what's on the network? | [unpoller](https://github.com/unpoller/unpoller) with a read-only UniFi account |
+| Media Stack | media | Is the download pipeline flowing, and is the library healthy? | [exportarr](https://github.com/onedr0p/exportarr) (*arr, SABnzbd), [qbittorrent-exporter](https://github.com/martabal/qbittorrent-exporter); Plex exporter beside Plex (`agents/compose.yml`, `plex` profile) |
 | NAS / Storage | storage | Are the NAS units healthy, and how fast are they filling? | snmp-exporter (bundled `synology` + standard MIB modules), SNMPv3 |
 | Smart Home | home | What's the house doing — temperatures, HVAC, energy? | Home Assistant's Prometheus integration (long-lived token) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |

@@ -1,6 +1,7 @@
 # Argus agents for one monitored Docker host. Copy this file to the host
 # (e.g. ~/argus-agent/compose.yml) and run `docker compose up -d` there.
-# Prometheus scrapes node-exporter on :9100 and cAdvisor on :9338.
+# Prometheus scrapes node-exporter on :9100 and cAdvisor on :9338 (and, on a
+# Plex host with the `plex` profile enabled, the Plex exporter on :9594).
 name: argus-agent
 
 services:
@@ -40,3 +41,18 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+
+  # Plex playback, transcode, library and host metrics. Only on a Plex host:
+  # set COMPOSE_PROFILES=plex, PLEX_SERVER and PLEX_TOKEN in this directory's
+  # .env. The image is amd64-only, which is why it runs here rather than in the
+  # main stack.
+  plex-exporter:
+    image: ghcr.io/jsclayton/prometheus-plex-exporter@sha256:18ef1b2197efbcb75bd7276380955760995f10a9fbe55106809a6fcff91c2940
+    container_name: argus-plex-exporter
+    restart: unless-stopped
+    profiles: [plex]
+    environment:
+      PLEX_SERVER: ${PLEX_SERVER:-http://localhost:32400}
+      PLEX_TOKEN: ${PLEX_TOKEN:-}
+    ports:
+      - 9594:9000
