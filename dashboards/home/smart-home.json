@@ -1,0 +1,1315 @@
+{
+  "id": null,
+  "uid": "argus-home",
+  "title": "Smart Home",
+  "description": "What's the house doing \u2014 temperatures, HVAC, energy?",
+  "tags": [
+    "argus",
+    "home"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "5m",
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Argus dashboards",
+      "type": "dashboards",
+      "tags": [
+        "argus"
+      ],
+      "asDropdown": true,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Inside",
+      "description": "Temperature at the thermostat.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(homeassistant_climate_current_temperature_celsius{job=\"homeassistant\"}) * 9 / 5 + 32",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fahrenheit",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Set to",
+      "description": "Thermostat target temperature.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(homeassistant_climate_target_temperature_celsius{job=\"homeassistant\"}) * 9 / 5 + 32",
+          "legendFormat": "__auto",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fahrenheit",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "HVAC",
+      "description": "What the HVAC system is doing right now.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 7,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (action) (homeassistant_climate_action{job=\"homeassistant\"} == 1)",
+          "legendFormat": "{{action}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "idle",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "name",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Humidity",
+      "description": "Indoor humidity at the thermostat.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 11,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(homeassistant_sensor_humidity_percent{job=\"homeassistant\", entity=~\".*thermostat.*\"})",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 30
+              },
+              {
+                "color": "orange",
+                "value": 55
+              },
+              {
+                "color": "red",
+                "value": 65
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Who's home",
+      "description": "Each person tracked by Home Assistant.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (friendly_name) (homeassistant_person_state{job=\"homeassistant\"})",
+          "legendFormat": "{{friendly_name}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Home",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Away",
+                  "color": "text",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Locks",
+      "description": "Every lock Home Assistant knows about.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (friendly_name) (homeassistant_lock_state{job=\"homeassistant\"})",
+          "legendFormat": "{{friendly_name}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Locked",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Unlocked",
+                  "color": "orange",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Thermostat",
+      "description": "Temperature at the thermostat against its target.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(homeassistant_climate_current_temperature_celsius{job=\"homeassistant\"}) * 9 / 5 + 32",
+          "legendFormat": "Inside",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(homeassistant_climate_target_temperature_celsius{job=\"homeassistant\"}) * 9 / 5 + 32",
+          "legendFormat": "Target",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fahrenheit",
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 8,
+      "type": "state-timeline",
+      "title": "HVAC activity",
+      "description": "When the system was heating, cooling, running the fan or idle.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (action) (homeassistant_climate_action{job=\"homeassistant\", action=~\"heating|cooling|fan|drying|idle\"})",
+          "legendFormat": "{{action}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "off",
+                  "color": "transparent",
+                  "index": 0
+                },
+                "1": {
+                  "text": "on",
+                  "color": "blue",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "blue",
+                "value": 1
+              }
+            ]
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heating"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cooling"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "blue",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "idle"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showValue": "never",
+        "mergeValues": true,
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Room temperatures",
+      "description": "One line per room that has a single temperature sensor (rooms are areas with a floor in Home Assistant; 3D-printer gear and equipment racks are left out).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max by (area_name) ((homeassistant_sensor_temperature_celsius{job=\"homeassistant\"} * on (entity) group_left (area) homeassistant_entity_info{job=\"homeassistant\"} * on (area) group_left (area_name) homeassistant_area_info{job=\"homeassistant\", floor!=\"\", area_name!~\"(?i).*\\\\b(ams|dry|dryer|polydryer)\\\\b.*\"})) and on (area_name) (count by (area_name) ((homeassistant_sensor_temperature_celsius{job=\"homeassistant\"} * on (entity) group_left (area) homeassistant_entity_info{job=\"homeassistant\"} * on (area) group_left (area_name) homeassistant_area_info{job=\"homeassistant\", floor!=\"\", area_name!~\"(?i).*\\\\b(ams|dry|dryer|polydryer)\\\\b.*\"})) == 1)) * 9 / 5 + 32",
+          "legendFormat": "{{area_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fahrenheit",
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "Rooms now",
+      "description": "Current temperature in each room, warmest first.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 6,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc((max by (area_name) ((homeassistant_sensor_temperature_celsius{job=\"homeassistant\"} * on (entity) group_left (area) homeassistant_entity_info{job=\"homeassistant\"} * on (area) group_left (area_name) homeassistant_area_info{job=\"homeassistant\", floor!=\"\", area_name!~\"(?i).*\\\\b(ams|dry|dryer|polydryer)\\\\b.*\"})) and on (area_name) (count by (area_name) ((homeassistant_sensor_temperature_celsius{job=\"homeassistant\"} * on (entity) group_left (area) homeassistant_entity_info{job=\"homeassistant\"} * on (area) group_left (area_name) homeassistant_area_info{job=\"homeassistant\", floor!=\"\", area_name!~\"(?i).*\\\\b(ams|dry|dryer|polydryer)\\\\b.*\"})) == 1)) * 9 / 5 + 32)",
+          "legendFormat": "{{area_name}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fahrenheit",
+          "decimals": 1,
+          "min": 55,
+          "max": 85,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 64
+              },
+              {
+                "color": "orange",
+                "value": 76
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "HVAC run time",
+      "description": "Hours spent heating, cooling and running the fan in the selected time range (one sample per minute).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 12,
+        "w": 6,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(sum by (action) (sum_over_time(homeassistant_climate_action{job=\"homeassistant\", action=~\"heating|cooling|fan\"}[$__range])) / 60)",
+          "legendFormat": "{{action}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "min": 0,
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 12,
+      "type": "bargauge",
+      "title": "Power right now",
+      "description": "Devices reporting power draw (PoE switch ports are on the Network dashboard instead).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(topk(12, max by (friendly_name) (homeassistant_sensor_power_w{job=\"homeassistant\", friendly_name!~\"(?i).*poe.*\"}) > 0))",
+          "legendFormat": "{{friendly_name}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "min": 0,
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "displayName": "${__field.labels.friendly_name}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "Energy used",
+      "description": "Energy used by each metered device in the selected time range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 21,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(topk(12, max by (friendly_name) (increase(homeassistant_sensor_energy_kwh{job=\"homeassistant\"}[$__range])) > 0))",
+          "legendFormat": "{{friendly_name}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "min": 0,
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "displayName": "${__field.labels.friendly_name}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 14,
+      "type": "bargauge",
+      "title": "Lowest batteries",
+      "description": "Battery-powered devices with the least charge left.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 21,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort(bottomk(12, max by (friendly_name) (homeassistant_sensor_battery_percent{job=\"homeassistant\"})))",
+          "legendFormat": "{{friendly_name}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "displayName": "${__field.labels.friendly_name}",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 15
+              },
+              {
+                "color": "green",
+                "value": 30
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Updates available",
+      "description": "Home Assistant core, OS, add-ons and integrations with an update waiting. Listed alongside.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(homeassistant_update_state{job=\"homeassistant\"} == 1) or vector(0)",
+          "legendFormat": "__auto",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Unavailable entities",
+      "description": "Entities Home Assistant currently can't reach \u2014 usually offline or removed devices. A sudden jump means an integration or hub went down.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(homeassistant_entity_available{job=\"homeassistant\"} == 0) or vector(0)",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "60s"
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "Updates waiting",
+      "description": "Everything Home Assistant reports an update for.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 31,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (friendly_name) (homeassistant_update_state{job=\"homeassistant\"} == 1)",
+          "legendFormat": "__auto",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Everything is up to date"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "interval": "60s",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "renameByName": {
+              "friendly_name": "Update"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "bargauge",
+      "title": "Busiest automations",
+      "description": "Automations that ran most often in the selected time range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 31,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(topk(10, max by (friendly_name) (increase(homeassistant_automation_triggered_count_total{job=\"homeassistant\"}[$__range])) > 0))",
+          "legendFormat": "{{friendly_name}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "displayName": "${__field.labels.friendly_name}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "60s"
+    }
+  ]
+}
