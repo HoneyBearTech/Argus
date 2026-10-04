@@ -2,7 +2,7 @@
 Grafana dashboards as code for my homelab. Version-controlled JSON dashboards for Docker hosts, the Plex/arr media stack, reverse proxy traffic, and network health, edited in VS Code and provisioned automatically.
 
 ## How it works
-Grafana, Prometheus, blackbox_exporter, pihole-exporter, unpoller and (optionally) snmp-exporter run from [`docker-compose.yml`](docker-compose.yml). Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-host settings come from a gitignored `.env`.
+Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP and the media apps run on one server from [`docker-compose.yml`](docker-compose.yml); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
 
 ```
 dashboards/          dashboard JSON, one folder per Grafana folder
@@ -10,7 +10,8 @@ provisioning/        Grafana datasources (pinned uids) and the dashboard provide
 prometheus/          Prometheus config — scrape jobs, no addresses
 blackbox/            blackbox_exporter probe modules (HTTP service check, DNS resolve)
 agent/               the Argus agent image (Grafana Alloy + config) and its compose file, one per monitored host
-logs/                Loki, the log store, for the host with the most disk
+logs/                Loki config, plus a compose file to run Loki on a separate host with more disk
+images/              Dockerfiles for the published server images
 targets.example/     placeholder scrape/probe targets; real ones go in targets/ (gitignored)
 secrets.example/     placeholder credentials Prometheus scrapes with; real ones go in secrets/ (gitignored)
 scripts/             repo checks, run in CI
@@ -46,15 +47,23 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 Alerts are grouped per rule and repeat every 12 hours while firing.
 
 ## Running it
+Argus ships as images on GHCR (`ghcr.io/honeybeartech/argus-*`) and Docker Hub, for amd64 and arm64. The Grafana image has every dashboard, datasource and alert rule baked in; the Prometheus, blackbox and Loki images carry their configs. What stays on the host is what's specific to your network: scrape targets, credentials and `.env`.
+
+**Server** (one host — Grafana, Prometheus, blackbox_exporter, Loki):
 ```sh
-cp .env.example .env              # set GF_SECURITY_ADMIN_PASSWORD, ports, root URL
+git clone --depth 1 https://github.com/HoneyBearTech/Argus.git && cd Argus
+cp .env.example .env              # set GF_SECURITY_ADMIN_PASSWORD and GRAFANA_ROOT_URL
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp secrets.example/* secrets/
-# then put real addresses in targets/ and real credentials in secrets/
+# put your real addresses in targets/ and credentials in secrets/ — delete what you don't use
 docker compose up -d
 ```
-Grafana is on `GRAFANA_BIND` (default `127.0.0.1:3000`). Edits to dashboard JSON are picked up within 30 seconds; edits to `targets/*.json` are picked up by Prometheus without a restart.
+Then run the agent on each host you want to watch (next section). Grafana is on port 3000; the home page is the Homelab Overview. Edits to `targets/*.json` are picked up by Prometheus without a restart.
 
-To deploy, `git pull` on the production host — provisioning reloads the dashboards on its own. Restart the stack only when `docker-compose.yml`, `provisioning/` or `prometheus/` change (`docker compose up -d`, plus `docker compose restart prometheus` for a config change).
+To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release.
+
+**Developing** — to edit dashboards, alert rules or configs live, run from the checkout instead of the published images by setting `COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml` in `.env`. Grafana then reads `dashboards/` and `provisioning/` straight from the repo (dashboard edits show up within 30 seconds), and `docker compose up -d --build` rebuilds the images. In this mode, deploying is `git pull` on the server; restart the stack only when `docker-compose.yml`, `provisioning/` or a config changes.
+
+Releases are published by pushing a `v*.*.*` tag ([`.github/workflows/release.yml`](.github/workflows/release.yml)).
 
 ## Adding a host
 Each monitored host runs one container, the **Argus agent** (`agent/`): Grafana Alloy with embedded node_exporter and cAdvisor that pushes host metrics, container metrics and container logs to the Argus server. Nothing on the server needs to change — the host appears in the dashboards as soon as the agent starts, and it only makes outbound connections (no firewall rules on the host).
@@ -79,4 +88,4 @@ Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and
 4. Run `python3 scripts/check_dashboards.py`. It also fails on private IP addresses and on internal names listed one regex per line in a gitignored `.forbidden-patterns` file (CI reads the same list from the `ARGUS_FORBIDDEN_PATTERNS` secret): **this repo is public**, so addresses stay in `targets/` and `.env`.
 
 ## Checks
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the dashboard checks, `promtool check config`, and `docker compose config` on every push and pull request.
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the dashboard checks, `promtool check config`, the blackbox, Loki and Alloy config checks, builds every image, and validates the compose files on every push and pull request.
