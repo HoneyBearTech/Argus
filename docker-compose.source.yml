@@ -1,0 +1,34 @@
+# Run the Argus server from this checkout: builds the Argus images locally and
+# bind-mounts the repository's dashboards and configs over the baked-in copies,
+# so edits show up without a rebuild (dashboards within 30 s; Prometheus,
+# blackbox and alerting changes after a restart of that service).
+# Enable with COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml in .env.
+services:
+  prometheus:
+    image: argus-prometheus:source
+    build: { context: ., dockerfile: images/prometheus/Dockerfile }
+    pull_policy: build
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  blackbox:
+    image: argus-blackbox:source
+    build: { context: ., dockerfile: images/blackbox/Dockerfile }
+    pull_policy: build
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+
+  loki:
+    image: argus-loki:source
+    build: { context: ., dockerfile: images/loki/Dockerfile }
+    pull_policy: build
+    volumes:
+      - ./logs/loki.yaml:/etc/loki/loki.yaml:ro
+
+  grafana:
+    image: argus-grafana:source
+    build: { context: ., dockerfile: images/grafana/Dockerfile }
+    pull_policy: build
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/etc/argus/dashboards:ro

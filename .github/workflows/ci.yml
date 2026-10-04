@@ -53,8 +53,15 @@ jobs:
             grafana/alloy:v1.20.1 fmt /etc/alloy/config.alloy > /dev/null
           docker build -t argus-agent:ci agent/
 
+      - name: Server images
+        run: |
+          for image in grafana prometheus blackbox loki; do
+            docker build -t "argus-${image}:ci" -f "images/${image}/Dockerfile" .
+          done
+
       - name: Compose file
         run: |
           GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
+          GF_SECURITY_ADMIN_PASSWORD=ci docker compose -f docker-compose.yml -f docker-compose.source.yml config --quiet
           ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex config --quiet
           docker compose -f logs/compose.yml config --quiet

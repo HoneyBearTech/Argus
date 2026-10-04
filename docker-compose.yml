@@ -1,5 +1,8 @@
-# Grafana + Prometheus (+ blackbox_exporter) for Argus. The same file runs production and the local
-# sandbox; per-host settings live in a gitignored .env (see .env.example).
+# The Argus server: Grafana, Prometheus, blackbox_exporter and (optionally)
+# Loki and exporters for Pi-hole, UniFi, SNMP and media apps. Runs the
+# published images; per-install settings live in a gitignored .env (see
+# .env.example). To run from a checkout with live-editable dashboards and
+# configs instead, add docker-compose.source.yml (see that file).
 name: argus
 
 # Shared settings for the exportarr services below (one per *arr / SABnzbd app).
@@ -13,7 +16,7 @@ x-exportarr: &exportarr
 
 services:
   prometheus:
-    image: prom/prometheus:v3.14.0
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-prometheus:${ARGUS_VERSION:-latest}
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -23,24 +26,20 @@ services:
       # Argus agents push host and container metrics here.
       - --web.enable-remote-write-receiver
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       # Scrape targets are host-specific and never committed (see targets.example/).
       - ./targets:/etc/prometheus/targets:ro
       # Credentials Prometheus scrapes with (e.g. API keys), never committed (see secrets.example/).
       - ./secrets:/etc/prometheus/secrets:ro
       - prometheus_data:/prometheus
     ports:
-      - ${PROMETHEUS_BIND:-127.0.0.1:9090}:9090
+      # Reachable from the monitored hosts, whose agents push metrics here.
+      - ${PROMETHEUS_BIND:-0.0.0.0:9090}:9090
 
   # Runs HTTP and DNS probes on Prometheus' behalf. Only Prometheus talks to
   # it, so it publishes no port.
   blackbox:
-    image: prom/blackbox-exporter:v0.28.0
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-blackbox:${ARGUS_VERSION:-latest}
     restart: unless-stopped
-    command:
-      - --config.file=/etc/blackbox/blackbox.yml
-    volumes:
-      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
 
   # Pi-hole v6 stats. Which Pi-holes, and their app passwords, come from the
   # gitignored secrets/pihole-exporter.env (see secrets.example/); without that
@@ -159,8 +158,20 @@ services:
       - path: ./secrets/qbittorrent.env
         required: false
 
+  # Log store for the agents' container logs. Optional (`loki` profile): Loki can
+  # also run on another host with more disk (logs/compose.yml); point LOKI_URL
+  # at it either way.
+  loki:
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-loki:${ARGUS_VERSION:-latest}
+    restart: unless-stopped
+    profiles: [loki]
+    volumes:
+      - loki_data:/loki
+    ports:
+      - ${LOKI_BIND:-0.0.0.0:3101}:3100
+
   grafana:
-    image: grafana/grafana:13.2.2
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-grafana:${ARGUS_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -168,21 +179,17 @@ services:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?set GF_SECURITY_ADMIN_PASSWORD in .env}
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_AUTH_ANONYMOUS_ENABLED: "false"
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview/homelab-overview.json
       # Alert notifications (provisioning/alerting/contact-points.yaml). Unset
       # outside production, so a sandbox can't post to the real channel.
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-https://discord.invalid/argus-sandbox}
-      # Where Loki (logs/compose.yml) runs.
-      LOKI_URL: ${LOKI_URL:-http://loki.invalid:3100}
+      # Where Loki runs: the bundled one (`loki` profile) by default.
+      LOKI_URL: ${LOKI_URL:-http://loki:3100}
     volumes:
-      - ./provisioning:/etc/grafana/provisioning:ro
-      - ./dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - ${GRAFANA_BIND:-127.0.0.1:3000}:3000
+      - ${GRAFANA_BIND:-0.0.0.0:3000}:3000
 
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
