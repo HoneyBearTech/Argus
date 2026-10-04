@@ -9,6 +9,7 @@ dashboards/          dashboard JSON, one folder per Grafana folder
 provisioning/        Grafana datasources (pinned uids) and the dashboard provider
 prometheus/          Prometheus config — scrape jobs, no addresses
 blackbox/            blackbox_exporter probe modules (HTTP service check, DNS resolve)
+agents/              exporters that run on the monitored hosts (node-exporter)
 targets.example/     placeholder scrape/probe targets; real ones go in targets/ (gitignored)
 secrets.example/     placeholder credentials Prometheus scrapes with; real ones go in secrets/ (gitignored)
 scripts/             repo checks, run in CI
@@ -18,6 +19,7 @@ scripts/             repo checks, run in CI
 | Dashboard | Folder | Answers | Data |
 |---|---|---|---|
 | Homelab Overview (home page) | overview | Is everything up right now, and if not, what? | [Uptime Kuma](https://github.com/louislam/uptime-kuma) `/metrics`, blackbox_exporter HTTP + DNS probes |
+| Host Health | hosts | Is any machine running out of disk, memory or CPU? | node_exporter on each host (`agents/node-exporter/`) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Running it
@@ -30,6 +32,9 @@ docker compose up -d
 Grafana is on `GRAFANA_BIND` (default `127.0.0.1:3000`). Edits to dashboard JSON are picked up within 30 seconds; edits to `targets/*.json` are picked up by Prometheus without a restart.
 
 To deploy, `git pull` on the production host — provisioning reloads the dashboards on its own. Restart the stack only when `docker-compose.yml`, `provisioning/` or `prometheus/` change (`docker compose up -d`, plus `docker compose restart prometheus` for a config change).
+
+## Adding a host to Host Health
+On a Docker host: copy `agents/node-exporter/compose.yml` to the host (e.g. `~/argus-agent/compose.yml`) and run `docker compose up -d` there. Make sure the Prometheus host can reach port 9100 (e.g. `sudo ufw allow from <prometheus-host> to any port 9100 proto tcp`), then add the host to `targets/node.json` with a `host` label.
 
 ## Adding or changing a dashboard
 1. Build or edit it in the sandbox Grafana, then **Export → Export as JSON** (leave "Export for sharing externally" off), or edit the JSON directly in VS Code.
