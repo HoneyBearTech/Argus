@@ -50,7 +50,7 @@ jobs:
         run: |
           docker run --rm \
             -v "$PWD/agent/config.alloy:/etc/alloy/config.alloy:ro" \
-            grafana/alloy:v1.20.1 fmt /etc/alloy/config.alloy > /dev/null
+            grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f fmt /etc/alloy/config.alloy > /dev/null
           docker build -t argus-agent:ci agent/
 
       - name: Server images
