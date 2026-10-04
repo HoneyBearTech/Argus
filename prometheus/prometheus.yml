@@ -16,11 +16,22 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/peanut.json]
 
-  # Host metrics from node_exporter (agents/node-exporter/). Targets carry a
+  # Host metrics from node_exporter (agents/compose.yml). Targets carry a
   # `host` label naming the machine.
   - job_name: node
     file_sd_configs:
       - files: [/etc/prometheus/targets/node.json]
+
+  # Per-container metrics from cAdvisor (agents/compose.yml), same `host`
+  # labels as the node job. Only series for named containers are kept.
+  - job_name: cadvisor
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/cadvisor.json]
+    metric_relabel_configs:
+      - source_labels: [name]
+        regex: ""
+        action: drop
 
   # Pi-hole query stats via pihole-exporter (one exporter, every Pi-hole;
   # each series carries the Pi-hole's address in its `hostname` label).

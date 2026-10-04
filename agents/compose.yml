@@ -1,0 +1,42 @@
+# Argus agents for one monitored Docker host. Copy this file to the host
+# (e.g. ~/argus-agent/compose.yml) and run `docker compose up -d` there.
+# Prometheus scrapes node-exporter on :9100 and cAdvisor on :9338.
+name: argus-agent
+
+services:
+  # Host CPU, memory, disks and network. Host networking and the read-only
+  # root mount make it report the host itself rather than the container.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: argus-node-exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro,rslave
+
+  # Per-container CPU, memory, network and restarts. Docker containers only,
+  # with the expensive metric groups and container labels turned off to keep
+  # the series count small.
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    container_name: argus-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    ports:
+      - 9338:8080
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+      - --store_container_labels=false
+      - --disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,percpu,perf_event,process,referenced_memory,resctrl,sched,tcp,udp
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
