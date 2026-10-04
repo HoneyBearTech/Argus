@@ -2,8 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
-# Each job reads its targets from targets/<job>.json on the host (file_sd), so
-# no addresses are committed. Prometheus picks up changes to those files
+# Host and container metrics are pushed by Argus agents (agent/) through the
+# remote-write receiver. Every job below reads its targets from
+# targets/<job>.json on the host (file_sd), so no addresses are committed. Prometheus picks up changes to those files
 # without a restart. Placeholder versions live in targets.example/.
 scrape_configs:
   - job_name: prometheus
@@ -15,23 +16,6 @@ scrape_configs:
     metrics_path: /api/v1/metrics
     file_sd_configs:
       - files: [/etc/prometheus/targets/peanut.json]
-
-  # Host metrics from node_exporter (agents/compose.yml). Targets carry a
-  # `host` label naming the machine.
-  - job_name: node
-    file_sd_configs:
-      - files: [/etc/prometheus/targets/node.json]
-
-  # Per-container metrics from cAdvisor (agents/compose.yml), same `host`
-  # labels as the node job. Only series for named containers are kept.
-  - job_name: cadvisor
-    scrape_interval: 30s
-    file_sd_configs:
-      - files: [/etc/prometheus/targets/cadvisor.json]
-    metric_relabel_configs:
-      - source_labels: [name]
-        regex: ""
-        action: drop
 
   # SNMP devices via snmp-exporter (only runs with the `snmp` compose
   # profile). Targets carry `host` and `module` labels; `module` picks the
@@ -91,7 +75,7 @@ scrape_configs:
         action: drop
 
   # Plex sessions, bandwidth and libraries from the Plex exporter that runs
-  # beside each Plex server (agents/compose.yml, `plex` profile). Its own job
+  # beside each Plex server (agent/compose.yml, `plex` profile). Its own job
   # and a short interval so "now playing" stays current.
   - job_name: plex
     scrape_interval: 30s

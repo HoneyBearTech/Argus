@@ -1,0 +1,47 @@
+# Argus agent for one monitored Docker host: a single container that pushes
+# host metrics, container metrics and container logs to the Argus server.
+# Copy this file and .env.example (as .env) to the host, fill in .env, then
+# `docker compose up -d`. Or use the equivalent `docker run` in the README.
+name: argus-agent
+
+services:
+  agent:
+    image: ${ARGUS_AGENT_IMAGE:-ghcr.io/honeybeartech/argus-agent:latest}
+    container_name: argus-agent
+    restart: unless-stopped
+    # Host PID and network namespaces + read-only host mounts let the embedded
+    # node_exporter and cAdvisor see the host itself.
+    network_mode: host
+    pid: host
+    privileged: true
+    environment:
+      ARGUS_HOST: ${ARGUS_HOST:?set ARGUS_HOST in .env}
+      ARGUS_PROMETHEUS_URL: ${ARGUS_PROMETHEUS_URL:?set ARGUS_PROMETHEUS_URL in .env}
+      ARGUS_LOKI_URL: ${ARGUS_LOKI_URL:?set ARGUS_LOKI_URL in .env}
+    volumes:
+      - /:/rootfs:ro,rslave
+      - /sys:/sys:ro
+      - /run/udev:/run/udev:ro
+      - /dev/disk:/dev/disk:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Nginx Proxy Manager access logs, only on the host that runs it.
+      - ${NPM_LOG_DIR:-./no-npm-logs}:/var/log/npm:ro
+      - agent_data:/var/lib/alloy/data
+
+  # Plex playback, transcode, library and host metrics — only on a Plex host
+  # (COMPOSE_PROFILES=plex). Prometheus scrapes it (job `plex`). The image is
+  # amd64-only.
+  plex-exporter:
+    image: ghcr.io/jsclayton/prometheus-plex-exporter@sha256:18ef1b2197efbcb75bd7276380955760995f10a9fbe55106809a6fcff91c2940
+    container_name: argus-plex-exporter
+    restart: unless-stopped
+    profiles: [plex]
+    environment:
+      PLEX_SERVER: ${PLEX_SERVER:-http://localhost:32400}
+      PLEX_TOKEN: ${PLEX_TOKEN:-}
+    ports:
+      - 9594:9000
+
+volumes:
+  agent_data:

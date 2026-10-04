@@ -8,7 +8,7 @@ groups:
   interval: 1m
   rules:
   - uid: argus-host-down
-    title: Host agent down
+    title: Host stopped reporting
     condition: C
     data:
     - refId: A
@@ -18,7 +18,7 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: up{job="node"}
+        expr: max by (host) (up{job="node"}) or max by (host) (max_over_time(up{job="node"}[1d])) * 0
         instant: true
         range: false
         intervalMs: 15000
@@ -43,7 +43,8 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: '{{ $labels.host }} isn''t reporting host metrics (node-exporter unreachable or the host is down).'
+      summary: '{{ $labels.host }} reported in the last day but its Argus agent has gone silent (agent stopped or the host
+        is down).'
     isPaused: false
   - uid: argus-service-down
     title: Service down
