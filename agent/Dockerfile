@@ -1,6 +1,6 @@
 # Argus agent: Grafana Alloy with the Argus configuration baked in.
 # See agent/README.md (or the main README) for how to run it.
-FROM grafana/alloy:v1.20.1
+FROM grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
 
 COPY config.alloy /etc/alloy/config.alloy
 
