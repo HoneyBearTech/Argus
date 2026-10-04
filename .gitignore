@@ -2,6 +2,8 @@
 .env
 *.env
 !.env.example
+# Placeholder env files are meant to be committed
+!secrets.example/*.env
 # Prometheus scrape targets are host-specific (see targets.example/)
 targets/
 # Internal names the repo checks forbid (they can't be committed either)
