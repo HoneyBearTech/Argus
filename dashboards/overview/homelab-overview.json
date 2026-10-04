@@ -473,7 +473,7 @@
       "id": 7,
       "type": "table",
       "title": "Services down",
-      "description": "Each failing service with the HTTP status the proxy returned (0 = no response at all; 502 = the proxy couldn't reach the service).",
+      "description": "Each failing service with the HTTP status the proxy returned: 0 = no response at all; 502 = the proxy couldn't reach the service; 403 = the proxy's access list refused the prober (fix the access list, the service itself may be fine).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
