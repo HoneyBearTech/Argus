@@ -22,7 +22,7 @@ jobs:
           # Internal domains/hostnames to reject, one regex per line (repo secret).
           ARGUS_FORBIDDEN_PATTERNS: ${{ secrets.ARGUS_FORBIDDEN_PATTERNS }}
 
-      # Same pinned image as docker-compose.yml; bump both together.
+      # Same pinned image as images/prometheus/Dockerfile; bump both together.
       - name: Prometheus config (promtool)
         run: |
           docker run --rm \
