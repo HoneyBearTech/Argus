@@ -1,0 +1,5 @@
+[
+  {
+    "targets": ["uptime-kuma.example:3001"]
+  }
+]

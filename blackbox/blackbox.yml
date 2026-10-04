@@ -1,0 +1,24 @@
+# Probe modules for blackbox_exporter. Which endpoints get probed with which
+# module is decided by targets/blackbox_*.json on each host, not here.
+modules:
+  # A web service is "up" if it answers at all — a login page, a redirect or
+  # an auth challenge all count. TLS is verified, so a broken or expired
+  # certificate fails the probe.
+  http_service:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true
+      valid_status_codes: [200, 204, 301, 302, 303, 307, 308, 401, 403]
+
+  # A DNS server is "up" if it resolves a well-known name.
+  dns_resolve:
+    prober: dns
+    timeout: 5s
+    dns:
+      preferred_ip_protocol: ip4
+      transport_protocol: udp
+      query_name: cloudflare.com
+      query_type: A
+      valid_rcodes: [NOERROR]

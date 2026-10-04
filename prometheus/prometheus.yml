@@ -15,3 +15,37 @@ scrape_configs:
     metrics_path: /api/v1/metrics
     file_sd_configs:
       - files: [/etc/prometheus/targets/peanut.json]
+
+  # Monitor status and response times from Uptime Kuma. Kuma takes its API
+  # key as the basic-auth password; the username is ignored.
+  - job_name: uptime_kuma
+    basic_auth:
+      username: argus
+      password_file: /etc/prometheus/secrets/uptime_kuma_api_key
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/uptime_kuma.json]
+
+  # Web services probed through blackbox_exporter. Each target is a URL with
+  # `service` and `group` labels; the probe itself runs on the exporter.
+  - job_name: blackbox_http
+    metrics_path: /probe
+    params:
+      module: [http_service]
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/blackbox_http.json]
+    relabel_configs: &blackbox_relabel
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # DNS servers, each asked to resolve a well-known name.
+  - job_name: blackbox_dns
+    metrics_path: /probe
+    params:
+      module: [dns_resolve]
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/blackbox_dns.json]
+    relabel_configs: *blackbox_relabel

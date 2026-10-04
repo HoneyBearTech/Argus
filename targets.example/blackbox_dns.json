@@ -1,0 +1,6 @@
+[
+  {
+    "targets": ["dns.example:53"],
+    "labels": {"service": "dns"}
+  }
+]

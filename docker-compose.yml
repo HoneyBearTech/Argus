@@ -1,4 +1,4 @@
-# Grafana + Prometheus for Argus. The same file runs production and the local
+# Grafana + Prometheus (+ blackbox_exporter) for Argus. The same file runs production and the local
 # sandbox; per-host settings live in a gitignored .env (see .env.example).
 name: argus
 
@@ -15,9 +15,21 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       # Scrape targets are host-specific and never committed (see targets.example/).
       - ./targets:/etc/prometheus/targets:ro
+      # Credentials Prometheus scrapes with (e.g. API keys), never committed (see secrets.example/).
+      - ./secrets:/etc/prometheus/secrets:ro
       - prometheus_data:/prometheus
     ports:
       - ${PROMETHEUS_BIND:-127.0.0.1:9090}:9090
+
+  # Runs HTTP and DNS probes on Prometheus' behalf. Only Prometheus talks to
+  # it, so it publishes no port.
+  blackbox:
+    image: prom/blackbox-exporter:v0.28.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
 
   grafana:
     image: grafana/grafana:13.2.2
@@ -30,6 +42,7 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview/homelab-overview.json
     volumes:
       - ./provisioning:/etc/grafana/provisioning:ro
       - ./dashboards:/var/lib/grafana/dashboards:ro
