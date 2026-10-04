@@ -59,6 +59,20 @@ services:
       - path: ./secrets/unpoller.env
         required: false
 
+  # SNMP polling (Synology NAS etc.) using the modules bundled in the image.
+  # Credentials live in the gitignored secrets/snmp-auth.yml (see
+  # secrets.example/), so the service only starts where the `snmp` profile is
+  # enabled (COMPOSE_PROFILES=snmp in .env) and that file exists.
+  snmp-exporter:
+    image: prom/snmp-exporter:v0.30.1
+    restart: unless-stopped
+    profiles: [snmp]
+    command:
+      - --config.file=/etc/snmp_exporter/snmp.yml
+      - --config.file=/etc/snmp_exporter/auth.yml
+    volumes:
+      - ./secrets/snmp-auth.yml:/etc/snmp_exporter/auth.yml:ro
+
   grafana:
     image: grafana/grafana:13.2.2
     restart: unless-stopped

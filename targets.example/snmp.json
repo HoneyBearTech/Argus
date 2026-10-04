@@ -1,0 +1,6 @@
+[
+  {
+    "targets": ["nas.example"],
+    "labels": {"host": "nas", "module": "synology,if_mib,system,ucd_system_stats,ucd_memory,ucd_la_table", "auth": "synology_v3"}
+  }
+]
