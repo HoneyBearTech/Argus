@@ -1,16 +1,19 @@
 # Probe modules for blackbox_exporter. Which endpoints get probed with which
 # module is decided by targets/blackbox_*.json on each host, not here.
 modules:
-  # A web service is "up" if it answers at all — a login page, a redirect or
-  # an auth challenge all count. TLS is verified, so a broken or expired
-  # certificate fails the probe.
+  # A web service is "up" if it answers — a login page, a redirect or an auth
+  # challenge (401) all count. 403 deliberately does NOT count: a reverse
+  # proxy access list answers 403 without ever reaching the service, so
+  # treating it as up would hide outages. Probe a path the service serves
+  # (e.g. /admin/ for Pi-hole) instead. TLS is verified, so a broken or
+  # expired certificate fails the probe.
   http_service:
     prober: http
     timeout: 10s
     http:
       preferred_ip_protocol: ip4
       follow_redirects: true
-      valid_status_codes: [200, 204, 301, 302, 303, 307, 308, 401, 403]
+      valid_status_codes: [200, 204, 301, 302, 303, 307, 308, 401]
 
   # A DNS server is "up" if it resolves a well-known name.
   dns_resolve:
