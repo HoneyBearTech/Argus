@@ -26,6 +26,19 @@ scripts/             repo checks, run in CI
 | NAS / Storage | storage | Are the NAS units healthy, and how fast are they filling? | snmp-exporter (bundled `synology` + standard MIB modules), SNMPv3 |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
+## Alerts
+Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisioning/alerting/rules.yaml) (edit there — UI changes are blocked) and notify a Discord channel through the webhook in `DISCORD_WEBHOOK_URL` (production `.env` only; a sandbox gets a dummy URL so it can't post). Each rule is a raw PromQL measurement (`A`) plus a threshold (`C`), one alert per series:
+
+| Group | Rules |
+|---|---|
+| Availability | host agent down, service down (only services that were up at some point in the last 7 days), DNS server not answering, monitoring target down |
+| Capacity | disk > 90 %, NAS storage pool > 90 %, certificate < 14 days |
+| Power and hardware | UPS on battery, UPS battery < 50 %, NAS disk unhealthy, NAS pool degraded, NAS disk > 55 °C, network device > 85 °C |
+| Network | internet on backup WAN, internet dropped, Pi-hole blocklists out of sync |
+| Containers | container restarted more than 3 times in an hour |
+
+Alerts are grouped per rule and repeat every 12 hours while firing.
+
 ## Running it
 ```sh
 cp .env.example .env              # set GF_SECURITY_ADMIN_PASSWORD, ports, root URL
