@@ -1,0 +1,11 @@
+# snmp-exporter credentials, merged with the image's bundled snmp.yml.
+# Target files reference an entry here by name (the `auth` label).
+auths:
+  synology_v3:
+    version: 3
+    username: monitoring
+    security_level: authPriv
+    auth_protocol: SHA
+    password: auth-password
+    priv_protocol: AES
+    priv_password: privacy-password

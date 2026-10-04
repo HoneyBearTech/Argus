@@ -2,7 +2,7 @@
 Grafana dashboards as code for my homelab. Version-controlled JSON dashboards for Docker hosts, the Plex/arr media stack, reverse proxy traffic, and network health, edited in VS Code and provisioned automatically.
 
 ## How it works
-Grafana, Prometheus, blackbox_exporter, pihole-exporter and unpoller run from [`docker-compose.yml`](docker-compose.yml). Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-host settings come from a gitignored `.env`.
+Grafana, Prometheus, blackbox_exporter, pihole-exporter, unpoller and (optionally) snmp-exporter run from [`docker-compose.yml`](docker-compose.yml). Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-host settings come from a gitignored `.env`.
 
 ```
 dashboards/          dashboard JSON, one folder per Grafana folder
@@ -23,6 +23,7 @@ scripts/             repo checks, run in CI
 | Host Health | hosts | Is any machine running out of disk, memory or CPU? | node_exporter on each host (`agents/compose.yml`) |
 | Docker Containers | hosts | Which containers are restarting, stopped, or eating resources? | cAdvisor on each Docker host (`agents/compose.yml`) |
 | Network / UniFi | network | How's the internet connection, and what's on the network? | [unpoller](https://github.com/unpoller/unpoller) with a read-only UniFi account |
+| NAS / Storage | storage | Are the NAS units healthy, and how fast are they filling? | snmp-exporter (bundled `synology` + standard MIB modules), SNMPv3 |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Running it
