@@ -1,0 +1,21 @@
+# Loki, the log store. Runs on the host with the most disk (not the main
+# stack's host): copy this directory to it (e.g. ~/argus-logs/) and run
+# `docker compose up -d`. Alloy on each monitored host pushes to it, and
+# Grafana reads from it (LOKI_URL in the main stack's .env).
+name: argus-logs
+
+services:
+  loki:
+    image: grafana/loki:3.7.8
+    container_name: argus-loki
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./loki.yaml:/etc/loki/loki.yaml:ro
+      - loki_data:/loki
+    ports:
+      - 3101:3100
+
+volumes:
+  loki_data:

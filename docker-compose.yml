@@ -172,6 +172,8 @@ services:
       # Alert notifications (provisioning/alerting/contact-points.yaml). Unset
       # outside production, so a sandbox can't post to the real channel.
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-https://discord.invalid/argus-sandbox}
+      # Where Loki (logs/compose.yml) runs.
+      LOKI_URL: ${LOKI_URL:-http://loki.invalid:3100}
     volumes:
       - ./provisioning:/etc/grafana/provisioning:ro
       - ./dashboards:/var/lib/grafana/dashboards:ro
