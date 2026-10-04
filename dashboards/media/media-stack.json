@@ -2,7 +2,7 @@
   "id": null,
   "uid": "argus-media",
   "title": "Media Stack",
-  "description": "Is the download pipeline flowing, and is the library healthy?",
+  "description": "Who's watching what, is the download pipeline flowing, and is the library healthy?",
   "tags": [
     "argus",
     "media"
@@ -41,6 +41,678 @@
     {
       "id": 1,
       "type": "stat",
+      "title": "Streaming now",
+      "description": "Plex sessions playing right now (paused sessions don't count).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (server, session) (rate(play_seconds_total{job=\"plex\"}[2m]) > 0)) or vector(0)",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Transcoding",
+      "description": "Playing sessions that Plex is transcoding rather than direct-playing \u2014 these cost CPU on the server.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (server, session) (rate(play_seconds_total{job=\"plex\", stream_type=\"transcode\"}[2m]) > 0)) or vector(0)",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Plex bandwidth",
+      "description": "Data Plex is sending to clients right now.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(transmit_bytes_total{job=\"plex\"}[2m])) * 8",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Plex server",
+      "description": "CPU and memory use of the Plex host, as reported by Plex.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(host_cpu_util{job=\"plex\"})",
+          "legendFormat": "CPU",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(host_mem_util{job=\"plex\"})",
+          "legendFormat": "Memory",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "orientation": "auto"
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Watch time",
+      "description": "Total time watched across all users in the selected time range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(max by (server, session) (max_over_time(play_seconds_total{job=\"plex\"}[$__range])))",
+          "legendFormat": "__auto",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Now playing",
+      "description": "Everything playing right now. Transcode means Plex is converting the file for the client; direct play costs the server almost nothing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (user, title, grandchild_title, child_title, device_type, stream_type, stream_resolution, stream_file_resolution) (rate(play_seconds_total{job=\"plex\"}[2m]) > 0)",
+          "legendFormat": "__auto",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Nothing is playing",
+          "custom": {
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Season"
+            },
+            "properties": [
+              {
+                "id": "noValue",
+                "value": "\u2014"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Episode"
+            },
+            "properties": [
+              {
+                "id": "noValue",
+                "value": "\u2014"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Playback"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "transcode": {
+                        "text": "Transcode",
+                        "color": "orange",
+                        "index": 0
+                      },
+                      "directplay": {
+                        "text": "Direct play",
+                        "color": "green",
+                        "index": 1
+                      },
+                      "directstream": {
+                        "text": "Direct stream",
+                        "color": "green",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "interval": "2m",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "indexByName": {
+              "user": 0,
+              "title": 1,
+              "child_title": 2,
+              "grandchild_title": 3,
+              "device_type": 4,
+              "stream_type": 5,
+              "stream_file_resolution": 6,
+              "stream_resolution": 7
+            },
+            "renameByName": {
+              "user": "User",
+              "title": "Show / movie",
+              "child_title": "Season",
+              "grandchild_title": "Episode",
+              "device_type": "Device",
+              "stream_type": "Playback",
+              "stream_file_resolution": "File",
+              "stream_resolution": "Streamed as"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Plex streams and bandwidth",
+      "description": "Concurrent streams and transcodes, with Plex's outgoing bandwidth on the right axis.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (server, session) (rate(play_seconds_total{job=\"plex\"}[2m]) > 0)) or vector(0)",
+          "legendFormat": "Streams",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (server, session) (rate(play_seconds_total{job=\"plex\", stream_type=\"transcode\"}[2m]) > 0)) or vector(0)",
+          "legendFormat": "Transcodes",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(transmit_bytes_total{job=\"plex\"}[2m])) * 8",
+          "legendFormat": "Bandwidth",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 10
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 8,
+      "type": "bargauge",
+      "title": "Watch time by user",
+      "description": "Time each Plex user spent watching in the selected time range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(sum by (user) (max by (server, session, user) (max_over_time(play_seconds_total{job=\"plex\"}[$__range]))))",
+          "legendFormat": "{{user}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "displayName": "${__field.labels.user}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 9,
+      "type": "bargauge",
+      "title": "Plex libraries",
+      "description": "Storage used by each Plex library.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 10,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(max by (library) (library_storage_total{job=\"plex\"}))",
+          "legendFormat": "{{library}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "displayName": "${__field.labels.library}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 16
+      },
+      "interval": "2m"
+    },
+    {
+      "id": 10,
+      "type": "stat",
       "title": "Movies",
       "description": "Movies in Radarr (all Radarr instances).",
       "datasource": {
@@ -49,7 +721,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 18,
         "w": 3,
         "h": 4
       },
@@ -93,7 +765,7 @@
       "interval": "2m"
     },
     {
-      "id": 2,
+      "id": 11,
       "type": "stat",
       "title": "TV series",
       "description": "Series in Sonarr (all Sonarr instances).",
@@ -103,7 +775,7 @@
       },
       "gridPos": {
         "x": 3,
-        "y": 0,
+        "y": 18,
         "w": 3,
         "h": 4
       },
@@ -147,7 +819,7 @@
       "interval": "2m"
     },
     {
-      "id": 3,
+      "id": 12,
       "type": "stat",
       "title": "Missing",
       "description": "Monitored movies and episodes that aren't downloaded yet.",
@@ -157,7 +829,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 0,
+        "y": 18,
         "w": 4,
         "h": 4
       },
@@ -212,7 +884,7 @@
       "interval": "2m"
     },
     {
-      "id": 4,
+      "id": 13,
       "type": "stat",
       "title": "Library size",
       "description": "Size of the movie and TV files the apps manage.",
@@ -222,7 +894,7 @@
       },
       "gridPos": {
         "x": 10,
-        "y": 0,
+        "y": 18,
         "w": 3,
         "h": 4
       },
@@ -267,7 +939,7 @@
       "interval": "2m"
     },
     {
-      "id": 5,
+      "id": 14,
       "type": "stat",
       "title": "Health issues",
       "description": "Health warnings reported by the *arr apps \u2014 listed below.",
@@ -277,7 +949,7 @@
       },
       "gridPos": {
         "x": 13,
-        "y": 0,
+        "y": 18,
         "w": 3,
         "h": 4
       },
@@ -333,7 +1005,7 @@
       "interval": "2m"
     },
     {
-      "id": 6,
+      "id": 15,
       "type": "stat",
       "title": "Downloading",
       "description": "Combined download speed of SABnzbd and qBittorrent.",
@@ -343,7 +1015,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 0,
+        "y": 18,
         "w": 4,
         "h": 4
       },
@@ -386,7 +1058,7 @@
       "interval": "2m"
     },
     {
-      "id": 7,
+      "id": 16,
       "type": "stat",
       "title": "Download clients",
       "description": "SABnzbd's state and qBittorrent's connection status. 'firewalled' means qBittorrent can't accept incoming peer connections (check the port forward), which slows seeding.",
@@ -396,7 +1068,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 0,
+        "y": 18,
         "w": 4,
         "h": 4
       },
@@ -453,7 +1125,7 @@
       "interval": "2m"
     },
     {
-      "id": 8,
+      "id": 17,
       "type": "table",
       "title": "Health issues",
       "description": "Everything the *arr apps currently flag in their System \u2192 Status page.",
@@ -463,7 +1135,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 22,
         "w": 16,
         "h": 7
       },
@@ -583,7 +1255,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 18,
       "type": "table",
       "title": "Indexer VIP",
       "description": "Days until each paid indexer membership in Prowlarr expires.",
@@ -593,7 +1265,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 4,
+        "y": 22,
         "w": 8,
         "h": 7
       },
@@ -692,7 +1364,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 19,
       "type": "timeseries",
       "title": "Download speed",
       "description": "Download clients' speeds. qBittorrent upload (seeding) is drawn below the axis.",
@@ -702,7 +1374,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 29,
         "w": 12,
         "h": 8
       },
@@ -780,7 +1452,7 @@
       "interval": "2m"
     },
     {
-      "id": 11,
+      "id": 20,
       "type": "timeseries",
       "title": "SABnzbd queue",
       "description": "Items waiting in SABnzbd and how much is left to download.",
@@ -790,7 +1462,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 11,
+        "y": 29,
         "w": 12,
         "h": 8
       },
@@ -872,7 +1544,7 @@
       "interval": "2m"
     },
     {
-      "id": 12,
+      "id": 21,
       "type": "timeseries",
       "title": "Missing over time",
       "description": "Missing items should trend down as downloads complete; a steady climb means something in the pipeline is stuck.",
@@ -882,7 +1554,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 19,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -948,7 +1620,7 @@
       "interval": "2m"
     },
     {
-      "id": 13,
+      "id": 22,
       "type": "bargauge",
       "title": "Movies by quality",
       "description": "The quality profile each downloaded movie ended up in (top 10).",
@@ -958,7 +1630,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 19,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -1007,7 +1679,7 @@
       "interval": "2m"
     },
     {
-      "id": 14,
+      "id": 23,
       "type": "bargauge",
       "title": "Free space for media",
       "description": "Free space on each library root folder, as the apps see it. Folders on the same volume show the same value.",
@@ -1017,7 +1689,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 45,
         "w": 8,
         "h": 8
       },
@@ -1082,7 +1754,7 @@
       "interval": "2m"
     },
     {
-      "id": 15,
+      "id": 24,
       "type": "bargauge",
       "title": "Usenet server success",
       "description": "Share of articles each Usenet server delivered successfully (servers with no traffic aren't shown). A low rate means missing articles or retention gaps on that provider.",
@@ -1092,7 +1764,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 27,
+        "y": 45,
         "w": 8,
         "h": 8
       },
@@ -1158,7 +1830,7 @@
       "interval": "2m"
     },
     {
-      "id": 16,
+      "id": 25,
       "type": "stat",
       "title": "qBittorrent",
       "description": "qBittorrent at a glance.",
@@ -1168,7 +1840,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 27,
+        "y": 45,
         "w": 8,
         "h": 8
       },

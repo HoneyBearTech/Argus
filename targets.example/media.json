@@ -1,5 +1,4 @@
 [
   {"targets": ["exportarr-radarr:9707"], "labels": {"app": "radarr"}},
-  {"targets": ["qbittorrent-exporter:8090"], "labels": {"app": "qbittorrent"}},
-  {"targets": ["plex-host.example:9594"], "labels": {"app": "plex"}}
+  {"targets": ["qbittorrent-exporter:8090"], "labels": {"app": "qbittorrent"}}
 ]
