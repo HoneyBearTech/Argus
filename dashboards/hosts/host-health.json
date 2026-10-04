@@ -1123,7 +1123,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_load5{host=~\"$host\"} / on (host) count by (host) (node_cpu_seconds_total{mode=\"idle\", host=~\"$host\"})",
+          "expr": "max by (host) (node_load5{host=~\"$host\"}) / on (host) count by (host) (node_cpu_seconds_total{mode=\"idle\", host=~\"$host\"})",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
