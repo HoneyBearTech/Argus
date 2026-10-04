@@ -2,6 +2,15 @@
 # sandbox; per-host settings live in a gitignored .env (see .env.example).
 name: argus
 
+# Shared settings for the exportarr services below (one per *arr / SABnzbd app).
+x-exportarr: &exportarr
+  image: ghcr.io/onedr0p/exportarr:v2.3.0
+  restart: unless-stopped
+  environment:
+    PORT: "9707"
+    # Per-episode walks scale with library size; the dashboards don't need them.
+    DISABLE_EPISODE_METRICS: "true"
+
 services:
   prometheus:
     image: prom/prometheus:v3.14.0
@@ -72,6 +81,81 @@ services:
       - --config.file=/etc/snmp_exporter/auth.yml
     volumes:
       - ./secrets/snmp-auth.yml:/etc/snmp_exporter/auth.yml:ro
+
+  # Media apps. Each exporter is behind its own compose profile and reads the
+  # app's URL and API key (or login) from secrets/<profile>.env, so enable one
+  # by adding that file and the profile name to COMPOSE_PROFILES in .env.
+  exportarr-radarr:
+    <<: *exportarr
+    profiles: [radarr]
+    command: [radarr]
+    env_file:
+      - path: ./secrets/radarr.env
+        required: false
+
+  exportarr-radarr4k:
+    <<: *exportarr
+    profiles: [radarr4k]
+    command: [radarr]
+    env_file:
+      - path: ./secrets/radarr4k.env
+        required: false
+
+  exportarr-sonarr:
+    <<: *exportarr
+    profiles: [sonarr]
+    command: [sonarr]
+    env_file:
+      - path: ./secrets/sonarr.env
+        required: false
+
+  exportarr-sonarr4k:
+    <<: *exportarr
+    profiles: [sonarr4k]
+    command: [sonarr]
+    env_file:
+      - path: ./secrets/sonarr4k.env
+        required: false
+
+  exportarr-lidarr:
+    <<: *exportarr
+    profiles: [lidarr]
+    command: [lidarr]
+    env_file:
+      - path: ./secrets/lidarr.env
+        required: false
+
+  exportarr-bazarr:
+    <<: *exportarr
+    profiles: [bazarr]
+    command: [bazarr]
+    env_file:
+      - path: ./secrets/bazarr.env
+        required: false
+
+  exportarr-prowlarr:
+    <<: *exportarr
+    profiles: [prowlarr]
+    command: [prowlarr]
+    env_file:
+      - path: ./secrets/prowlarr.env
+        required: false
+
+  exportarr-sabnzbd:
+    <<: *exportarr
+    profiles: [sabnzbd]
+    command: [sabnzbd]
+    env_file:
+      - path: ./secrets/sabnzbd.env
+        required: false
+
+  qbittorrent-exporter:
+    image: ghcr.io/martabal/qbittorrent-exporter:v2.0.3
+    restart: unless-stopped
+    profiles: [qbittorrent]
+    env_file:
+      - path: ./secrets/qbittorrent.env
+        required: false
 
   grafana:
     image: grafana/grafana:13.2.2
