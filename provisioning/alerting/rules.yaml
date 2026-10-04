@@ -56,8 +56,8 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: min_over_time(probe_success{job="blackbox_http"}[5m]) unless on (instance) (max_over_time(probe_success{job="blackbox_http"}[7d])
-          == 0)
+        expr: max_over_time(probe_success{job="blackbox_http"}[5m]) and on (instance) (sum_over_time(probe_success{job="blackbox_http"}[7d])
+          > 240)
         instant: true
         range: false
         intervalMs: 15000
@@ -177,7 +177,8 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|nsfs|ramfs|fuse.*|vfat"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|nsfs|ramfs|fuse.*|vfat"})
+        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|nsfs|ramfs|fuse.*|vfat|nfs.*|cifs"} /
+          node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|nsfs|ramfs|fuse.*|vfat|nfs.*|cifs"})
         instant: true
         range: false
         intervalMs: 15000

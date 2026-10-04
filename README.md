@@ -36,8 +36,8 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 
 | Group | Rules |
 |---|---|
-| Availability | host agent down, service down (only services that were up at some point in the last 7 days), DNS server not answering, monitoring target down |
-| Capacity | disk > 90 %, NAS storage pool > 90 %, certificate < 14 days |
+| Availability | host agent down, service down (only services that were up for at least an hour in the last 7 days), DNS server not answering, monitoring target down |
+| Capacity | local disk > 90 % (network shares are covered by the NAS pool rule), NAS storage pool > 90 %, certificate < 14 days |
 | Power and hardware | UPS on battery, UPS battery < 50 %, NAS disk unhealthy, NAS pool degraded, NAS disk > 55 °C, network device > 85 °C |
 | Network | internet on backup WAN, internet dropped, Pi-hole blocklists out of sync |
 | Containers | container restarted more than 3 times in an hour |
