@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Each job reads its targets from targets/<job>.json on the host (file_sd), so
+# no addresses are committed. Prometheus picks up changes to those files
+# without a restart. Placeholder versions live in targets.example/.
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  # UPS metrics from PeaNUT.
+  - job_name: peanut
+    metrics_path: /api/v1/metrics
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/peanut.json]

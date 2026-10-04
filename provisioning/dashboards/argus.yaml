@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Every dashboard under dashboards/ is loaded from disk; each subfolder becomes
+# a Grafana folder. UI edits are blocked so git stays the source of truth —
+# change a dashboard by editing its JSON (or export from the UI and commit).
+providers:
+  - name: argus
+    orgId: 1
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
