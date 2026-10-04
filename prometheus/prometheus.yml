@@ -16,6 +16,12 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/peanut.json]
 
+  # Host metrics from node_exporter (agents/node-exporter/). Targets carry a
+  # `host` label naming the machine.
+  - job_name: node
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/node.json]
+
   # Monitor status and response times from Uptime Kuma. Kuma takes its API
   # key as the basic-auth password; the username is ignored.
   - job_name: uptime_kuma
