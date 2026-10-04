@@ -28,6 +28,13 @@ scrape_configs:
     static_configs:
       - targets: [pihole-exporter:9617]
 
+  # UniFi gateway, switch, AP and client stats via unpoller.
+  - job_name: unifi
+    scrape_interval: 30s
+    scrape_timeout: 25s
+    static_configs:
+      - targets: [unpoller:9130]
+
   # Monitor status and response times from Uptime Kuma. Kuma takes its API
   # key as the basic-auth password; the username is ignored.
   - job_name: uptime_kuma

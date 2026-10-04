@@ -33,7 +33,8 @@ Update these files as the project evolves — they're the source of truth for pr
 - `prometheus/prometheus.yml` — scrape jobs; each job reads `targets/<job>.json` (`file_sd`). `targets/` is gitignored; `targets.example/` holds placeholders that CI validates.
 - `blackbox/blackbox.yml` — probe modules only; which URLs/servers get probed lives in `targets/blackbox_*.json` (labels `service`, `group`).
 - `agents/node-exporter/compose.yml` — node_exporter for a monitored Docker host (host network, read-only root mount); deployed by copying it to `~/argus-agent/` on each host. Targets in `targets/node.json` with a `host` label.
-- `secrets/` (gitignored) — credentials: files Prometheus reads (`password_file` etc., mounted read-only) and env files for exporters (`pihole-exporter.env`, loaded with `required: false` so the stack still starts without it); placeholders in `secrets.example/`.
+- `secrets/` (gitignored) — credentials: files Prometheus reads (`password_file` etc., mounted read-only) and env files for exporters (`pihole-exporter.env`, `unpoller.env`, loaded with `required: false` so the stack still starts without it); placeholders in `secrets.example/`.
+- unpoller emits every UniFi device series once per UniFi device *tag*, so device queries must aggregate with `max by (name, ...)` or totals double-count. It refreshes every 30 s; UniFi panels set a 30 s minimum interval so `$__rate_interval` spans at least two updates.
 - Grafana's home page is `dashboards/overview/homelab-overview.json` (`GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH`).
 
 ## Commands

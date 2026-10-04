@@ -41,6 +41,24 @@ services:
       - path: ./secrets/pihole-exporter.env
         required: false
 
+  # UniFi Network stats (gateway, switches, APs, clients). The console URL and
+  # a read-only local account come from the gitignored secrets/unpoller.env
+  # (see secrets.example/); everything else is fixed here.
+  unpoller:
+    image: ghcr.io/unpoller/unpoller:v5.5.0
+    restart: unless-stopped
+    environment:
+      UP_INFLUXDB_DISABLE: "true"
+      UP_PROMETHEUS_HTTP_LISTEN: 0.0.0.0:9130
+      UP_PROMETHEUS_INTERVAL: 30s
+      UP_UNIFI_DEFAULT_SITES_0: all
+      UP_UNIFI_DEFAULT_SAVE_SITES: "true"
+      UP_UNIFI_DEFAULT_SAVE_DPI: "false"
+      UP_UNIFI_DEFAULT_VERIFY_SSL: "false"
+    env_file:
+      - path: ./secrets/unpoller.env
+        required: false
+
   grafana:
     image: grafana/grafana:13.2.2
     restart: unless-stopped
