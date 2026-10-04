@@ -1,5 +1,16 @@
 # Argus
-Grafana dashboards as code for my homelab. Version-controlled JSON dashboards for Docker hosts, the Plex/arr media stack, reverse proxy traffic, and network health, edited in VS Code and provisioned automatically.
+
+[![CI](https://github.com/HoneyBearTech/Argus/actions/workflows/ci.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/ci.yml)
+[![Release images](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml)
+[![CodeQL](https://github.com/HoneyBearTech/Argus/actions/workflows/codeql.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HoneyBearTech/Argus/badge)](https://scorecard.dev/viewer/?uri=github.com/HoneyBearTech/Argus)
+[![Docker Pulls](https://img.shields.io/docker/pulls/honeybeartech/argus-grafana?logo=docker&logoColor=white)](https://hub.docker.com/r/honeybeartech/argus-grafana)
+[![Version](https://img.shields.io/github/v/tag/HoneyBearTech/Argus?sort=semver&logo=docker&logoColor=white&label=version)](https://hub.docker.com/r/honeybeartech/argus-grafana/tags)
+[![Agent image size](https://img.shields.io/docker/image-size/honeybeartech/argus-agent/latest?logo=docker&logoColor=white&label=agent%20image)](https://hub.docker.com/r/honeybeartech/argus-agent)
+[![Grafana](https://img.shields.io/badge/grafana-13.2.2-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
+[![License](https://img.shields.io/github/license/HoneyBearTech/Argus)](LICENSE)
+
+Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts, the Plex/arr media stack, reverse proxy traffic, DNS, network, storage, power and the smart home — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
 
 ## How it works
 Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP and the media apps run on one server from [`docker-compose.yml`](docker-compose.yml); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
@@ -47,7 +58,9 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 Alerts are grouped per rule and repeat every 12 hours while firing.
 
 ## Running it
-Argus ships as images on GHCR (`ghcr.io/honeybeartech/argus-*`) and Docker Hub, for amd64 and arm64. The Grafana image has every dashboard, datasource and alert rule baked in; the Prometheus, blackbox and Loki images carry their configs. What stays on the host is what's specific to your network: scrape targets, credentials and `.env`.
+**Requirements:** Docker with Compose v2.24 or later, on amd64 or arm64. One host runs the server; every host you want to watch runs the agent.
+
+Argus ships as images for amd64 and arm64 on GHCR (`ghcr.io/honeybeartech/argus-*`) and Docker Hub (`honeybeartech/argus-*`; set `ARGUS_REGISTRY=docker.io/honeybeartech` in `.env` to use it). The Grafana image has every dashboard, datasource and alert rule baked in; the Prometheus, blackbox and Loki images carry their configs. What stays on the host is what's specific to your network: scrape targets, credentials and `.env`.
 
 **Server** (one host — Grafana, Prometheus, blackbox_exporter, Loki):
 ```sh
@@ -59,7 +72,24 @@ docker compose up -d
 ```
 Then run the agent on each host you want to watch (next section). Grafana is on port 3000; the home page is the Homelab Overview. Edits to `targets/*.json` are picked up by Prometheus without a restart.
 
+Host Health, Docker Containers and Logs work with just the agents. Every other dashboard lights up as you connect the service it reads:
+
+| To see | Add to `targets/` | Credentials in `secrets/` | Enable in `.env` |
+|---|---|---|---|
+| Service up/down, certificates (Overview) | `blackbox_http.json` (URLs), `blackbox_dns.json` (DNS servers) | — | — |
+| Uptime Kuma monitors (Overview) | `uptime_kuma.json` | `uptime_kuma_api_key` | — |
+| DNS / Pi-hole | `blackbox_dns.json` | `pihole-exporter.env` | — |
+| Network / UniFi | — | `unpoller.env` (read-only local account) | — |
+| NAS / Storage | `snmp.json` | `snmp-auth.yml` (SNMPv3) | `COMPOSE_PROFILES=snmp` |
+| Smart Home | `homeassistant.json` | `home_assistant_token` | — |
+| UPS / Power | `peanut.json` | — | — |
+| Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL, API key) | the app's profile, e.g. `radarr,sonarr` |
+| Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `COMPOSE_PROFILES=plex` on that agent |
+| Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
+
 To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release.
+
+**Security:** Prometheus (9090) and Loki (3101) accept pushes without authentication, so agents anywhere on the network can reach them. Run Argus on a trusted network, and put Grafana behind a reverse proxy with TLS if it's reachable from outside.
 
 **Developing** — to edit dashboards, alert rules or configs live, run from the checkout instead of the published images by setting `COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml` in `.env`. Grafana then reads `dashboards/` and `provisioning/` straight from the repo (dashboard edits show up within 30 seconds), and `docker compose up -d --build` rebuilds the images. In this mode, deploying is `git pull` on the server; restart the stack only when `docker-compose.yml`, `provisioning/` or a config changes.
 
@@ -79,7 +109,11 @@ docker run -d --name argus-agent --restart unless-stopped \
   ghcr.io/honeybeartech/argus-agent:latest
 ```
 
-Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and run `docker compose up -d`. The server's Prometheus must be reachable from the host (`PROMETHEUS_BIND=0.0.0.0:9090`) and is started with `--web.enable-remote-write-receiver`.
+Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and run `docker compose up -d`; pin `ARGUS_AGENT_IMAGE` to a release tag for predictable upgrades. The compose file also covers two extras:
+- **Nginx Proxy Manager access logs** (Reverse Proxy Traffic dashboard): on the host running NPM, set `NPM_LOG_DIR` to its `data/logs` directory.
+- **Plex** (Media Stack): on the Plex host (amd64), add the `plex` profile with `PLEX_SERVER` and `PLEX_TOKEN`, and list that host in the server's `targets/plex.json`.
+
+The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable from the host; those are the defaults.
 
 ## Adding or changing a dashboard
 1. Build or edit it in the sandbox Grafana, then **Export → Export as JSON** (leave "Export for sharing externally" off), or edit the JSON directly in VS Code.
@@ -89,3 +123,8 @@ Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and
 
 ## Checks
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the dashboard checks, `promtool check config`, the blackbox, Loki and Alloy config checks, builds every image, and validates the compose files on every push and pull request.
+
+Alongside it: [CodeQL](https://codeql.github.com/) analyses the Python checks and the workflows on every push and pull request and weekly, [OpenSSF Scorecard](https://scorecard.dev/) scores the repo's supply-chain practices weekly (see the badge above), and Dependabot opens weekly PRs for the upstream images and GitHub Actions. Image updates are merged by hand after a sandbox run, since CI's static checks don't start Grafana.
+
+## License
+[MIT](LICENSE)
