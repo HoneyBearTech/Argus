@@ -2,7 +2,7 @@
 Grafana dashboards as code for my homelab. Version-controlled JSON dashboards for Docker hosts, the Plex/arr media stack, reverse proxy traffic, and network health, edited in VS Code and provisioned automatically.
 
 ## How it works
-Grafana, Prometheus and blackbox_exporter run from [`docker-compose.yml`](docker-compose.yml). Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-host settings come from a gitignored `.env`.
+Grafana, Prometheus, blackbox_exporter and pihole-exporter run from [`docker-compose.yml`](docker-compose.yml). Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-host settings come from a gitignored `.env`.
 
 ```
 dashboards/          dashboard JSON, one folder per Grafana folder
@@ -19,6 +19,7 @@ scripts/             repo checks, run in CI
 | Dashboard | Folder | Answers | Data |
 |---|---|---|---|
 | Homelab Overview (home page) | overview | Is everything up right now, and if not, what? | [Uptime Kuma](https://github.com/louislam/uptime-kuma) `/metrics`, blackbox_exporter HTTP + DNS probes |
+| DNS / Pi-hole | dns | Is DNS healthy and consistent, and what's being blocked? | [pihole-exporter](https://github.com/eko/pihole-exporter) (Pi-hole v6 API), blackbox DNS probes |
 | Host Health | hosts | Is any machine running out of disk, memory or CPU? | node_exporter on each host (`agents/node-exporter/`) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 

@@ -22,6 +22,12 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/node.json]
 
+  # Pi-hole query stats via pihole-exporter (one exporter, every Pi-hole;
+  # each series carries the Pi-hole's address in its `hostname` label).
+  - job_name: pihole
+    static_configs:
+      - targets: [pihole-exporter:9617]
+
   # Monitor status and response times from Uptime Kuma. Kuma takes its API
   # key as the basic-auth password; the username is ignored.
   - job_name: uptime_kuma

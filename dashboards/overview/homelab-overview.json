@@ -252,7 +252,7 @@
       "id": 4,
       "type": "stat",
       "title": "DNS servers down",
-      "description": "Pi-holes that failed to resolve a well-known name.",
+      "description": "DNS servers (the Pi-holes' keepalived virtual IP and each Pi-hole) that failed to resolve a well-known name.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -543,7 +543,7 @@
       "id": 8,
       "type": "table",
       "title": "Hosts and DNS down",
-      "description": "Hosts failing their ping, and Pi-holes failing to resolve.",
+      "description": "Hosts failing their ping, and DNS servers failing to resolve.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -791,7 +791,7 @@
       "id": 11,
       "type": "stat",
       "title": "DNS",
-      "description": "Each Pi-hole asked to resolve a well-known name.",
+      "description": "The Pi-holes' keepalived virtual IP (what clients use) and each Pi-hole, asked to resolve a well-known name. Details on the DNS / Pi-hole dashboard.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
