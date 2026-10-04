@@ -1,0 +1,5 @@
+[
+  {
+    "targets": ["peanut.example:8080"]
+  }
+]

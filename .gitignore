@@ -1,6 +1,11 @@
 # Secrets and local config
 .env
 *.env
+!.env.example
+# Prometheus scrape targets are host-specific (see targets.example/)
+targets/
+# Internal names the repo checks forbid (they can't be committed either)
+.forbidden-patterns
 secrets/
 *.key
 *.pem

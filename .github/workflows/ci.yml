@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Dashboards + config
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Dashboard and public-repo checks
+        run: python3 scripts/check_dashboards.py
+        env:
+          # Internal domains/hostnames to reject, one regex per line (repo secret).
+          ARGUS_FORBIDDEN_PATTERNS: ${{ secrets.ARGUS_FORBIDDEN_PATTERNS }}
+
+      # Same pinned image as docker-compose.yml; bump both together.
+      - name: Prometheus config (promtool)
+        run: |
+          docker run --rm \
+            -v "$PWD/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+            -v "$PWD/targets.example:/etc/prometheus/targets:ro" \
+            --entrypoint promtool prom/prometheus:v3.14.0 \
+            check config /etc/prometheus/prometheus.yml
+
+      - name: Compose file
+        run: GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
