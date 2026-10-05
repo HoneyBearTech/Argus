@@ -8,6 +8,8 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-05
+
 ### Upgrading
 
 - unpoller now verifies the UniFi console's TLS certificate. If your console still uses its factory
@@ -20,7 +22,7 @@ Each release's notes on GitHub are its section here.
   provenance, and each GitHub Release has a source archive, the image digests, a signed `SHA256SUMS` and
   SLSA build provenance. Version tags are signed with the maintainer's SSH key. How to check:
   [docs/verifying-releases.md](docs/verifying-releases.md).
-- Release notes come from this changelog.
+- Release notes come from this changelog, with repository links pointing at the release's tag.
 - CI now starts the Grafana image and checks that every dashboard, alert rule, datasource and the contact
   point loads, so an invalid alert rule fails the pull request instead of the server.
 - PromQL tests: the shipped alert rule and dashboard queries run against synthetic series with
@@ -33,15 +35,29 @@ Each release's notes on GitHub are its section here.
   [code of conduct](CODE_OF_CONDUCT.md), and in [docs/](docs/README.md) a quick start, architecture,
   interfaces, security requirements, assurance case, dependency policy, roadmap and upgrade guide.
 - Contributions need a Developer Certificate of Origin sign-off, checked on every pull request.
+- An MIT [license](LICENSE), a [security policy](SECURITY.md) for reporting vulnerabilities, and a
+  [contributing guide](CONTRIBUTING.md).
 
 ### Changed
 
+- Grafana 13.2.2 → 13.2.3 and Prometheus v3.14.0 → v3.15.0 in the `argus-grafana` and `argus-prometheus`
+  images.
+- Every upstream base image is pinned by digest as well as version tag, so a re-pushed upstream tag can't
+  change what an Argus release builds from.
 - `UNIFI_VERIFY_SSL` (default `true`) controls unpoller's certificate check, which used to be off.
 - `check_dashboards.py` also checks that dashboards keep Grafana's 2-space JSON format (`--fix` rewrites
   them).
 - The `argus-blackbox` image runs as an unprivileged user (65534) instead of root; Argus' HTTP and DNS
   probes don't need root.
 - `agent/config.alloy` is formatted with `alloy fmt` (whitespace only).
+
+### Security
+
+- No vulnerabilities in Argus itself. The new weekly image scan reports upstream Go standard library,
+  `golang.org/x/net`, `golang.org/x/crypto` and gRPC vulnerabilities in blackbox_exporter v0.28.0, the
+  latest upstream release; the assessment and plan are in
+  [docs/dependencies.md](docs/dependencies.md#current-findings). The blackbox image now runs unprivileged,
+  and unpoller now verifies the UniFi console's certificate by default.
 
 ## [0.1.0] - 2026-10-04
 
@@ -74,5 +90,6 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/HoneyBearTech/Argus/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HoneyBearTech/Argus/releases/tag/v0.1.0
