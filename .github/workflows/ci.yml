@@ -10,14 +10,56 @@ permissions:
 
 jobs:
   checks:
+    # The required status check on main; keep this name (branch protection refers to it).
     name: Dashboards + config
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install the check and test tools
+        run: python -m pip install --require-hashes --no-deps -r requirements-dev.txt
+
+      # Coding standards (CONTRIBUTING.md#coding-standards). Any finding fails the build.
+      - name: Lint Python (ruff)
+        run: |
+          ruff check --output-format github .
+          ruff format --check .
+
+      - name: Lint YAML (yamllint)
+        run: yamllint --strict --format github .
+
+      - name: Lint workflows (actionlint, with shellcheck)
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+
+      - name: Lint Dockerfiles (hadolint)
+        run: |
+          for dockerfile in images/*/Dockerfile agent/Dockerfile; do
+            echo "$dockerfile"
+            docker run --rm -i hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d \
+              hadolint --failure-threshold style - < "$dockerfile"
+          done
+
+      # Same pinned image as agent/Dockerfile; bump both together.
+      - name: Agent config is valid and formatted (alloy fmt)
+        run: |
+          docker run --rm -v "$PWD/agent/config.alloy:/etc/alloy/config.alloy:ro" \
+            grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f \
+            fmt /etc/alloy/config.alloy | diff -u agent/config.alloy -
+
+      - name: Unit tests with coverage (pytest)
+        run: |
+          coverage run -m pytest
+          coverage report
 
       - name: Dashboard and public-repo checks
-        run: python3 scripts/check_dashboards.py
+        run: python scripts/check_dashboards.py
         env:
           # Internal domains/hostnames to reject, one regex per line (repo secret).
           ARGUS_FORBIDDEN_PATTERNS: ${{ secrets.ARGUS_FORBIDDEN_PATTERNS }}
@@ -31,6 +73,14 @@ jobs:
             -v "$PWD/secrets.example:/etc/prometheus/secrets:ro" \
             --entrypoint promtool prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e \
             check config /etc/prometheus/prometheus.yml
+
+      # The shipped alert rule and dashboard queries, run against synthetic series (tests/promql/).
+      - name: PromQL tests (promtool)
+        run: |
+          python scripts/promql_tests.py --out "$RUNNER_TEMP/promql"
+          docker run --rm -v "$RUNNER_TEMP/promql:/tests:ro" --entrypoint sh \
+            prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e \
+            -c 'promtool test rules /tests/*.yml'
 
       - name: blackbox_exporter config
         run: |
@@ -46,20 +96,42 @@ jobs:
             grafana/loki:3.7.8 \
             -config.file=/etc/loki/loki.yaml -verify-config
 
-      - name: Agent config and image
+      - name: Images
         run: |
-          docker run --rm \
-            -v "$PWD/agent/config.alloy:/etc/alloy/config.alloy:ro" \
-            grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f fmt /etc/alloy/config.alloy > /dev/null
           docker build -t argus-agent:ci agent/
-
-      - name: Server images
-        run: |
           for image in grafana prometheus blackbox loki; do
             docker build -t "argus-${image}:ci" -f "images/${image}/Dockerfile" .
           done
 
-      - name: Compose file
+      # Grafana refuses to start on an invalid provisioned alert rule, so start the image and
+      # check that every dashboard, alert rule, datasource and the contact point loaded.
+      - name: Grafana starts with everything provisioned
+        run: |
+          docker run -d --name grafana -p 127.0.0.1:3000:3000 \
+            -e GF_SECURITY_ADMIN_PASSWORD=ci \
+            -e LOKI_URL=http://loki:3100 \
+            -e DISCORD_WEBHOOK_URL=https://discord.invalid/argus-ci \
+            argus-grafana:ci
+          api() { curl -fsS -u admin:ci "http://127.0.0.1:3000$1"; }
+          for _ in $(seq 60); do
+            api /api/health > /dev/null 2>&1 && break
+            sleep 2
+          done
+          fail() { echo "::error::$1"; docker logs grafana; exit 1; }
+          api /api/health > /dev/null || fail "Grafana did not start"
+          dashboards=$(api '/api/search?type=dash-db&limit=5000' | jq length)
+          want_dashboards=$(find dashboards -name '*.json' | wc -l)
+          rules=$(api /api/v1/provisioning/alert-rules | jq length)
+          want_rules=$(python -c 'import yaml; print(sum(len(g["rules"]) for g in yaml.safe_load(open("provisioning/alerting/rules.yaml"))["groups"]))')
+          datasources=$(api /api/datasources | jq -r '[.[].uid] | sort | join(",")')
+          contact_points=$(api /api/v1/provisioning/contact-points | jq -r '[.[].name] | join(",")')
+          echo "dashboards $dashboards/$want_dashboards, alert rules $rules/$want_rules, datasources $datasources, contact points $contact_points"
+          [ "$dashboards" -eq "$want_dashboards" ] || fail "only $dashboards of $want_dashboards dashboards loaded"
+          [ "$rules" -eq "$want_rules" ] || fail "only $rules of $want_rules alert rules loaded"
+          [ "$datasources" = "loki,prometheus" ] || fail "unexpected datasources: $datasources"
+          [ "$contact_points" = "Discord" ] || fail "unexpected contact points: $contact_points"
+
+      - name: Compose files
         run: |
           GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
           GF_SECURITY_ADMIN_PASSWORD=ci docker compose -f docker-compose.yml -f docker-compose.source.yml config --quiet

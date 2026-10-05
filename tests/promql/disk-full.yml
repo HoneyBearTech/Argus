@@ -1,0 +1,30 @@
+# "Disk almost full" (argus-disk-full). Regression test for #15: every host mounting the NAS
+# share alerted for it; network filesystems are now left to the NAS pool rule.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # 93.75 % full (1 of 16 bytes free) on a local disk, an NFS mount and a CIFS mount.
+      - series: 'node_filesystem_avail_bytes{host="a", mountpoint="/", fstype="ext4"}'
+        values: "1x10"
+      - series: 'node_filesystem_size_bytes{host="a", mountpoint="/", fstype="ext4"}'
+        values: "16x10"
+      - series: 'node_filesystem_avail_bytes{host="a", mountpoint="/mnt/media", fstype="nfs4"}'
+        values: "1x10"
+      - series: 'node_filesystem_size_bytes{host="a", mountpoint="/mnt/media", fstype="nfs4"}'
+        values: "16x10"
+      - series: 'node_filesystem_avail_bytes{host="a", mountpoint="/mnt/share", fstype="cifs"}'
+        values: "1x10"
+      - series: 'node_filesystem_size_bytes{host="a", mountpoint="/mnt/share", fstype="cifs"}'
+        values: "16x10"
+      # Half full: below the threshold.
+      - series: 'node_filesystem_avail_bytes{host="a", mountpoint="/data", fstype="xfs"}'
+        values: "8x10"
+      - series: 'node_filesystem_size_bytes{host="a", mountpoint="/data", fstype="xfs"}'
+        values: "16x10"
+    promql_expr_test:
+      - rule: argus-disk-full
+        eval_time: 10m
+        exp_samples:
+          - labels: '{host="a", mountpoint="/", fstype="ext4"}'
+            value: 93.75

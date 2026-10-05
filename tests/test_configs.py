@@ -1,0 +1,71 @@
+"""Tests for security-relevant settings in the shipped configuration (see docs/assurance-case.md)."""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def load(path: str) -> dict:
+    return yaml.safe_load((ROOT / path).read_text())
+
+
+def test_http_probe_does_not_count_403_as_up() -> None:
+    """Regression test for #3: a reverse proxy's access list answers 403 without reaching the service."""
+    http = load("blackbox/blackbox.yml")["modules"]["http_service"]["http"]
+    assert 403 not in http["valid_status_codes"]
+    assert 200 in http["valid_status_codes"]
+
+
+def test_probes_verify_tls_certificates() -> None:
+    for name, module in load("blackbox/blackbox.yml")["modules"].items():
+        tls = module.get(module["prober"], {}).get("tls_config", {})
+        assert not tls.get("insecure_skip_verify"), f"{name} skips TLS verification"
+
+
+def test_dashboards_cannot_be_changed_in_the_ui() -> None:
+    for provider in load("provisioning/dashboards/argus.yaml")["providers"]:
+        assert provider["allowUiUpdates"] is False
+        assert provider["disableDeletion"] is True
+
+
+def test_datasources_cannot_be_changed_in_the_ui() -> None:
+    for datasource in load("provisioning/datasources/argus.yaml")["datasources"]:
+        assert datasource["editable"] is False
+
+
+def test_grafana_image_turns_off_sign_up_and_anonymous_access() -> None:
+    dockerfile = (ROOT / "images" / "grafana" / "Dockerfile").read_text()
+    assert re.search(r"\bGF_USERS_ALLOW_SIGN_UP=false\b", dockerfile)
+    assert re.search(r"\bGF_AUTH_ANONYMOUS_ENABLED=false\b", dockerfile)
+
+
+def test_credentials_come_from_files_or_environment() -> None:
+    """Scrape credentials are read from secrets/, never written into the Prometheus config."""
+    config = (ROOT / "prometheus" / "prometheus.yml").read_text()
+    assert not re.search(r"^\s*(password|bearer_token|credentials):", config, re.MULTILINE)
+    contact_points = (ROOT / "provisioning" / "alerting" / "contact-points.yaml").read_text()
+    assert "url: ${DISCORD_WEBHOOK_URL}" in contact_points
+
+
+def test_compose_files_publish_no_blackbox_or_exporter_ports() -> None:
+    """Only Grafana, Prometheus and Loki listen on the host; exporters stay on the compose network."""
+    services = load("docker-compose.yml")["services"]
+    published = sorted(name for name, service in services.items() if service.get("ports"))
+    assert published == ["grafana", "loki", "prometheus"]
+
+
+def test_unifi_exporter_verifies_tls_by_default() -> None:
+    environment = load("docker-compose.yml")["services"]["unpoller"]["environment"]
+    assert environment["UP_UNIFI_DEFAULT_VERIFY_SSL"] == "${UNIFI_VERIFY_SSL:-true}"
+
+
+def test_blackbox_image_does_not_run_as_root() -> None:
+    dockerfile = (ROOT / "images" / "blackbox" / "Dockerfile").read_text()
+    users = re.findall(r"^USER\s+(\S+)", dockerfile, re.MULTILINE)
+    assert users
+    assert users[-1].split(":")[0] not in {"0", "root"}

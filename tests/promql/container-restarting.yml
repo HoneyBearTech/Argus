@@ -1,0 +1,18 @@
+# "Container restarting" (argus-container-restarting): more than three restarts in an hour.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # Each restart sets a new start time.
+      - series: 'container_start_time_seconds{job="cadvisor", host="a", name="flapping"}'
+        values: "100+100x4 500x30"
+      - series: 'container_start_time_seconds{job="cadvisor", host="a", name="restarted-thrice"}'
+        values: "100+100x3 400x30"
+      - series: 'container_start_time_seconds{job="cadvisor", host="a", name="steady"}'
+        values: "100x34"
+    promql_expr_test:
+      - rule: argus-container-restarting
+        eval_time: 30m
+        exp_samples:
+          - labels: '{host="a", name="flapping"}'
+            value: 4

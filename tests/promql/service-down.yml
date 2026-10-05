@@ -1,0 +1,27 @@
+# "Service down" (argus-service-down). Regression tests for #15: the rule paged on a single
+# failed probe (it used min_over_time), and for services that had only looked "up" for a few
+# minutes because of the 403 bug fixed in #3.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # Up for five hours, then one failed probe: a blip, not an outage.
+      - series: 'probe_success{job="blackbox_http", instance="blip"}'
+        values: "1x299 0 1x10"
+      # Up for five hours, then down for good.
+      - series: 'probe_success{job="blackbox_http", instance="outage"}'
+        values: "1x299 0x10"
+      # Three minutes of "up", then never again: was never really up, so never pages.
+      - series: 'probe_success{job="blackbox_http", instance="never-up"}'
+        values: "1x2 0x307"
+    promql_expr_test:
+      # Two minutes after the blip, nothing alerts (the outage is too young to alert as well).
+      - rule: argus-service-down
+        eval_time: 302m
+        exp_samples: []
+      # Once every probe in five minutes has failed, only the outage alerts.
+      - rule: argus-service-down
+        eval_time: 306m
+        exp_samples:
+          - labels: '{instance="outage", job="blackbox_http"}'
+            value: 0

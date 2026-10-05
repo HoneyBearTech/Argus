@@ -1,0 +1,8 @@
+# Tools for the repo checks and tests (not needed to run Argus). Pinned with hashes in
+# requirements-dev.txt, regenerated with:
+#   pip-compile --generate-hashes --strip-extras requirements-dev.in
+coverage
+pytest
+pyyaml
+ruff
+yamllint

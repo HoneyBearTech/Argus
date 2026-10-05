@@ -28,3 +28,10 @@ jsonnetfile.lock.json
 !.vscode/settings.json
 .DS_Store
 Thumbs.db
+
+# Python tooling
+.venv/
+__pycache__/
+.coverage
+.pytest_cache/
+.ruff_cache/

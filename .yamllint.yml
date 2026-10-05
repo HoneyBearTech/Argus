@@ -1,0 +1,21 @@
+# YAML style for every committed .yml/.yaml file (run in CI: yamllint .).
+extends: default
+
+rules:
+  # Long PromQL expressions and URLs can't be wrapped without hurting them.
+  line-length: disable
+  document-start: disable
+  # GitHub Actions' `on:` key is not a boolean.
+  truthy:
+    check-keys: false
+  indentation:
+    indent-sequences: consistent
+  braces:
+    max-spaces-inside: 1
+  comments:
+    min-spaces-from-content: 1
+
+ignore: |
+  .venv/
+  targets/
+  secrets/

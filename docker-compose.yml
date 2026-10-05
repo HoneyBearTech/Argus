@@ -64,7 +64,9 @@ services:
       UP_UNIFI_DEFAULT_SITES_0: all
       UP_UNIFI_DEFAULT_SAVE_SITES: "true"
       UP_UNIFI_DEFAULT_SAVE_DPI: "false"
-      UP_UNIFI_DEFAULT_VERIFY_SSL: "false"
+      # Verify the console's TLS certificate unless told not to (UNIFI_VERIFY_SSL=false
+      # in .env, for a console that still has its self-signed certificate).
+      UP_UNIFI_DEFAULT_VERIFY_SSL: ${UNIFI_VERIFY_SSL:-true}
     env_file:
       - path: ./secrets/unpoller.env
         required: false
