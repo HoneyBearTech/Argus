@@ -84,8 +84,8 @@ The credentials the Argus project holds (not those of an Argus installation, whi
   CI logs, issues or pull requests. GitHub secret scanning with push protection blocks committed secrets,
   `.gitignore` excludes `.env`, `secrets/`, `targets/`, keys and certificates, and
   `scripts/check_dashboards.py` rejects private addresses and internal names in CI.
-- **Access**: the maintainer only, plus the successor through the lockbox described under Continuity.
-  The Docker Hub token is used only by the release workflow's publish job, which runs only for version
+- **Access**: the maintainer only; the successor reaches the GitHub account and the tag-signing key
+  through the lockbox described under Continuity. The Docker Hub token is used only by the release workflow's publish job, which runs only for version
   tags pushed by the maintainer.
 - **Rotation**: the Docker Hub token is replaced at least yearly; recovery codes are regenerated after use
   and at least yearly, and the lockbox updated; the tag-signing key is replaced (and
@@ -103,9 +103,13 @@ within a week of it being confirmed that the maintainer can no longer support it
   trusted person the maintainer has chosen can open through the password manager's **emergency access**,
   after a waiting period of a few days (short enough to act within the week). It holds the login and
   two-factor recovery codes of the GitHub account that owns the repository, access to that account's
-  email address (GitHub asks it to confirm sign-ins from new devices), the Docker Hub login, and the SSH
-  key that signs release tags. Release images are signed keylessly by GitHub Actions, so whoever controls
-  the repository can keep publishing verifiable releases.
+  email address (GitHub asks it to confirm sign-ins from new devices), and the SSH key that signs release
+  tags. It is the same arrangement that covers the maintainer's other projects under that account.
+- **Releases keep working from the repository alone.** Images are signed keylessly by GitHub Actions, so
+  whoever controls the repository can keep publishing verifiable releases to GHCR, the default registry.
+  The Docker Hub copies are pushed with the access token stored as a repository secret, so they continue
+  too; if that token expires and the Docker Hub account can't be recovered, releases carry on from GHCR
+  alone and the README points Docker Hub users there.
 - **A succession note**, kept with the maintainer's personal papers and referenced from the lockbox, gives
   that person the right to continue the project or to hand it to a new maintainer.
 - Everything else needed to keep working on the project is in this repository: the code, the CI
@@ -114,6 +118,7 @@ within a week of it being confirmed that the maintainer can no longer support it
 Names and credentials are deliberately not published here. If the maintainer becomes unable to continue,
 the successor will announce it in a pinned issue and update this file.
 
-This is still a one-person project, so its "bus factor" is 1: these arrangements keep the project from
-being stranded, but they don't replace a second active maintainer. People who contribute regularly may be
-invited to become maintainers; this document will be updated when that happens.
+Argus has one maintainer and is planned to stay that way, so its "bus factor" is 1: these arrangements
+keep the project from being stranded, but they don't replace a second active maintainer. Contributions
+remain welcome through pull requests. If that plan changes, a new maintainer goes through
+[Granting elevated access](#granting-elevated-access) and this document is updated.
