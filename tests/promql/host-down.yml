@@ -1,0 +1,21 @@
+# "Host stopped reporting" (argus-host-down): an agent that reported in the last day but has
+# gone silent alerts; a live one doesn't, and neither does a host retired more than a day ago.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node", host="alive", instance="alive"}'
+        values: "1x1500"
+      - series: 'up{job="node", host="silent", instance="silent"}'
+        values: "1x1440 _x60"
+      - series: 'up{job="node", host="retired", instance="retired"}'
+        values: "1x10 _x1490"
+      # Scrape targets other than agents are covered by argus-exporter-down.
+      - series: 'up{job="blackbox_http", instance="other"}'
+        values: "0x1500"
+    promql_expr_test:
+      - rule: argus-host-down
+        eval_time: 1500m
+        exp_samples:
+          - labels: '{host="silent"}'
+            value: 0

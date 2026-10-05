@@ -27,7 +27,9 @@ logs/                Loki config, plus a compose file to run Loki on a separate 
 images/              Dockerfiles for the published server images
 targets.example/     placeholder scrape/probe targets; real ones go in targets/ (gitignored)
 secrets.example/     placeholder credentials Prometheus scrapes with; real ones go in secrets/ (gitignored)
-scripts/             repo checks, run in CI
+scripts/             repo checks and the PromQL test builder, run in CI
+tests/               unit tests (pytest) and PromQL tests (tests/promql/, run with promtool)
+docs/                user, security and project documentation
 ```
 
 ## Dashboards
@@ -89,13 +91,13 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `COMPOSE_PROFILES=plex` on that agent |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
 
-To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release.
+To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release; see [docs/upgrading.md](docs/upgrading.md). New to Argus? The [quick start](docs/quick-start.md) runs it on one machine in about ten minutes.
 
-**Security:** Prometheus (9090) and Loki (3101) accept pushes without authentication, so agents anywhere on the network can reach them. Run Argus on a trusted network, and put Grafana behind a reverse proxy with TLS if it's reachable from outside.
+**Security:** Prometheus (9090) and Loki (3101) accept pushes without authentication, so agents anywhere on the network can reach them. Run Argus on a trusted network, and put Grafana behind a reverse proxy with TLS if it's reachable from outside. What Argus does and doesn't protect against is in [docs/security.md](docs/security.md).
 
 **Developing** — to edit dashboards, alert rules or configs live, run from the checkout instead of the published images by setting `COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml` in `.env`. Grafana then reads `dashboards/` and `provisioning/` straight from the repo (dashboard edits show up within 30 seconds), and `docker compose up -d --build` rebuilds the images. In this mode, deploying is `git pull` on the server; restart the stack only when `docker-compose.yml`, `provisioning/` or a config changes.
 
-Releases are published by pushing a `v*.*.*` tag ([`.github/workflows/release.yml`](.github/workflows/release.yml)).
+Releases are published by pushing a signed `v*.*.*` tag ([`.github/workflows/release.yml`](.github/workflows/release.yml)): the images are signed with cosign and carry an SBOM and provenance, and the GitHub Release gets its notes from [CHANGELOG.md](CHANGELOG.md) and a signed checksum file. [docs/verifying-releases.md](docs/verifying-releases.md) shows how to check them.
 
 ## Adding a host
 Each monitored host runs one container, the **Argus agent** (`agent/`): Grafana Alloy with embedded node_exporter and cAdvisor that pushes host metrics, container metrics and container logs to the Argus server. Nothing on the server needs to change — the host appears in the dashboards as soon as the agent starts, and it only makes outbound connections (no firewall rules on the host).
@@ -124,12 +126,15 @@ The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable f
 4. Run `python3 scripts/check_dashboards.py`. It also fails on private IP addresses and on internal names listed one regex per line in a gitignored `.forbidden-patterns` file (CI reads the same list from the `ARGUS_FORBIDDEN_PATTERNS` secret): **this repo is public**, so addresses stay in `targets/` and `.env`.
 
 ## Checks
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the dashboard checks, `promtool check config`, the blackbox, Loki and Alloy config checks, builds every image, and validates the compose files on every push and pull request.
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and pull request: linters for Python, YAML, workflows, Dockerfiles and the agent config; unit tests with a coverage floor; the dashboard and public-repo checks; `promtool check config` and the [PromQL tests](tests/promql/), which run the shipped alert rule and dashboard queries against synthetic series; the blackbox, Loki and Alloy config checks; it builds every image, starts Grafana to check that every dashboard, alert rule and datasource loads, and validates the compose files.
 
-Alongside it: [CodeQL](https://codeql.github.com/) analyses the Python checks and the workflows on every push and pull request and weekly, [OpenSSF Scorecard](https://scorecard.dev/) scores the repo's supply-chain practices weekly (see the badge above), and Dependabot opens weekly PRs for the upstream images and GitHub Actions. Image updates are merged by hand after a sandbox run, since CI's static checks don't start Grafana.
+Alongside it: [CodeQL](https://codeql.github.com/) analyses the Python checks and the workflows on every push and pull request and weekly, a weekly [Trivy](https://trivy.dev/) scan reports known vulnerabilities in the five images, [OpenSSF Scorecard](https://scorecard.dev/) scores the repo's supply-chain practices weekly (see the badge above), and Dependabot opens weekly PRs for the upstream images, GitHub Actions and the check tools. Image updates are merged by hand after a sandbox run. How dependencies are handled is in [docs/dependencies.md](docs/dependencies.md).
+
+## Documentation
+[docs/](docs/README.md) has the [quick start](docs/quick-start.md), [architecture](docs/architecture.md), [interfaces](docs/interfaces.md), [upgrading](docs/upgrading.md), [security requirements](docs/security.md) and [assurance case](docs/assurance-case.md), [dependency policy](docs/dependencies.md) and [roadmap](docs/roadmap.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
-Bug reports and ideas go in [GitHub Issues](https://github.com/HoneyBearTech/Argus/issues); see [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and pull request checks, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities privately.
+Bug reports and ideas go in [GitHub Issues](https://github.com/HoneyBearTech/Argus/issues); see [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, coding standards, test policy and sign-off, [SECURITY.md](SECURITY.md) for reporting vulnerabilities privately, and [SUPPORT.md](SUPPORT.md) for which versions are supported. The project's [governance](GOVERNANCE.md) and [code of conduct](CODE_OF_CONDUCT.md) apply to everyone taking part.
 
 ## License
 [MIT](LICENSE)

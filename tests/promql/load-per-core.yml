@@ -1,0 +1,30 @@
+# Host Health "Load per core" panel. Regression test for #17: while a host briefly had two
+# node_load5 series (old pulled and new pushed during the agent migration), dividing by the
+# per-host core count failed with a many-to-one matching error.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'node_load5{job="node", host="a", instance="a"}'
+        values: "2x10"
+      - series: 'node_load5{job="node", host="a", instance="a:9100"}'
+        values: "3x10"
+      - series: 'node_cpu_seconds_total{job="node", host="a", cpu="0", mode="idle"}'
+        values: "0+1x10"
+      - series: 'node_cpu_seconds_total{job="node", host="a", cpu="1", mode="idle"}'
+        values: "0+1x10"
+      - series: 'node_cpu_seconds_total{job="node", host="a", cpu="2", mode="idle"}'
+        values: "0+1x10"
+      - series: 'node_cpu_seconds_total{job="node", host="a", cpu="3", mode="idle"}'
+        values: "0+1x10"
+      - series: 'node_cpu_seconds_total{job="node", host="a", cpu="0", mode="user"}'
+        values: "0+1x10"
+    promql_expr_test:
+      - dashboard: argus-hosts
+        panel: Load per core
+        vars: { host: ".*" }
+        eval_time: 10m
+        exp_samples:
+          # The higher of the two load series, over four cores.
+          - labels: '{host="a"}'
+            value: 0.75

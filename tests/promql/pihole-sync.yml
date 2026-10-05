@@ -1,0 +1,26 @@
+# "Pi-hole blocklists out of sync" (argus-pihole-sync): alerts when the Pi-holes block
+# different numbers of domains.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'pihole_domains_being_blocked{instance="pihole1"}'
+        values: "1000x10"
+      - series: 'pihole_domains_being_blocked{instance="pihole2"}'
+        values: "1000x10"
+    promql_expr_test:
+      - rule: argus-pihole-sync
+        eval_time: 10m
+        exp_samples: []
+  - interval: 1m
+    input_series:
+      - series: 'pihole_domains_being_blocked{instance="pihole1"}'
+        values: "1000x10"
+      - series: 'pihole_domains_being_blocked{instance="pihole2"}'
+        values: "999x10"
+    promql_expr_test:
+      - rule: argus-pihole-sync
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 2

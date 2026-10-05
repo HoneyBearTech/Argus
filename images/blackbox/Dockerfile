@@ -4,4 +4,8 @@ FROM prom/blackbox-exporter:v0.28.0@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175e
 
 COPY blackbox/blackbox.yml /etc/blackbox/blackbox.yml
 
+# The upstream image runs as root. Argus' HTTP and DNS probes don't need it
+# (ICMP probes would).
+USER 65534:65534
+
 CMD ["--config.file=/etc/blackbox/blackbox.yml"]

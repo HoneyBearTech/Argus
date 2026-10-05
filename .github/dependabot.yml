@@ -32,3 +32,9 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  # Check and test tools (requirements-dev.txt, pinned with hashes).
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
