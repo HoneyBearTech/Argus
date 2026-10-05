@@ -43,16 +43,17 @@ jobs:
           persist-credentials: false
 
       - name: Compute the image names
+        id: names
         # GHCR image paths must be all-lowercase; github.repository_owner keeps the
-        # account's casing ("HoneyBearTech").
+        # account's casing ("HoneyBearTech"). dockerhub stays empty without the secrets.
         env:
           OWNER: ${{ github.repository_owner }}
           IMAGE: ${{ matrix.image }}
         run: |
           owner=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
-          echo "GHCR_IMAGE=ghcr.io/${owner}/${IMAGE}" >> "$GITHUB_ENV"
+          echo "ghcr=ghcr.io/${owner}/${IMAGE}" >> "$GITHUB_OUTPUT"
           if [ -n "$DOCKERHUB_USERNAME" ]; then
-            echo "DOCKERHUB_IMAGE=docker.io/${DOCKERHUB_USERNAME}/${IMAGE}" >> "$GITHUB_ENV"
+            echo "dockerhub=docker.io/${DOCKERHUB_USERNAME}/${IMAGE}" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
@@ -75,8 +76,8 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: |
-            ${{ env.GHCR_IMAGE }}
-            ${{ env.DOCKERHUB_IMAGE }}
+            ${{ steps.names.outputs.ghcr }}
+            ${{ steps.names.outputs.dockerhub }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -103,6 +104,8 @@ jobs:
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
           IMAGE: ${{ matrix.image }}
+          GHCR_IMAGE: ${{ steps.names.outputs.ghcr }}
+          DOCKERHUB_IMAGE: ${{ steps.names.outputs.dockerhub }}
         run: |
           for repo in "$GHCR_IMAGE" ${DOCKERHUB_IMAGE:+"$DOCKERHUB_IMAGE"}; do
             cosign sign --yes "${repo}@${DIGEST}"
