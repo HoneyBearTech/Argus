@@ -1,0 +1,81 @@
+# Internet / ISP dashboard. unpoller reports a speed test and a plan speed per WAN; the backup WAN
+# (WAN2) has never run a test and has no plan, so it reports zeros that must not count. Device series
+# come once per UniFi device tag.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'unpoller_speedtest_download_mbps{wan_group="WAN", wan_interface="eth9"}'
+        values: "4000x10"
+      - series: 'unpoller_speedtest_download_mbps{wan_group="WAN2", wan_interface="eth9"}'
+        values: "0x10"
+      - series: 'unpoller_wan_provider_download_kbps{wan_networkgroup="WAN", wan_name="Internet 1"}'
+        values: "8000000x10"
+      - series: 'unpoller_wan_provider_download_kbps{wan_networkgroup="WAN2", wan_name="Internet 2"}'
+        values: "0x10"
+      - series: 'unpoller_device_speedtest_rundate_seconds{name="gw", port="if!eth9", tag="Core"}'
+        values: "300x10"
+      - series: 'unpoller_device_speedtest_rundate_seconds{name="gw", port="if!eth9", tag="Rack"}'
+        values: "300x10"
+    promql_expr_test:
+      - dashboard: argus-internet
+        panel: Download
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 4000
+      - dashboard: argus-internet
+        panel: Download vs plan
+        eval_time: 10m
+        exp_samples:
+          # 4000 Mbps of an 8 Gbps plan; WAN2's zeros neither win the max nor divide by zero.
+          - labels: "{}"
+            value: 0.5
+      - dashboard: argus-internet
+        panel: Speed test history
+        ref_id: C
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 8000
+      - dashboard: argus-internet
+        panel: Since last test
+        eval_time: 10m
+        exp_samples:
+          # Ran at t=300 s, evaluated at 600 s; the per-tag duplicate doesn't change it.
+          - labels: "{}"
+            value: 300
+
+  # No plan speed set in UniFi: the comparison shows "no value" instead of infinity.
+  - interval: 1m
+    input_series:
+      - series: 'unpoller_speedtest_upload_mbps{wan_group="WAN"}'
+        values: "5000x10"
+      - series: 'unpoller_wan_provider_upload_kbps{wan_networkgroup="WAN"}'
+        values: "0x10"
+    promql_expr_test:
+      - dashboard: argus-internet
+        panel: Upload vs plan
+        eval_time: 10m
+        exp_samples: []
+      - dashboard: argus-internet
+        panel: Speed test history
+        ref_id: D
+        eval_time: 10m
+        exp_samples: []
+
+  # Drops in the selected range count each loss of connectivity once (3 here). increase() extrapolates
+  # the 9 minutes between the first and last sample in the window to the full 10, so the query returns
+  # 3.33; the panel shows it with no decimals.
+  - interval: 1m
+    input_series:
+      - series: 'unpoller_site_intenet_drops_total{subsystem="www", site_name="a"}'
+        values: "5 5 5 6 6 6 8 8 8 8 8"
+    promql_expr_test:
+      - dashboard: argus-internet
+        panel: Internet drops
+        vars: { __range: 10m }
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 3.3333333333333335
