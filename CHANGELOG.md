@@ -10,6 +10,14 @@ Each release's notes on GitHub are its section here.
 
 ## [0.3.0] - 2026-10-05
 
+### Upgrading
+
+- Grafana now runs only the plugins in the image: the Prometheus and Loki datasources and Grafana's
+  built-in panels. It no longer downloads plugins from grafana.com at start-up, so the Explore
+  "Drilldown" apps (metrics, logs, traces, profiles) and the Advisor app are gone. Plugins earlier
+  versions downloaded into the `grafana_data` volume are ignored; to reclaim the space, run
+  `docker compose exec grafana sh -c 'rm -rf /var/lib/grafana/plugins/*'`.
+
 ### Added
 
 - Internet / ISP dashboard: the UniFi gateway's speed tests over time against the plan speeds set in UniFi,
@@ -22,9 +30,10 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
-- `argus-grafana` no longer contains Grafana's bundled datasource plugins other than Prometheus and Loki,
-  which are the only ones Argus uses. Add a datasource of another type and you'll need to install its
-  plugin.
+- `argus-grafana` keeps only the Prometheus and Loki datasource plugins (removing Grafana's other
+  bundled ones), turns off Grafana's plugin preinstaller and reads plugins from a directory inside the
+  image (`GF_PATHS_PLUGINS`), so what runs is what was signed and scanned. Adding a datasource of another
+  type now means extending the image.
 - Release images are built without a build cache. The cache was written per release tag, where no later
   release could read it, and filled 1.6 GB of the repository's Actions storage per release.
 
@@ -34,7 +43,9 @@ Each release's notes on GitHub are its section here.
   HIGH), which Grafana Alloy v1.20.1's image still contains. The agent runs as root on every host, so
   upgrade the agents.
 - `argus-grafana` drops seven of Grafana's eight HIGH findings (gRPC and Tempo libraries in bundled plugins
-  Argus doesn't use) by removing those plugins. The remaining one, CVE-2026-84445 in the Prometheus
+  Argus doesn't use) by removing those plugins. Before 0.3.0, Grafana also downloaded 18 plugins from
+  grafana.com at start-up into its data volume, where they took precedence over the image's own copies,
+  so the datasource code that ran was neither signed by the release nor covered by the image scan. The remaining one, CVE-2026-84445 in the Prometheus
   plugin, is waiting on a Grafana release; see
   [docs/dependencies.md](docs/dependencies.md#current-findings).
 

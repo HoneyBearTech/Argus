@@ -69,3 +69,19 @@ def test_blackbox_image_does_not_run_as_root() -> None:
     users = re.findall(r"^USER\s+(\S+)", dockerfile, re.MULTILINE)
     assert users
     assert users[-1].split(":")[0] not in {"0", "root"}
+
+
+def test_grafana_runs_only_the_plugins_in_its_image() -> None:
+    dockerfile = (ROOT / "images" / "grafana" / "Dockerfile").read_text()
+    assert re.search(r"^\s*GF_PLUGINS_PREINSTALL_DISABLED=true\b", dockerfile, re.MULTILINE)
+    # Not /var/lib/grafana/plugins, which is in the data volume and survives image upgrades.
+    plugins = re.search(r"^\s*GF_PATHS_PLUGINS=(\S+)", dockerfile, re.MULTILINE)
+    assert plugins
+    assert not plugins.group(1).startswith("/var/lib/grafana")
+
+
+def test_grafana_image_does_not_run_as_root() -> None:
+    dockerfile = (ROOT / "images" / "grafana" / "Dockerfile").read_text()
+    users = re.findall(r"^USER\s+(\S+)", dockerfile, re.MULTILINE)
+    assert users
+    assert users[-1].split(":")[0] not in {"0", "root"}

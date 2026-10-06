@@ -23,7 +23,7 @@ Outbound connections:
 | Prometheus | everything in `targets/*.json` | scrapes (HTTP, or HTTPS where a target uses it) |
 | blackbox_exporter | URLs in `targets/blackbox_http.json`, DNS servers in `targets/blackbox_dns.json` | HTTP(S) probes with certificate verification; DNS queries (UDP) |
 | Exporters | the service each one watches (from `secrets/<name>.env`) | the service's API (Pi-hole, UniFi, SNMPv3, *arr, qBittorrent, Plex) |
-| Grafana | Prometheus, Loki (`LOKI_URL`), `DISCORD_WEBHOOK_URL` | queries; alert notifications (HTTPS) |
+| Grafana | Prometheus, Loki (`LOKI_URL`), `DISCORD_WEBHOOK_URL` | queries; alert notifications (HTTPS). It downloads no plugins: `GF_PLUGINS_PREINSTALL_DISABLED=true` |
 | Auto-deploy (optional, [auto-deploy.md](auto-deploy.md)) | GitHub (`git fetch`, the public API), `DISCORD_WEBHOOK_URL` | the new commit and its check result (HTTPS, no token); deploy and rollback notices |
 
 ## Configuration
