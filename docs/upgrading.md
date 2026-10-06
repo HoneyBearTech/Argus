@@ -42,7 +42,8 @@ reports "not ready" for about 15 seconds while it starts; agents retry their pus
 
 With `COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml` in `.env`, you're running `main` (or
 whatever you check out): `git pull && docker compose up -d --build`. To follow releases instead, check
-out a tag (`git checkout v0.2.0`).
+out a tag (`git checkout v0.2.0`). To have the server pull and apply `main` by itself once CI has passed,
+see [auto-deploy](auto-deploy.md).
 
 ## Rolling back
 

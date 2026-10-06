@@ -1,0 +1,14 @@
+# Deploys the latest main to an Argus server running from a checkout (source mode).
+# A user unit: install it as the user that owns the checkout and can run docker;
+# docs/auto-deploy.md has the steps. Assumes the checkout is ~/Argus.
+[Unit]
+Description=Argus auto-deploy (follow main)
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Argus
+ExecStart=/usr/bin/python3 %h/Argus/scripts/auto_deploy.py
+# A rebuild on a small ARM board plus the health checks can take several minutes.
+TimeoutStartSec=30min
