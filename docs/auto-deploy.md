@@ -1,7 +1,7 @@
 # Auto-deploy (source mode)
 
 A server that runs Argus from a checkout ([source mode](upgrading.md#running-from-a-checkout-source-mode))
-can follow `main` by itself: a systemd timer runs [`scripts/deploy.py`](../scripts/deploy.py) every five
+can follow `main` by itself: a systemd timer runs [`scripts/auto_deploy.py`](../scripts/auto_deploy.py) every five
 minutes. Nothing reaches into the server; it only makes outbound HTTPS requests to GitHub (and to Discord,
 if configured).
 
@@ -30,12 +30,12 @@ checkout is `~/Argus`; edit `WorkingDirectory` and `ExecStart` if it's elsewhere
 
 ```sh
 cd ~/Argus
-python3 scripts/deploy.py --dry-run        # says what it would deploy; changes nothing
+python3 scripts/auto_deploy.py --dry-run   # says what it would deploy; changes nothing
 mkdir -p ~/.config/systemd/user
 cp deploy/systemd/argus-deploy.service deploy/systemd/argus-deploy.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now argus-deploy.timer
-sudo loginctl enable-linger "$USER"        # keep user timers running when nobody is logged in
+sudo loginctl enable-linger "$USER"         # keep user timers running when nobody is logged in
 systemctl --user list-timers argus-deploy.timer
 ```
 

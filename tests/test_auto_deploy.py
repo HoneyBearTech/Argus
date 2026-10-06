@@ -1,4 +1,4 @@
-"""Tests for scripts/deploy.py: real git repositories, with Docker, GitHub and the health checks faked."""
+"""Tests for scripts/auto_deploy.py: real git repositories, with Docker, GitHub and the health checks faked."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any, ClassVar
 
-import deploy
+import auto_deploy as deploy
 import pytest
 
 if TYPE_CHECKING:
