@@ -51,7 +51,7 @@ Loki must not be reachable from outside it.
   for 30 days and readable through Grafana by every Grafana user and through Loki by anyone who can reach
   it.
 - **The agent is root on its host.** It runs privileged, in the host's PID and network namespaces, with
-  read access to the host's filesystem and the Docker socket (which is equivalent to root). A compromised
+  read access to the host's filesystem and the Docker and containerd sockets (which are equivalent to root). A compromised
   agent image or Argus release is a compromised host; that's why releases are signed.
 - **Agent traffic is not encrypted by default.** Agents push over plain HTTP. Put Prometheus and Loki
   behind a TLS proxy and use `https://` URLs for the agents if traffic crosses a network you don't trust.

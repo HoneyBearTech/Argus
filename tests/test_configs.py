@@ -85,3 +85,10 @@ def test_grafana_image_does_not_run_as_root() -> None:
     users = re.findall(r"^USER\s+(\S+)", dockerfile, re.MULTILINE)
     assert users
     assert users[-1].split(":")[0] not in {"0", "root"}
+
+
+def test_agent_can_reach_containerd() -> None:
+    # Regression test: with Docker's containerd image store (default since Docker 29), cAdvisor needs
+    # containerd's socket, or the Docker Containers dashboard is empty for that host.
+    agent = load("agent/compose.yml")["services"]["agent"]
+    assert "/run/containerd:/run/containerd:ro" in agent["volumes"]

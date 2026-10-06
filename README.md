@@ -111,6 +111,7 @@ docker run -d --name argus-agent --restart unless-stopped \
   -e ARGUS_LOKI_URL=http://argus-server:3101 \
   -v /:/rootfs:ro,rslave -v /sys:/sys:ro -v /run/udev:/run/udev:ro -v /dev/disk:/dev/disk:ro \
   -v /var/lib/docker:/var/lib/docker:ro -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /run/containerd:/run/containerd:ro \
   ghcr.io/honeybeartech/argus-agent:latest
 ```
 
