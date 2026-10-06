@@ -40,6 +40,7 @@ docs/                user, security and project documentation
 | Host Health | hosts | Is any machine running out of disk, memory or CPU? | Argus agent on each host (embedded node_exporter) |
 | Docker Containers | hosts | Which containers are restarting, stopped, or eating resources? | Argus agent on each host (embedded cAdvisor) |
 | Network / UniFi | network | How's the internet connection, and what's on the network? | [unpoller](https://github.com/unpoller/unpoller) with a read-only UniFi account |
+| Internet / ISP | network | Is the ISP delivering the speed we pay for, and how often does the connection drop? | unpoller: the UniFi gateway's own speed tests and the plan speeds set in UniFi |
 | Media Stack | media | Who's watching what, is the download pipeline flowing, and is the library healthy? | [exportarr](https://github.com/onedr0p/exportarr) (*arr, SABnzbd), [qbittorrent-exporter](https://github.com/martabal/qbittorrent-exporter); Plex exporter beside Plex (`agent/compose.yml`, `plex` profile) |
 | NAS / Storage | storage | Are the NAS units healthy, and how fast are they filling? | snmp-exporter (bundled `synology` + standard MIB modules), SNMPv3 |
 | Smart Home | home | What's the house doing — temperatures, HVAC, energy? | Home Assistant's Prometheus integration (long-lived token) |
@@ -83,7 +84,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Service up/down, certificates (Overview) | `blackbox_http.json` (URLs), `blackbox_dns.json` (DNS servers) | — | — |
 | Uptime Kuma monitors (Overview) | `uptime_kuma.json` | `uptime_kuma_api_key` | — |
 | DNS / Pi-hole | `blackbox_dns.json` | `pihole-exporter.env` | — |
-| Network / UniFi | — | `unpoller.env` (read-only local account) | — |
+| Network / UniFi, Internet / ISP | — | `unpoller.env` (read-only local account) | — |
 | NAS / Storage | `snmp.json` | `snmp-auth.yml` (SNMPv3) | `COMPOSE_PROFILES=snmp` |
 | Smart Home | `homeassistant.json` | `home_assistant_token` | — |
 | UPS / Power | `peanut.json` | — | — |

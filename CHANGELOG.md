@@ -8,6 +8,12 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Internet / ISP dashboard: the UniFi gateway's speed tests over time against the plan speeds set in UniFi,
+  how long ago the last test ran, latency and connectivity drops. It needs nothing beyond unpoller. The
+  gateway measures from the edge of the network, so the results aren't capped by a server's network card.
+
 ## [0.2.0] - 2026-10-05
 
 ### Upgrading
