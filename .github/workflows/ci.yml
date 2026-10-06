@@ -130,6 +130,10 @@ jobs:
           [ "$rules" -eq "$want_rules" ] || fail "only $rules of $want_rules alert rules loaded"
           [ "$datasources" = "loki,prometheus" ] || fail "unexpected datasources: $datasources"
           [ "$contact_points" = "Discord" ] || fail "unexpected contact points: $contact_points"
+          # The image removes the other bundled plugins; these two must survive it.
+          for plugin in prometheus loki; do
+            api "/api/plugins/$plugin/settings" > /dev/null || fail "datasource plugin $plugin is missing"
+          done
 
       - name: Compose files
         run: |
