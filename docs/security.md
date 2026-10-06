@@ -36,7 +36,8 @@ Loki must not be reachable from outside it.
    services (a read-only UniFi user, a non-admin Home Assistant user, Pi-hole app passwords, SNMPv3).
 8. **Releases are verifiable.** Images are signed keylessly by the release workflow and carry an SBOM and
    provenance; release files are covered by a signed checksum file; version tags are signed
-   ([verifying-releases.md](verifying-releases.md)). Base images are pinned by digest.
+   ([verifying-releases.md](verifying-releases.md)). Base images are pinned by digest, and Grafana runs
+   only the plugins in its image: it downloads none at start-up.
 9. **Bounded storage.** Prometheus keeps 30 days or 8 GB, Loki 30 days with an ingestion rate limit, and
    noisy exporters are trimmed at scrape time, so a misbehaving source can't fill the disk unchecked.
 

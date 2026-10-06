@@ -8,6 +8,16 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-05
+
+### Upgrading
+
+- Grafana now runs only the plugins in the image: the Prometheus and Loki datasources and Grafana's
+  built-in panels. It no longer downloads plugins from grafana.com at start-up, so the Explore
+  "Drilldown" apps (metrics, logs, traces, profiles) and the Advisor app are gone. Plugins earlier
+  versions downloaded into the `grafana_data` volume are ignored; to reclaim the space, run
+  `docker compose exec grafana sh -c 'rm -rf /var/lib/grafana/plugins/*'`.
+
 ### Added
 
 - Internet / ISP dashboard: the UniFi gateway's speed tests over time against the plan speeds set in UniFi,
@@ -20,8 +30,24 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- `argus-grafana` keeps only the Prometheus and Loki datasource plugins (removing Grafana's other
+  bundled ones), turns off Grafana's plugin preinstaller and reads plugins from a directory inside the
+  image (`GF_PATHS_PLUGINS`), so what runs is what was signed and scanned. Adding a datasource of another
+  type now means extending the image.
 - Release images are built without a build cache. The cache was written per release tag, where no later
   release could read it, and filled 1.6 GB of the repository's Actions storage per release.
+
+### Security
+
+- `argus-agent` applies Ubuntu's security updates to its base image, fixing CVE-2026-84782 (OpenSSL,
+  HIGH), which Grafana Alloy v1.20.1's image still contains. The agent runs as root on every host, so
+  upgrade the agents.
+- `argus-grafana` drops seven of Grafana's eight HIGH findings (gRPC and Tempo libraries in bundled plugins
+  Argus doesn't use) by removing those plugins. Before 0.3.0, Grafana also downloaded 18 plugins from
+  grafana.com at start-up into its data volume, where they took precedence over the image's own copies,
+  so the datasource code that ran was neither signed by the release nor covered by the image scan. The remaining one, CVE-2026-84445 in the Prometheus
+  plugin, is waiting on a Grafana release; see
+  [docs/dependencies.md](docs/dependencies.md#current-findings).
 
 ## [0.2.0] - 2026-10-05
 
@@ -105,6 +131,7 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/HoneyBearTech/Argus/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HoneyBearTech/Argus/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HoneyBearTech/Argus/releases/tag/v0.1.0

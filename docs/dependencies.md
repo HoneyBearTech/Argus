@@ -73,15 +73,25 @@ Each finding is triaged within 14 days:
 
 ### Current findings
 
-As of October 2026, the scan reports Go standard library, `golang.org/x/net`, `golang.org/x/crypto` and
-gRPC vulnerabilities in **blackbox_exporter v0.28.0**, the latest upstream release (built with Go 1.25.5).
-The other four images have no fixable HIGH or CRITICAL findings. Assessment: blackbox_exporter isn't
-published on the host, so only Prometheus can call it, and it only connects to the URLs and DNS servers
-the operator lists; the reachable code is its HTTP and DNS clients talking to the operator's own services,
-so the realistic impact is a probed service crashing or stalling the prober (a false "down" alert), not a
-compromise. Argus' image runs it as an unprivileged user. It will be bumped as soon as upstream releases a
-build with current Go; if that hasn't happened by the end of 2026, Argus will build blackbox_exporter from
-source with patched dependencies instead.
+As of 5 October 2026 (0.3.0):
+
+- **blackbox_exporter v0.28.0**, the latest upstream release (built with Go 1.25.5): Go standard library,
+  `golang.org/x/net`, `golang.org/x/crypto` and gRPC vulnerabilities. Assessment: blackbox_exporter isn't
+  published on the host, so only Prometheus can call it, and it only connects to the URLs and DNS servers
+  the operator lists; the reachable code is its HTTP and DNS clients talking to the operator's own
+  services, so the realistic impact is a probed service crashing or stalling the prober (a false "down"
+  alert), not a compromise. Argus' image runs it as an unprivileged user. It will be bumped as soon as
+  upstream releases a build with current Go; if that hasn't happened by the end of 2026, Argus will build
+  blackbox_exporter from source with patched dependencies instead.
+- **Grafana 13.2.3**, the latest release: CVE-2026-84445 (gRPC-Go denial of service) in the bundled
+  Prometheus datasource plugin. Assessment: the plugin's gRPC is the local channel between Grafana and
+  its plugin process, not a network listener; the queries it sends go to Argus' own Prometheus. Fixed when
+  Grafana ships a release with gRPC 1.83.2 or later. Argus' image removes the bundled datasource plugins it
+  doesn't use, which took the Grafana image from eight HIGH findings to this one.
+- **argus-agent**: none. Its image applies Ubuntu's security updates at build time (0.3.0 fixed
+  CVE-2026-84782 in OpenSSL, which Alloy v1.20.1's base image still shipped).
+
+Prometheus and Loki have no fixable HIGH or CRITICAL findings.
 
 ## Licenses
 
