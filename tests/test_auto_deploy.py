@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import socket
 import subprocess
 import threading
 import urllib.error
@@ -321,9 +322,29 @@ def test_answers(http: str) -> None:
     assert not deploy.answers(http + "/api/health")
 
 
-def test_answers_nothing_listening(http: str) -> None:
-    port = http.rsplit(":", 1)[1]
-    assert not deploy.answers(f"http://127.0.0.1:{int(port) + 1 if int(port) < 65535 else 1}/")
+def test_answers_nothing_listening() -> None:
+    with socket.socket() as sock:  # a port that was free a moment ago
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    assert not deploy.answers(f"http://127.0.0.1:{port}/")
+
+
+def test_answers_something_that_isnt_http() -> None:
+    # Regression test: a non-HTTP answer raised http.client.BadStatusLine instead of counting as down.
+    with socket.socket() as server:
+        server.bind(("127.0.0.1", 0))
+        server.listen()
+
+        def garbage() -> None:
+            conn, _ = server.accept()
+            with conn:
+                conn.recv(1024)
+                conn.sendall(b"SSH-2.0-not-http\r\n")
+
+        thread = threading.Thread(target=garbage, daemon=True)
+        thread.start()
+        assert not deploy.answers(f"http://127.0.0.1:{server.getsockname()[1]}/")
+        thread.join(timeout=5)
 
 
 def test_check_runs(http: str, monkeypatch: pytest.MonkeyPatch) -> None:
