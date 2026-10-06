@@ -8,6 +8,7 @@ Start with the [README](../README.md) for what Argus is, its dashboards and aler
 | [Architecture](architecture.md) | The components, how metrics, logs and alerts flow through them, and why |
 | [Interfaces](interfaces.md) | Every port, push endpoint, environment variable, file and image Argus exposes or reads |
 | [Upgrading](upgrading.md) | Moving to a new release, and rolling back |
+| [Auto-deploy](auto-deploy.md) | Letting a server that runs from a checkout follow `main` by itself |
 | [Verifying releases](verifying-releases.md) | Checking that images and release files came from this repository, unchanged |
 | [Security requirements](security.md) | What Argus protects, and what it deliberately doesn't |
 | [Assurance case](assurance-case.md) | The threat model, trust boundaries and why the security requirements are met |

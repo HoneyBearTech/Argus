@@ -60,6 +60,8 @@ Loki must not be reachable from outside it.
 - **Vulnerabilities in the upstream components** (Grafana, Prometheus, Loki, Alloy, blackbox_exporter,
   the exporters). Argus pins and updates them and scans its images weekly
   ([dependencies.md](dependencies.md)), but a fix reaches you only when you upgrade.
+- **Auto-deploy trusts `main`.** If you enable [auto-deploy](auto-deploy.md), anyone who can merge to
+  `main` changes what runs on the server within minutes, once CI passes; protect the branch accordingly.
 - **The host and its Docker daemon**: anyone with access to the server can read `secrets/` and change
   everything.
 - **Alert delivery**: alerts go to one Discord webhook; if Discord, the webhook or the server is down,

@@ -1,0 +1,12 @@
+# Runs argus-deploy.service every 5 minutes. It only does work when main has a new
+# commit that passed CI, so most runs are one git fetch.
+[Unit]
+Description=Check for a new Argus commit to deploy
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

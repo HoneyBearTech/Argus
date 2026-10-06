@@ -13,6 +13,10 @@ Each release's notes on GitHub are its section here.
 - Internet / ISP dashboard: the UniFi gateway's speed tests over time against the plan speeds set in UniFi,
   how long ago the last test ran, latency and connectivity drops. It needs nothing beyond unpoller. The
   gateway measures from the edge of the network, so the results aren't capped by a server's network card.
+- Optional auto-deploy for servers that run from a checkout: a systemd timer ([deploy/systemd/](deploy/systemd/))
+  runs `scripts/deploy.py`, which fast-forwards to `main` once its CI check has passed, rebuilds, restarts
+  what reads a changed config, and rolls back if Grafana or Prometheus don't come back. Deploys and
+  rollbacks are posted to Discord. See [docs/auto-deploy.md](docs/auto-deploy.md).
 
 ### Changed
 
