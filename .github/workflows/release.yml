@@ -179,6 +179,8 @@ jobs:
             echo "::error::CHANGELOG.md has no section for $version"
             exit 1
           fi
+          # Repo-relative links would resolve against the release page; point them at the tag.
+          perl -pi -e 's{\]\((?!https?://|#)([^)]+)\)}{](https://github.com/$ENV{REPO}/blob/$ENV{TAG}/$1)}g' notes.md
           printf '\n---\nVerify the images and this release: [docs/verifying-releases.md](https://github.com/%s/blob/%s/docs/verifying-releases.md)\n' \
             "$REPO" "$TAG" >> notes.md
 
