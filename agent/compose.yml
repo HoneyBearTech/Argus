@@ -25,6 +25,9 @@ services:
       - /dev/disk:/dev/disk:ro
       - /var/lib/docker:/var/lib/docker:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # cAdvisor reads containers through containerd when Docker uses the containerd image store
+      # (the default for new installs since Docker 29); without it there are no container metrics.
+      - /run/containerd:/run/containerd:ro
       # Nginx Proxy Manager access logs, only on the host that runs it.
       - ${NPM_LOG_DIR:-./no-npm-logs}:/var/log/npm:ro
       - agent_data:/var/lib/alloy/data

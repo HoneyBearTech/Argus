@@ -19,6 +19,7 @@ library is used, so the script runs with the server's own python3.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import re
 import subprocess
@@ -139,7 +140,7 @@ def answers(url: str) -> bool:
     except urllib.error.HTTPError as err:
         err.close()
         return False
-    except (urllib.error.URLError, OSError):
+    except (urllib.error.URLError, OSError, http.client.HTTPException):  # nothing there, or not HTTP
         return False
 
 

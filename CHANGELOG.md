@@ -8,6 +8,15 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- The agent showed no container metrics on hosts whose Docker uses the containerd image store, the default
+  for new installs since Docker 29: cAdvisor couldn't reach containerd. `agent/compose.yml` now mounts
+  `/run/containerd` read-only; if you run the agent with `docker run`, add
+  `-v /run/containerd:/run/containerd:ro`.
+- Auto-deploy's health check crashed instead of reporting "not answering" when something other than an
+  HTTP server answered on Grafana's or Prometheus' port.
+
 ## [0.3.0] - 2026-10-05
 
 ### Upgrading
