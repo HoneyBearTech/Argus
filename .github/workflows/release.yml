@@ -94,8 +94,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           sbom: true
           provenance: mode=max
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # No build cache: Actions caches are scoped to the ref that writes them, and each release
+          # runs on a new tag, so a cache could never be read again; it only filled Actions storage.
+          # Releases are built from scratch.
+          no-cache: true
 
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 

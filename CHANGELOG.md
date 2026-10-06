@@ -14,6 +14,11 @@ Each release's notes on GitHub are its section here.
   how long ago the last test ran, latency and connectivity drops. It needs nothing beyond unpoller. The
   gateway measures from the edge of the network, so the results aren't capped by a server's network card.
 
+### Changed
+
+- Release images are built without a build cache. The cache was written per release tag, where no later
+  release could read it, and filled 1.6 GB of the repository's Actions storage per release.
+
 ## [0.2.0] - 2026-10-05
 
 ### Upgrading
