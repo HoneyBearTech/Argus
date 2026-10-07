@@ -8,6 +8,12 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Upgrading
+
+- PeaNUT 6 puts its metrics behind its login. Before upgrading PeaNUT, put that login in `secrets/peanut_username`
+  and `secrets/peanut_password` (templates in `secrets.example/`); PeaNUT 5 ignores the credentials, so this can be
+  done first. Prometheus reads the files on every scrape. Without them the UPS dashboard stays empty.
+
 ### Added
 
 - GitLab CI dashboard: a **Runner** row (jobs started and running against the concurrency limit, runner
@@ -16,6 +22,11 @@ Each release's notes on GitHub are its section here.
   from a subset of GitLab's bundled Prometheus, read through `/federate`. Both are new scrape jobs
   (`gitlab_runner`, `gitlab_server`) with targets in `targets/`; see the README for the GitLab settings.
 - Alerts "GitLab component down" and "GitLab pipeline failing" (latest pipeline on a watched branch).
+
+### Changed
+
+- The `peanut` scrape job authenticates with basic auth from `secrets/peanut_username` and
+  `secrets/peanut_password`, for PeaNUT 6.
 
 ## [0.4.1] - 2026-10-09
 

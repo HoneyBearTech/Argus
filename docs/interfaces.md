@@ -48,7 +48,8 @@ format; placeholders in [`targets.example/`](../targets.example/)): a list of
 
 **Credentials** (`secrets/`, placeholders in [`secrets.example/`](../secrets.example/)), mounted
 read-only: env files for the exporters (`pihole-exporter.env`, `unpoller.env`, `<app>.env`), files
-Prometheus reads (`home_assistant_token`, `uptime_kuma_api_key`), and `snmp-auth.yml`.
+Prometheus reads (`home_assistant_token`, `uptime_kuma_api_key`, `peanut_username` and `peanut_password`), and
+`snmp-auth.yml`.
 
 ## Data contracts
 

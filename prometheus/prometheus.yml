@@ -11,9 +11,13 @@ scrape_configs:
     static_configs:
       - targets: [localhost:9090]
 
-  # UPS metrics from PeaNUT.
+  # UPS metrics from PeaNUT. PeaNUT 6 puts its API behind its login, which it
+  # accepts as basic auth; older versions ignore the credentials.
   - job_name: peanut
     metrics_path: /api/v1/metrics
+    basic_auth:
+      username_file: /etc/prometheus/secrets/peanut_username
+      password_file: /etc/prometheus/secrets/peanut_password
     file_sd_configs:
       - files: [/etc/prometheus/targets/peanut.json]
 
