@@ -1,0 +1,19 @@
+# gitlab-ci-pipelines-exporter settings: where GitLab is and what to watch. The token comes from
+# secrets/gitlab.env. The container runs as uid 65534, so this file must be world-readable (644).
+# Full syntax: https://github.com/mvisonneau/gitlab-ci-pipelines-exporter/blob/main/docs/configuration_syntax.md
+gitlab:
+  url: https://gitlab.example
+  # Only for the exporter's own readiness check; GitLab answers /-/health only to its monitoring allowlist.
+  health_url: https://gitlab.example/users/sign_in
+
+project_defaults:
+  pull:
+    pipeline:
+      jobs:
+        # Per-job status, duration, queue time and failure reason (the dashboard's job panels).
+        enabled: true
+
+# Every project the token can see. To narrow it, give an owner, e.g.
+#   - owner: {name: my-group, kind: group, include_subgroups: true}
+wildcards:
+  - {}
