@@ -122,4 +122,6 @@ def test_agent_skips_gitlab_runner_job_containers() -> None:
     job = re.compile(regex.group(1))
     assert job.fullmatch("runner-t3abcdef-project-12-concurrent-0-0a1b2c3d4e5f6a7b-build")
     assert job.fullmatch("runner-t3abcdef-project-12-concurrent-0")
+    # cache-init containers (seen on GitLab Runner 19.4 with the Docker executor)
+    assert job.fullmatch(f"runner-{'a' * 32}-cache-{'b' * 32}-protected-set-permission-{'c' * 32}")
     assert not job.fullmatch("my-runner-app")

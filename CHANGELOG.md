@@ -10,6 +10,8 @@ Each release's notes on GitHub are its section here.
 
 ### Fixed
 
+- The agent still counted GitLab Runner's short-lived `cache-init` containers
+  (`runner-<hash>-cache-<hash>-…`) as containers; they're now skipped like the other job containers.
 - [docs/verifying-releases.md](docs/verifying-releases.md) asked for cosign 2.0 or later, but release
   images are signed with cosign 3, whose signatures cosign 2 can't find. It now says 3.0 or later.
 
