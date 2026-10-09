@@ -15,7 +15,9 @@ workflow when a version tag is pushed. You can check that what you run came from
 - the **version tag** in git is signed with the maintainer's SSH key.
 
 This applies to releases after 0.1.0; v0.1.0 was published before signing was added. You need
-[cosign](https://docs.sigstore.dev/cosign/system_config/installation/) 2.0 or later. The examples use
+[cosign](https://docs.sigstore.dev/cosign/system_config/installation/) 3.0 or later: releases are signed
+with cosign 3, which stores image signatures as Sigstore bundles that cosign 2 doesn't find (it reports
+"no signatures found"). The examples use
 version 0.4.0; substitute the one you run.
 
 ## The images

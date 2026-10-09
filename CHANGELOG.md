@@ -8,6 +8,11 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- [docs/verifying-releases.md](docs/verifying-releases.md) asked for cosign 2.0 or later, but release
+  images are signed with cosign 3, whose signatures cosign 2 can't find. It now says 3.0 or later.
+
 ## [0.4.0] - 2026-10-09
 
 ### Upgrading
