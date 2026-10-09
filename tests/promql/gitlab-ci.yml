@@ -1,0 +1,110 @@
+# GitLab CI dashboard. gitlab-ci-pipelines-exporter never drops a label set it has exported, so a
+# branch whose last pipeline came from a different trigger, or a job whose failure reason changed,
+# keeps a stale series reading "failed". Only the label set with the highest pipeline / job ID counts.
+evaluation_interval: 1m
+tests:
+  # main: a push pipeline (#10) failed, then a scheduled one (#11) passed from t=5m. dev's only
+  # pipeline (#7) failed.
+  - interval: 1m
+    input_series:
+      - series: 'gitlab_ci_pipeline_id{project="g/p", kind="branch", ref="main", source="push"}'
+        values: "10x10"
+      - series: 'gitlab_ci_pipeline_id{project="g/p", kind="branch", ref="main", source="schedule"}'
+        values: "_x5 11x5"
+      - series: 'gitlab_ci_pipeline_status{project="g/p", kind="branch", ref="main", source="push", status="failed"}'
+        values: "1x10"
+      - series: 'gitlab_ci_pipeline_status{project="g/p", kind="branch", ref="main", source="schedule", status="success"}'
+        values: "_x5 1x5"
+      - series: 'gitlab_ci_pipeline_duration_seconds{project="g/p", kind="branch", ref="main", source="push"}'
+        values: "300x10"
+      - series: 'gitlab_ci_pipeline_duration_seconds{project="g/p", kind="branch", ref="main", source="schedule"}'
+        values: "_x5 9x5"
+      - series: 'gitlab_ci_pipeline_id{project="g/p", kind="branch", ref="dev", source="push"}'
+        values: "7x10"
+      - series: 'gitlab_ci_pipeline_status{project="g/p", kind="branch", ref="dev", source="push", status="failed"}'
+        values: "1x10"
+    promql_expr_test:
+      - dashboard: argus-gitlab-ci
+        panel: Failing
+        vars: {project: ".*"}
+        eval_time: 10m
+        exp_samples:
+          # dev only: main's stale push failure doesn't count.
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-gitlab-ci
+        panel: Pipelines run
+        vars: {project: ".*", __range: "10m"}
+        eval_time: 10m
+        exp_samples:
+          # main moved from #10 to #11; the new label set appearing isn't a second run.
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-gitlab-ci
+        panel: Latest pipeline per branch
+        vars: {project: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="g/p/branch/main", kind="branch", project="g/p", ref="main", source="schedule", status="success"}'
+            value: 1
+          - labels: '{key="g/p/branch/dev", kind="branch", project="g/p", ref="dev", source="push", status="failed"}'
+            value: 1
+      - dashboard: argus-gitlab-ci
+        panel: Latest pipeline per branch
+        ref_id: B
+        vars: {project: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="g/p/branch/main"}'
+            value: 9
+      - dashboard: argus-gitlab-ci
+        panel: Pipeline status history
+        vars: {project: ".*"}
+        eval_time: 10m
+        exp_samples:
+          # 1 = passed, 3 = failed.
+          - labels: '{project="g/p", ref="main"}'
+            value: 1
+          - labels: '{project="g/p", ref="dev"}'
+            value: 3
+      - dashboard: argus-gitlab-ci
+        panel: Pipeline status history
+        vars: {project: ".*"}
+        eval_time: 4m
+        exp_samples:
+          # Before the scheduled run, main's latest pipeline was the failed push.
+          - labels: '{project="g/p", ref="main"}'
+            value: 3
+          - labels: '{project="g/p", ref="dev"}'
+            value: 3
+
+  # Job "unit" failed (#20, waited 400 s for a runner), then passed (#22, waited 2 s) from t=5m.
+  - interval: 1m
+    input_series:
+      - series: 'gitlab_ci_pipeline_job_id{project="g/p", kind="branch", ref="main", stage="test", job_name="unit", failure_reason="script_failure"}'
+        values: "20x10"
+      - series: 'gitlab_ci_pipeline_job_id{project="g/p", kind="branch", ref="main", stage="test", job_name="unit"}'
+        values: "_x5 22x5"
+      - series: 'gitlab_ci_pipeline_job_status{project="g/p", kind="branch", ref="main", stage="test", job_name="unit", failure_reason="script_failure", status="failed"}'
+        values: "1x10"
+      - series: 'gitlab_ci_pipeline_job_status{project="g/p", kind="branch", ref="main", stage="test", job_name="unit", status="success"}'
+        values: "_x5 1x5"
+      - series: 'gitlab_ci_pipeline_job_queued_duration_seconds{project="g/p", kind="branch", ref="main", stage="test", job_name="unit", failure_reason="script_failure"}'
+        values: "400x10"
+      - series: 'gitlab_ci_pipeline_job_queued_duration_seconds{project="g/p", kind="branch", ref="main", stage="test", job_name="unit"}'
+        values: "_x5 2x5"
+    promql_expr_test:
+      - dashboard: argus-gitlab-ci
+        panel: Longest job wait
+        vars: {project: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-gitlab-ci
+        panel: Latest run of each job
+        vars: {project: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{job_name="unit", key="g/p/branch/main/test/unit", kind="branch", project="g/p", ref="main", stage="test", status="success"}'
+            value: 1

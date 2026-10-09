@@ -8,6 +8,14 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- GitLab CI dashboard: the latest pipeline on each branch and tag, a status history, pipeline and job
+  durations, how long jobs wait for a runner, and the latest run of every job with its failure reason. It
+  reads GitLab's API through [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter),
+  behind the new `gitlab` compose profile: put GitLab's URL in `secrets/gitlab.yml`, a `read_api` token in
+  `secrets/gitlab.env` (templates in `secrets.example/`) and the exporter in `targets/gitlab.json`.
+
 ### Fixed
 
 - The agent showed no container metrics on hosts whose Docker uses the containerd image store, the default

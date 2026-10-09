@@ -1,0 +1,3 @@
+[
+  {"targets": ["gitlab-ci-pipelines-exporter:8080"]}
+]

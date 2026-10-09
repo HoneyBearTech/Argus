@@ -46,6 +46,7 @@ docs/                user, security and project documentation
 | Smart Home | home | What's the house doing — temperatures, HVAC, energy? | Home Assistant's Prometheus integration (long-lived token) |
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
+| GitLab CI | ci | Are pipelines healthy, and is the runner keeping up? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Alerts

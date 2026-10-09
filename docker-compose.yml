@@ -160,6 +160,20 @@ services:
       - path: ./secrets/qbittorrent.env
         required: false
 
+  # GitLab CI pipelines and jobs, read through GitLab's API (`gitlab` profile).
+  # Which GitLab and projects come from secrets/gitlab.yml, the read_api token
+  # from secrets/gitlab.env (see secrets.example/).
+  gitlab-ci-pipelines-exporter:
+    image: ghcr.io/mvisonneau/gitlab-ci-pipelines-exporter:v0.6.0
+    restart: unless-stopped
+    profiles: [gitlab]
+    command: [run, --config, /etc/gitlab-ci-pipelines-exporter/config.yml]
+    env_file:
+      - path: ./secrets/gitlab.env
+        required: false
+    volumes:
+      - ./secrets/gitlab.yml:/etc/gitlab-ci-pipelines-exporter/config.yml:ro
+
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
   # at it either way.

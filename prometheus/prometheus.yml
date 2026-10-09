@@ -82,6 +82,14 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/plex.json]
 
+  # GitLab CI pipelines and jobs via gitlab-ci-pipelines-exporter (only runs
+  # with the `gitlab` compose profile, so targets/gitlab.json lists it only
+  # where it's enabled). It polls GitLab's API every 30 s.
+  - job_name: gitlab
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/gitlab.json]
+
   # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
   # up as a down target like any other exporter.
   - job_name: loki

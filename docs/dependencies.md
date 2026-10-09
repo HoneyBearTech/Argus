@@ -30,7 +30,7 @@ always gets the same bytes:
 | Dependency | Declared in | Pinned by | Fetched by |
 | --- | --- | --- | --- |
 | Upstream base images (Grafana, Prometheus, blackbox_exporter, Loki, Alloy) | [`images/*/Dockerfile`](../images/), [`agent/Dockerfile`](../agent/Dockerfile) | version tag and multi-arch digest | Docker / BuildKit |
-| Exporter images (pihole-exporter, unpoller, snmp-exporter, exportarr, qbittorrent-exporter, Plex exporter) | [`docker-compose.yml`](../docker-compose.yml), [`agent/compose.yml`](../agent/compose.yml) | version tag (the Plex exporter by digest) | Docker Compose |
+| Exporter images (pihole-exporter, unpoller, snmp-exporter, exportarr, qbittorrent-exporter, gitlab-ci-pipelines-exporter, Plex exporter) | [`docker-compose.yml`](../docker-compose.yml), [`agent/compose.yml`](../agent/compose.yml) | version tag (the Plex exporter by digest) | Docker Compose |
 | Images used only by CI (promtool, linters, Trivy) | [`.github/workflows/`](../.github/workflows/) | version tag, and digest for most | Docker |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
 | Python check and test tools (pytest, coverage, ruff, yamllint, PyYAML) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes (`pip-compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
