@@ -27,6 +27,8 @@ jobs:
       # without one, the release workflow's DOCKERHUB_TOKEN is used.
       - name: Log in to Docker Hub (pull limits)
         if: env.DOCKERHUB_USERNAME != ''
+        # Best effort: if Docker Hub's login is unreachable, the pulls still try anonymously.
+        continue-on-error: true
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
