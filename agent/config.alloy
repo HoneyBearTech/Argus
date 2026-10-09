@@ -100,10 +100,11 @@ prometheus.relabel "containers" {
 		action        = "drop"
 	}
 
-	// Job containers are named runner-<runner>-project-<id>-concurrent-<n>[-…].
+	// Job containers are named runner-<runner>-project-<id>-concurrent-<n>[-…]
+	// (build, predefined, services) or runner-<hash>-cache-<hash>[-…] (cache-init).
 	rule {
 		source_labels = ["name"]
-		regex         = "runner-.+-project-[0-9]+-concurrent-[0-9]+(-.*)?"
+		regex         = "runner-.+-(project-[0-9]+-concurrent-[0-9]+|cache-[0-9a-f]+)(-.*)?"
 		action        = "drop"
 	}
 	forward_to = [prometheus.remote_write.argus.receiver]
