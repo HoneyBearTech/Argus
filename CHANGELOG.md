@@ -8,6 +8,8 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-09
+
 ### Fixed
 
 - The agent still counted GitLab Runner's short-lived `cache-init` containers
@@ -171,7 +173,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/HoneyBearTech/Argus/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/HoneyBearTech/Argus/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/HoneyBearTech/Argus/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HoneyBearTech/Argus/compare/v0.1.0...v0.2.0
