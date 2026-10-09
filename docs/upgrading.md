@@ -10,7 +10,7 @@ by the new version's.
 
 1. Read the release notes, and do the "Upgrading" steps for every release between yours and the new one.
 2. Optionally [verify the release](verifying-releases.md).
-3. Set the new version in `.env` (`ARGUS_VERSION=0.4.0`), then:
+3. Set the new version in `.env` (`ARGUS_VERSION=0.4.1`), then:
 
    ```sh
    git pull                  # the compose file and examples can change between releases
@@ -29,7 +29,7 @@ released last; pinning a version is recommended so that upgrades happen when you
 ## Agents
 
 On each host, set `ARGUS_AGENT_IMAGE` in the agent's `.env` to the new tag (for example
-`ghcr.io/honeybeartech/argus-agent:0.4.0`), then `docker compose pull && docker compose up -d`. With
+`ghcr.io/honeybeartech/argus-agent:0.4.1`), then `docker compose pull && docker compose up -d`. With
 `docker run`, remove the container and run it again with the new tag. Agents and server don't need to be
 upgraded at the same moment: an older agent keeps pushing to a newer server.
 
@@ -42,7 +42,7 @@ reports "not ready" for about 15 seconds while it starts; agents retry their pus
 
 With `COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml` in `.env`, you're running `main` (or
 whatever you check out): `git pull && docker compose up -d --build`. To follow releases instead, check
-out a tag (`git checkout v0.4.0`). To have the server pull and apply `main` by itself once CI has passed,
+out a tag (`git checkout v0.4.1`). To have the server pull and apply `main` by itself once CI has passed,
 see [auto-deploy](auto-deploy.md).
 
 ## Rolling back
