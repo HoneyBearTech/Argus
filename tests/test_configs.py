@@ -117,5 +117,9 @@ def test_agent_skips_gitlab_runner_job_containers() -> None:
     source = alloy_block(config, 'loki.source.docker "containers"')
     assert "targets       = discovery.relabel.log_targets.output" in source
     metrics = alloy_block(config, 'prometheus.relabel "containers"')
-    assert re.search(rf'source_labels = \["container_label_{label}"\]\s*regex\s*= "true"\s*action\s*= "drop"', metrics)
-    assert f'regex  = "container_label_{label}"' in metrics
+    regex = re.search(r'source_labels = \["name"\]\s*regex\s*= "([^"]+)"\s*action\s*= "drop"', metrics)
+    assert regex
+    job = re.compile(regex.group(1))
+    assert job.fullmatch("runner-t3abcdef-project-12-concurrent-0-0a1b2c3d4e5f6a7b-build")
+    assert job.fullmatch("runner-t3abcdef-project-12-concurrent-0")
+    assert not job.fullmatch("my-runner-app")

@@ -62,10 +62,8 @@ prometheus.exporter.cadvisor "containers" {
 	docker_host            = "unix:///var/run/docker.sock"
 	docker_only            = true
 	store_container_labels = false
-	// Only to recognise CI job containers below; dropped before pushing.
-	allowlisted_container_labels = ["com.gitlab.gitlab-runner.managed"]
-	storage_duration             = "2m"
-	disabled_metrics             = [
+	storage_duration       = "2m"
+	disabled_metrics       = [
 		"advtcp", "cpu_topology", "cpuset", "hugetlb", "memory_numa", "percpu",
 		"perf_event", "process", "referenced_memory", "resctrl", "sched", "tcp", "udp",
 	]
@@ -102,15 +100,11 @@ prometheus.relabel "containers" {
 		action        = "drop"
 	}
 
+	// Job containers are named runner-<runner>-project-<id>-concurrent-<n>[-…].
 	rule {
-		source_labels = ["container_label_com_gitlab_gitlab_runner_managed"]
-		regex         = "true"
+		source_labels = ["name"]
+		regex         = "runner-.+-project-[0-9]+-concurrent-[0-9]+(-.*)?"
 		action        = "drop"
-	}
-
-	rule {
-		regex  = "container_label_com_gitlab_gitlab_runner_managed"
-		action = "labeldrop"
 	}
 	forward_to = [prometheus.remote_write.argus.receiver]
 }

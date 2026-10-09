@@ -49,7 +49,7 @@ Loki must not be reachable from outside it.
   firewall them to the agents' addresses if your network isn't fully trusted.
 - **Logs can contain secrets.** Whatever your containers print (tokens, personal data) is stored in Loki
   for 30 days and readable through Grafana by every Grafana user and through Loki by anyone who can reach
-  it. CI job containers started by GitLab Runner (label `com.gitlab.gitlab-runner.managed`) are never read:
+  it. CI job containers started by GitLab Runner (the label it marks them with as managed) are never read:
   Docker keeps their output without the secret masking GitLab applies to job logs.
 - **The agent is root on its host.** It runs privileged, in the host's PID and network namespaces, with
   read access to the host's filesystem and the Docker and containerd sockets (which are equivalent to root). A compromised
