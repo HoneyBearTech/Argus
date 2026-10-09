@@ -77,3 +77,6 @@ Loki must not be reachable from outside it.
 - Pin `ARGUS_VERSION` and `ARGUS_AGENT_IMAGE` to a release, verify it, and upgrade when a release fixes a
   vulnerability.
 - Keep `UNIFI_VERIFY_SSL=true` and give the UniFi console a trusted certificate if you can.
+- If you open GitLab's bundled Prometheus (`prometheus['listen_address']`) or GitLab Runner's metrics port
+  for Argus, they answer anyone who can reach them, without authentication; allow only the Argus server
+  with a host firewall (for example `ufw allow from <argus-server> to any port 9090`).
