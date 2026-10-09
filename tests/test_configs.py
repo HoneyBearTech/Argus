@@ -92,3 +92,34 @@ def test_agent_can_reach_containerd() -> None:
     # containerd's socket, or the Docker Containers dashboard is empty for that host.
     agent = load("agent/compose.yml")["services"]["agent"]
     assert "/run/containerd:/run/containerd:ro" in agent["volumes"]
+
+
+def alloy_block(config: str, header: str) -> str:
+    """Return the Alloy block that starts with `header`, up to its matching closing brace."""
+    start = config.index(header + " {")
+    depth = 0
+    for end in range(config.index("{", start), len(config)):
+        depth += {"{": 1, "}": -1}.get(config[end], 0)
+        if depth == 0:
+            return config[start : end + 1]
+    msg = f"unterminated block: {header}"
+    raise ValueError(msg)
+
+
+def test_agent_skips_gitlab_runner_job_containers() -> None:
+    # CI job containers keep raw job output, without GitLab's secret masking: they must not be
+    # tailed into Loki, and their one-job lifetimes would only churn container metrics.
+    config = (ROOT / "agent/config.alloy").read_text()
+    label = "com_gitlab_gitlab_runner_managed"
+    log_targets = alloy_block(config, 'discovery.relabel "log_targets"')
+    assert f"__meta_docker_container_label_{label}" in log_targets
+    assert 'action        = "drop"' in log_targets
+    source = alloy_block(config, 'loki.source.docker "containers"')
+    assert "targets       = discovery.relabel.log_targets.output" in source
+    metrics = alloy_block(config, 'prometheus.relabel "containers"')
+    regex = re.search(r'source_labels = \["name"\]\s*regex\s*= "([^"]+)"\s*action\s*= "drop"', metrics)
+    assert regex
+    job = re.compile(regex.group(1))
+    assert job.fullmatch("runner-t3abcdef-project-12-concurrent-0-0a1b2c3d4e5f6a7b-build")
+    assert job.fullmatch("runner-t3abcdef-project-12-concurrent-0")
+    assert not job.fullmatch("my-runner-app")

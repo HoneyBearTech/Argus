@@ -91,10 +91,19 @@ prometheus.scrape "containers" {
 
 // Keep only container_* series for named containers (drops raw cgroup
 // slices) — but not the scrape's own `up` series, which has no name.
+// GitLab Runner's job containers (Docker executor) live for one job each;
+// tracking them would only add churn, so they're dropped too.
 prometheus.relabel "containers" {
 	rule {
 		source_labels = ["__name__", "name"]
 		regex         = "container_.*;"
+		action        = "drop"
+	}
+
+	// Job containers are named runner-<runner>-project-<id>-concurrent-<n>[-…].
+	rule {
+		source_labels = ["name"]
+		regex         = "runner-.+-project-[0-9]+-concurrent-[0-9]+(-.*)?"
 		action        = "drop"
 	}
 	forward_to = [prometheus.remote_write.argus.receiver]
@@ -104,6 +113,19 @@ prometheus.relabel "containers" {
 discovery.docker "containers" {
 	host             = "unix:///var/run/docker.sock"
 	refresh_interval = "30s"
+}
+
+// GitLab Runner job containers (Docker executor): Docker keeps their raw
+// output, without the secret masking GitLab applies to job logs, so they
+// aren't tailed at all.
+discovery.relabel "log_targets" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_label_com_gitlab_gitlab_runner_managed"]
+		regex         = "true"
+		action        = "drop"
+	}
 }
 
 discovery.relabel "logs" {
@@ -128,7 +150,7 @@ discovery.relabel "logs" {
 
 loki.source.docker "containers" {
 	host          = "unix:///var/run/docker.sock"
-	targets       = discovery.docker.containers.targets
+	targets       = discovery.relabel.log_targets.output
 	labels        = {job = "docker"}
 	relabel_rules = discovery.relabel.logs.rules
 	forward_to    = [loki.process.containers.receiver]

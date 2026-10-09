@@ -41,7 +41,8 @@ that keep it correct.
    Prometheus asks blackbox_exporter to probe it and stores `probe_success`, timings and certificate
    expiry.
 3. **Logs.** The agent reads container logs through the Docker socket, labels them (`host`, `container`,
-   `compose_project`), drops lines older than an hour (first-start backfill) and pushes them to Loki. NPM
+   `compose_project`), drops lines older than an hour (first-start backfill) and pushes them to Loki.
+   GitLab Runner's CI job containers are skipped, for both logs and container metrics. NPM
    access logs are parsed into `site`, `status` and `method`, and Argus' own probes are dropped.
 4. **Dashboards.** Grafana queries Prometheus (PromQL) and Loki (LogQL) through datasources with fixed
    uids (`prometheus`, `loki`), so dashboards keep working on any installation.
