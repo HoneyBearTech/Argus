@@ -62,8 +62,10 @@ prometheus.exporter.cadvisor "containers" {
 	docker_host            = "unix:///var/run/docker.sock"
 	docker_only            = true
 	store_container_labels = false
-	storage_duration       = "2m"
-	disabled_metrics       = [
+	// Only to recognise CI job containers below; dropped before pushing.
+	allowlisted_container_labels = ["com.gitlab.gitlab-runner.managed"]
+	storage_duration             = "2m"
+	disabled_metrics             = [
 		"advtcp", "cpu_topology", "cpuset", "hugetlb", "memory_numa", "percpu",
 		"perf_event", "process", "referenced_memory", "resctrl", "sched", "tcp", "udp",
 	]
@@ -91,11 +93,24 @@ prometheus.scrape "containers" {
 
 // Keep only container_* series for named containers (drops raw cgroup
 // slices) — but not the scrape's own `up` series, which has no name.
+// GitLab Runner's job containers (Docker executor) live for one job each;
+// tracking them would only add churn, so they're dropped too.
 prometheus.relabel "containers" {
 	rule {
 		source_labels = ["__name__", "name"]
 		regex         = "container_.*;"
 		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["container_label_com_gitlab_gitlab_runner_managed"]
+		regex         = "true"
+		action        = "drop"
+	}
+
+	rule {
+		regex  = "container_label_com_gitlab_gitlab_runner_managed"
+		action = "labeldrop"
 	}
 	forward_to = [prometheus.remote_write.argus.receiver]
 }
@@ -104,6 +119,19 @@ prometheus.relabel "containers" {
 discovery.docker "containers" {
 	host             = "unix:///var/run/docker.sock"
 	refresh_interval = "30s"
+}
+
+// GitLab Runner job containers (Docker executor): Docker keeps their raw
+// output, without the secret masking GitLab applies to job logs, so they
+// aren't tailed at all.
+discovery.relabel "log_targets" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_label_com_gitlab_gitlab_runner_managed"]
+		regex         = "true"
+		action        = "drop"
+	}
 }
 
 discovery.relabel "logs" {
@@ -128,7 +156,7 @@ discovery.relabel "logs" {
 
 loki.source.docker "containers" {
 	host          = "unix:///var/run/docker.sock"
-	targets       = discovery.docker.containers.targets
+	targets       = discovery.relabel.log_targets.output
 	labels        = {job = "docker"}
 	relabel_rules = discovery.relabel.logs.rules
 	forward_to    = [loki.process.containers.receiver]

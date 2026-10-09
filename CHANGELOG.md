@@ -16,6 +16,13 @@ Each release's notes on GitHub are its section here.
   behind the new `gitlab` compose profile: put GitLab's URL in `secrets/gitlab.yml`, a `read_api` token in
   `secrets/gitlab.env` (templates in `secrets.example/`) and the exporter in `targets/gitlab.json`.
 
+### Security
+
+- The agent no longer reads the logs of GitLab Runner's CI job containers (Docker executor). Docker keeps
+  their raw output, without the masking GitLab applies to secrets in job logs, so masked CI variables a job
+  printed could reach Loki. Those containers are also left out of container metrics, where each job would
+  have added a short-lived container. Takes effect when the agent runs the new image.
+
 ### Fixed
 
 - The agent showed no container metrics on hosts whose Docker uses the containerd image store, the default
