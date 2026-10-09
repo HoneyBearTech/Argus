@@ -8,8 +8,11 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-09
+
 ### Upgrading
 
+- The agent is unchanged since 0.4.1; agents can stay on `0.4.1` or move to `0.5.0`.
 - PeaNUT 6 puts its metrics behind its login. Before upgrading PeaNUT, put that login in `secrets/peanut_username`
   and `secrets/peanut_password` (templates in `secrets.example/`); PeaNUT 5 ignores the credentials, so this can be
   done first. Prometheus reads the files on every scrape. Without them the UPS dashboard stays empty.
@@ -200,7 +203,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/HoneyBearTech/Argus/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/HoneyBearTech/Argus/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/HoneyBearTech/Argus/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/HoneyBearTech/Argus/compare/v0.2.0...v0.3.0
