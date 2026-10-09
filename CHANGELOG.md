@@ -8,6 +8,15 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-09
+
+### Upgrading
+
+- Agents: copy the new `agent/compose.yml` to each host (it mounts `/run/containerd`, see Fixed) and set
+  `ARGUS_AGENT_IMAGE` to `0.4.0`, then `docker compose up -d`. On a host that runs GitLab Runner with the
+  Docker executor, upgrade the agent before (or instead of) running 0.3.0 or earlier there: older agents
+  ship CI job output to Loki.
+
 ### Added
 
 - GitLab CI dashboard: the latest pipeline on each branch and tag, a status history, pipeline and job
@@ -155,7 +164,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/HoneyBearTech/Argus/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/HoneyBearTech/Argus/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HoneyBearTech/Argus/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HoneyBearTech/Argus/releases/tag/v0.1.0
