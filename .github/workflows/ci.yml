@@ -86,7 +86,7 @@ jobs:
         run: |
           docker run --rm \
             -v "$PWD/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro" \
-            prom/blackbox-exporter:v0.28.0 \
+            prom/blackbox-exporter:v0.29.0 \
             --config.file=/etc/blackbox/blackbox.yml --config.check
 
       - name: Loki config

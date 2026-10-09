@@ -8,6 +8,12 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Security
+
+- `argus-blackbox` is built on blackbox_exporter v0.29.0 (Go 1.27.1): the image's fixable HIGH findings go
+  from 43 (`golang.org/x/crypto`, `golang.org/x/net`, gRPC and Go standard library, in v0.28.0) to 2 (Go
+  standard library). See [docs/dependencies.md](docs/dependencies.md#current-findings).
+
 ## [0.5.0] - 2026-10-09
 
 ### Upgrading

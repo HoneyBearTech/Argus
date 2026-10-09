@@ -73,16 +73,14 @@ Each finding is triaged within 14 days:
 
 ### Current findings
 
-As of 5 October 2026 (0.3.0):
+As of 9 October 2026 (0.5.1):
 
-- **blackbox_exporter v0.28.0**, the latest upstream release (built with Go 1.25.5): Go standard library,
-  `golang.org/x/net`, `golang.org/x/crypto` and gRPC vulnerabilities. Assessment: blackbox_exporter isn't
-  published on the host, so only Prometheus can call it, and it only connects to the URLs and DNS servers
-  the operator lists; the reachable code is its HTTP and DNS clients talking to the operator's own
-  services, so the realistic impact is a probed service crashing or stalling the prober (a false "down"
-  alert), not a compromise. Argus' image runs it as an unprivileged user. It will be bumped as soon as
-  upstream releases a build with current Go; if that hasn't happened by the end of 2026, Argus will build
-  blackbox_exporter from source with patched dependencies instead.
+- **blackbox_exporter v0.29.0**, the latest upstream release (built with Go 1.27.1): two Go standard library
+  vulnerabilities (CVE-2026-78667, CVE-2026-97031), down from 43 HIGH findings in v0.28.0. Assessment:
+  blackbox_exporter isn't published on the host, so only Prometheus can call it, and it only connects to the
+  URLs and DNS servers the operator lists; the realistic impact is a probed service crashing or stalling the
+  prober (a false "down" alert), not a compromise. Argus' image runs it as an unprivileged user. Fixed when
+  upstream releases a build with a patched Go; Argus doesn't build blackbox_exporter itself.
 - **Grafana 13.2.3**, the latest release: CVE-2026-84445 (gRPC-Go denial of service) in the bundled
   Prometheus datasource plugin. Assessment: the plugin's gRPC is the local channel between Grafana and
   its plugin process, not a network listener; the queries it sends go to Argus' own Prometheus. Fixed when
