@@ -79,3 +79,41 @@ tests:
         exp_samples:
           - labels: "{}"
             value: 3.3333333333333335
+
+  # Alert "Internet much slower than usual": compared with the line's own 14-day median, not the plan.
+  # Two weeks of normal results (download ~38 % of an 8 Gbps plan, as on a gateway that can't test the
+  # full plan), then download drops to 40 % of its median; upload stays normal.
+  - interval: 1h
+    input_series:
+      - series: 'unpoller_speedtest_download_mbps{wan_group="WAN", wan_interface="eth9"}'
+        values: "3000x336 1200x2"
+      - series: 'unpoller_speedtest_upload_mbps{wan_group="WAN", wan_interface="eth9"}'
+        values: "5000x338"
+      - series: 'unpoller_wan_provider_download_kbps{wan_networkgroup="WAN"}'
+        values: "8000000x338"
+    promql_expr_test:
+      # Steady results far below the plan don't alert.
+      - rule: argus-internet-slow
+        eval_time: 330h
+        exp_samples: []
+      - rule: argus-internet-slow
+        eval_time: 338h
+        exp_samples:
+          - labels: '{direction="download"}'
+            value: 0.4
+
+  # Alert "No internet speed test in 8 days": the last test ran at t=1h.
+  - interval: 1h
+    input_series:
+      - series: 'unpoller_device_speedtest_rundate_seconds{name="gw", tag="Core"}'
+        values: "3600x240"
+    promql_expr_test:
+      - rule: argus-speedtest-stale
+        eval_time: 150h
+        exp_samples: []
+      - rule: argus-speedtest-stale
+        eval_time: 200h
+        exp_samples:
+          # 199 h = 8.3 days
+          - labels: "{}"
+            value: 716400
