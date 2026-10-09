@@ -597,6 +597,89 @@ groups:
     annotations:
       summary: The gateway lost internet connectivity {{ humanize $values.A.Value }} time(s) in the last 15 minutes.
     isPaused: false
+  # The latest speed test (download or upload) is under half that direction's 14-day median. Compared with
+  # the line's own history, not the plan speed in UniFi: the gateway's test can't measure a multi-gigabit
+  # plan, so results sit well below it every day.
+  - uid: argus-internet-slow
+    title: Internet much slower than usual
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: label_replace(max(unpoller_speedtest_download_mbps{wan_group="WAN"}) / quantile_over_time(0.5, max(unpoller_speedtest_download_mbps{wan_group="WAN"})[14d:1h]),
+          "direction", "download", "", "") or label_replace(max(unpoller_speedtest_upload_mbps{wan_group="WAN"}) / quantile_over_time(0.5,
+          max(unpoller_speedtest_upload_mbps{wan_group="WAN"})[14d:1h]), "direction", "upload", "", "")
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 0.5
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: The gateway's latest {{ $labels.direction }} speed test came in at {{ humanizePercentage $values.A.Value }} of its usual
+        (14-day median) result.
+    isPaused: false
+  - uid: argus-speedtest-stale
+    title: No internet speed test in 8 days
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: time() - max(unpoller_device_speedtest_rundate_seconds)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 691200
+    noDataState: OK
+    execErrState: Error
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: The gateway hasn't run a speed test for {{ humanizeDuration $values.A.Value }}; check the speed test schedule in UniFi
+        Network.
+    isPaused: false
   - uid: argus-pihole-sync
     title: Pi-hole blocklists out of sync
     condition: C

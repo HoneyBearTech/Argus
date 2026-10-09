@@ -16,6 +16,9 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
+- Alerts "Internet much slower than usual" (the gateway's latest download or upload speed test is under half
+  its 14-day median) and "No internet speed test in 8 days". The first compares with the line's own history,
+  not the plan speed set in UniFi, which a gateway's speed test often can't reach.
 - GitLab CI dashboard: a **Runner** row (jobs started and running against the concurrency limit, runner
   errors, failed requests to GitLab) from GitLab Runner's metrics endpoint, and a **GitLab server** row
   (component status, request rate and p95 latency, Puma capacity, Sidekiq backlog and failures, memory)
