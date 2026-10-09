@@ -14,10 +14,23 @@ jobs:
     name: Dashboards + config
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Empty for pull requests from forks (no secrets): the login below is skipped and pulls stay anonymous.
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Most of the images below come from Docker Hub, whose anonymous pull limit is shared by GitHub's
+      # runners and can fail CI on a busy day. A read-only token (DOCKERHUB_PULL_TOKEN) is preferred;
+      # without one, the release workflow's DOCKERHUB_TOKEN is used.
+      - name: Log in to Docker Hub (pull limits)
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PULL_TOKEN || secrets.DOCKERHUB_TOKEN }}
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
