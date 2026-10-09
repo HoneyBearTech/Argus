@@ -25,7 +25,8 @@ tests:
           - labels: "{}"
             value: 4000
       - dashboard: argus-internet
-        panel: Download vs plan
+        panel: Download vs usual
+        ref_id: B
         eval_time: 10m
         exp_samples:
           # 4000 Mbps of an 8 Gbps plan; WAN2's zeros neither win the max nor divide by zero.
@@ -55,7 +56,8 @@ tests:
         values: "0x10"
     promql_expr_test:
       - dashboard: argus-internet
-        panel: Upload vs plan
+        panel: Upload vs usual
+        ref_id: B
         eval_time: 10m
         exp_samples: []
       - dashboard: argus-internet
@@ -101,6 +103,19 @@ tests:
         exp_samples:
           - labels: '{direction="download"}'
             value: 0.4
+      # The dashboard tiles show the same "of usual" ratio the alert uses.
+      - dashboard: argus-internet
+        panel: Download vs usual
+        eval_time: 338h
+        exp_samples:
+          - labels: "{}"
+            value: 0.4
+      - dashboard: argus-internet
+        panel: Upload vs usual
+        eval_time: 338h
+        exp_samples:
+          - labels: "{}"
+            value: 1
 
   # Alert "No internet speed test in 8 days": the last test ran at t=1h.
   - interval: 1h

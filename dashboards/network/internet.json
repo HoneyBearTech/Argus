@@ -149,8 +149,8 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Download vs plan",
-      "description": "Last measured download as a share of the plan's download speed, set per WAN in UniFi Network (Internet settings). Below 80 % is orange, below 50 % red.",
+      "title": "Download vs usual",
+      "description": "Last measured download against its own 14-day median (\"of usual\": below 80 % is orange, below 50 % red, the same measure as the \"Internet much slower than usual\" alert), and against the plan's download speed set per WAN in UniFi Network (\"of plan\", for reference: a gateway's speed test often can't reach a multi-gigabit plan, so it isn't coloured).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -167,8 +167,20 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(unpoller_speedtest_download_mbps{wan_group=\"WAN\"}) / (max(unpoller_wan_provider_download_kbps{wan_networkgroup=\"WAN\"} > 0) / 1000)",
+          "expr": "max(unpoller_speedtest_download_mbps{wan_group=\"WAN\"}) / quantile_over_time(0.5, max(unpoller_speedtest_download_mbps{wan_group=\"WAN\"})[14d:1h])",
           "refId": "A",
+          "legendFormat": "of usual",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(unpoller_speedtest_download_mbps{wan_group=\"WAN\"}) / (max(unpoller_wan_provider_download_kbps{wan_networkgroup=\"WAN\"} > 0) / 1000)",
+          "refId": "B",
+          "legendFormat": "of plan",
           "instant": true,
           "range": false
         }
@@ -197,9 +209,25 @@
               }
             ]
           },
-          "noValue": "No plan speed set in UniFi"
+          "noValue": "No speed test yet"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "of plan"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -212,16 +240,16 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
-        "textMode": "auto",
-        "orientation": "auto"
+        "textMode": "value_and_name",
+        "orientation": "horizontal"
       },
       "interval": "30s"
     },
     {
       "id": 4,
       "type": "stat",
-      "title": "Upload vs plan",
-      "description": "Last measured upload as a share of the plan's upload speed, set per WAN in UniFi Network (Internet settings). Below 80 % is orange, below 50 % red.",
+      "title": "Upload vs usual",
+      "description": "Last measured upload against its own 14-day median (\"of usual\": below 80 % is orange, below 50 % red, the same measure as the \"Internet much slower than usual\" alert), and against the plan's upload speed set per WAN in UniFi Network (\"of plan\", for reference: a gateway's speed test often can't reach a multi-gigabit plan, so it isn't coloured).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -238,8 +266,20 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(unpoller_speedtest_upload_mbps{wan_group=\"WAN\"}) / (max(unpoller_wan_provider_upload_kbps{wan_networkgroup=\"WAN\"} > 0) / 1000)",
+          "expr": "max(unpoller_speedtest_upload_mbps{wan_group=\"WAN\"}) / quantile_over_time(0.5, max(unpoller_speedtest_upload_mbps{wan_group=\"WAN\"})[14d:1h])",
           "refId": "A",
+          "legendFormat": "of usual",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(unpoller_speedtest_upload_mbps{wan_group=\"WAN\"}) / (max(unpoller_wan_provider_upload_kbps{wan_networkgroup=\"WAN\"} > 0) / 1000)",
+          "refId": "B",
+          "legendFormat": "of plan",
           "instant": true,
           "range": false
         }
@@ -268,9 +308,25 @@
               }
             ]
           },
-          "noValue": "No plan speed set in UniFi"
+          "noValue": "No speed test yet"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "of plan"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -283,8 +339,8 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
-        "textMode": "auto",
-        "orientation": "auto"
+        "textMode": "value_and_name",
+        "orientation": "horizontal"
       },
       "interval": "30s"
     },
