@@ -28,6 +28,10 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Internet / ISP: the "Download vs plan" and "Upload vs plan" tiles are now "… vs usual": the latest test against
+  its own 14-day median, coloured like the "Internet much slower than usual" alert, with the share of the plan
+  speed beside it, uncoloured. A gateway's speed test often can't reach a multi-gigabit plan, so the plan-based
+  colour was permanently red.
 - The `peanut` scrape job authenticates with basic auth from `secrets/peanut_username` and
   `secrets/peanut_password`, for PeaNUT 6.
 
