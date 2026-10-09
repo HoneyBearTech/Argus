@@ -89,7 +89,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Network / UniFi, Internet / ISP | — | `unpoller.env` (read-only local account) | — |
 | NAS / Storage | `snmp.json` | `snmp-auth.yml` (SNMPv3) | `COMPOSE_PROFILES=snmp` |
 | Smart Home | `homeassistant.json` | `home_assistant_token` | — |
-| UPS / Power | `peanut.json` | — | — |
+| UPS / Power | `peanut.json` | `peanut_username`, `peanut_password` (PeaNUT 6's login; PeaNUT 5 ignores them) | — |
 | Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL, API key) | the app's profile, e.g. `radarr,sonarr` |
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `COMPOSE_PROFILES=plex` on that agent |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
