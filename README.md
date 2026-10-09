@@ -47,6 +47,7 @@ docs/                user, security and project documentation
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
 | GitLab CI | ci | Are pipelines healthy, is the runner keeping up, and is GitLab itself healthy? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile); GitLab Runner's metrics endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through `/federate` |
+| ESXi / vCenter | vsphere | Are the ESXi hosts overcommitted, and how are datastores filling? | [Telegraf](https://github.com/influxdata/telegraf)'s vSphere input with a read-only vCenter account (`vsphere` profile) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Alerts
@@ -96,6 +97,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | GitLab CI (pipelines) | `gitlab.json` | `gitlab.env` (`read_api` token), `gitlab.yml` (GitLab's URL) | `COMPOSE_PROFILES=gitlab` |
 | GitLab CI (runner) | `gitlab_runner.json` (`<runner>:9252`); set `listen_address = ":9252"` in the runner's `config.toml` | — | — |
 | GitLab CI (GitLab's health) | `gitlab_server.json` (`<gitlab>:9090`); set `prometheus['listen_address'] = '0.0.0.0:9090'` in `gitlab.rb` and run `gitlab-ctl reconfigure` (restarts Puma and Sidekiq: a minute or two of 502s) | — | — |
+| ESXi / vCenter | `vsphere.json` (`telegraf-vsphere:9273` and `:9274`) | `vsphere.env` (vCenter URL + a read-only account), `vsphere-ca.pem` (vCenter's CA, from `https://<vcenter>/certs/download.zip`) | `COMPOSE_PROFILES=vsphere` |
 
 To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release; see [docs/upgrading.md](docs/upgrading.md). New to Argus? The [quick start](docs/quick-start.md) runs it on one machine in about ten minutes.
 

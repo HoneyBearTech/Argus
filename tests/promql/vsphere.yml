@@ -1,0 +1,136 @@
+# ESXi / vCenter dashboard (Telegraf's vSphere input). vCPUs and logical CPUs are counted from the
+# per-core instances; memory granted is in KB, host capacity in MB; CPU ready is milliseconds per
+# 20-second realtime sample, summed over a VM's vCPUs.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # Host h1: 1000 MB, 2 logical CPUs. VMs a (2 vCPUs, 500 MB granted) and b (1 vCPU, 600 MB).
+      - series: 'vsphere_host_mem_totalCapacity_average{esxhostname="h1"}'
+        values: "1000x10"
+      - series: 'vsphere_host_cpu_usage_average{esxhostname="h1", cpu="0"}'
+        values: "10x10"
+      - series: 'vsphere_host_cpu_usage_average{esxhostname="h1", cpu="1"}'
+        values: "10x10"
+      - series: 'vsphere_host_cpu_usage_average{esxhostname="h1", cpu="instance-total"}'
+        values: "10x10"
+      - series: 'vsphere_vm_mem_granted_average{esxhostname="h1", vmname="a"}'
+        values: "512000x10"
+      - series: 'vsphere_vm_mem_granted_average{esxhostname="h1", vmname="b"}'
+        values: "614400x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h1", vmname="a", cpu="0"}'
+        values: "2000x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h1", vmname="a", cpu="1"}'
+        values: "2000x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h1", vmname="a", cpu="instance-total"}'
+        values: "4000x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h1", vmname="b", cpu="0"}'
+        values: "1000x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h1", vmname="b", cpu="instance-total"}'
+        values: "1000x10"
+      # Host h2: 2000 MB, 4 logical CPUs; VM c (4 vCPUs, 200 MB granted).
+      - series: 'vsphere_host_mem_totalCapacity_average{esxhostname="h2"}'
+        values: "2000x10"
+      - series: 'vsphere_host_cpu_usage_average{esxhostname="h2", cpu="0"}'
+        values: "5x10"
+      - series: 'vsphere_host_cpu_usage_average{esxhostname="h2", cpu="1"}'
+        values: "5x10"
+      - series: 'vsphere_host_cpu_usage_average{esxhostname="h2", cpu="2"}'
+        values: "5x10"
+      - series: 'vsphere_host_cpu_usage_average{esxhostname="h2", cpu="3"}'
+        values: "5x10"
+      - series: 'vsphere_vm_mem_granted_average{esxhostname="h2", vmname="c"}'
+        values: "204800x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h2", vmname="c", cpu="0"}'
+        values: "100x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h2", vmname="c", cpu="1"}'
+        values: "100x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h2", vmname="c", cpu="2"}'
+        values: "100x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h2", vmname="c", cpu="3"}'
+        values: "100x10"
+      - series: 'vsphere_vm_cpu_ready_summation{esxhostname="h2", vmname="c", cpu="instance-total"}'
+        values: "400x10"
+      # Datastores in KB: ds1 90 % full and growing 1 KB a minute; ds2 10 % and flat.
+      - series: 'vsphere_datastore_disk_capacity_latest{dsname="ds1"}'
+        values: "1000x10"
+      - series: 'vsphere_datastore_disk_used_latest{dsname="ds1"}'
+        values: "900+1x10"
+      - series: 'vsphere_datastore_disk_capacity_latest{dsname="ds2"}'
+        values: "1000x10"
+      - series: 'vsphere_datastore_disk_used_latest{dsname="ds2"}'
+        values: "100x10"
+    promql_expr_test:
+      # h1: (500 + 600) MB granted of 1000 MB.
+      - dashboard: argus-vsphere
+        panel: Memory granted
+        vars: {esxhost: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 1.1
+      - dashboard: argus-vsphere
+        panel: 7
+        ref_id: E
+        vars: {esxhost: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{esxhostname="h1"}'
+            value: 1.1
+          - labels: '{esxhostname="h2"}'
+            value: 0.1
+      # h1: 3 vCPUs on 2 logical CPUs; h2: 4 on 4. The instance-total series don't count.
+      - dashboard: argus-vsphere
+        panel: "vCPU : CPU"
+        vars: {esxhost: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 1.5
+      - dashboard: argus-vsphere
+        panel: 7
+        ref_id: F
+        vars: {esxhost: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{esxhostname="h1"}'
+            value: 1.5
+          - labels: '{esxhostname="h2"}'
+            value: 1
+      # a: 4000 ms over 2 vCPUs of a 20 s sample = 10 % per vCPU; b 5 %, c 0.5 %.
+      - dashboard: argus-vsphere
+        panel: Worst CPU ready
+        vars: {esxhost: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 0.1
+      - dashboard: argus-vsphere
+        panel: 14
+        ref_id: C
+        vars: {esxhost: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{vmname="a"}'
+            value: 0.1
+          - labels: '{vmname="b"}'
+            value: 0.05
+          - labels: '{vmname="c"}'
+            value: 0.005
+      - dashboard: argus-vsphere
+        panel: Fullest datastore
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 0.91
+      # ds1: 90 KB free at 1 KB a minute = 90 minutes = 0.0625 days. ds2 isn't growing: its growth is
+      # floored at 0.001 bytes/s, so it comes out in the thousands of days ("Not filling" on the dashboard).
+      - dashboard: argus-vsphere
+        panel: 11
+        ref_id: E
+        eval_time: 10m
+        exp_samples:
+          - labels: '{dsname="ds1"}'
+            value: 0.0625
+          - labels: '{dsname="ds2"}'
+            value: 10666.666666666666
