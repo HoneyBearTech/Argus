@@ -8,6 +8,8 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-09
+
 ### Security
 
 - `argus-blackbox` is built on blackbox_exporter v0.29.0 (Go 1.27.1): the image's fixable HIGH findings go
@@ -209,7 +211,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/HoneyBearTech/Argus/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/HoneyBearTech/Argus/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/HoneyBearTech/Argus/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/HoneyBearTech/Argus/compare/v0.3.0...v0.4.0
