@@ -46,7 +46,7 @@ docs/                user, security and project documentation
 | Smart Home | home | What's the house doing — temperatures, HVAC, energy? | Home Assistant's Prometheus integration (long-lived token) |
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
-| GitLab CI | ci | Are pipelines healthy, and is the runner keeping up? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile) |
+| GitLab CI | ci | Are pipelines healthy, is the runner keeping up, and is GitLab itself healthy? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile); GitLab Runner's metrics endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through `/federate` |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Alerts
@@ -60,6 +60,7 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 | Network | internet on backup WAN, internet dropped, Pi-hole blocklists out of sync |
 | Containers | container restarted more than 3 times in an hour |
 | Logs | a site returning > 20 server errors (5xx) in 10 minutes, log pipeline stalled (Loki receiving almost nothing for 15 minutes) |
+| GitLab | a GitLab component (Puma, Sidekiq, Gitaly, PostgreSQL, …) down for 5 minutes, the latest pipeline on a watched branch failed |
 
 Alerts are grouped per rule and repeat every 12 hours while firing.
 
@@ -92,6 +93,9 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL, API key) | the app's profile, e.g. `radarr,sonarr` |
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `COMPOSE_PROFILES=plex` on that agent |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
+| GitLab CI (pipelines) | `gitlab.json` | `gitlab.env` (`read_api` token), `gitlab.yml` (GitLab's URL) | `COMPOSE_PROFILES=gitlab` |
+| GitLab CI (runner) | `gitlab_runner.json` (`<runner>:9252`); set `listen_address = ":9252"` in the runner's `config.toml` | — | — |
+| GitLab CI (GitLab's health) | `gitlab_server.json` (`<gitlab>:9090`); set `prometheus['listen_address'] = '0.0.0.0:9090'` in `gitlab.rb` and run `gitlab-ctl reconfigure` (restarts Puma and Sidekiq: a minute or two of 502s) | — | — |
 
 To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release; see [docs/upgrading.md](docs/upgrading.md). New to Argus? The [quick start](docs/quick-start.md) runs it on one machine in about ten minutes.
 

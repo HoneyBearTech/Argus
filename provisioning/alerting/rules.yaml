@@ -759,3 +759,90 @@ groups:
     annotations:
       summary: '{{ $labels.host }} / {{ $labels.name }} restarted {{ humanize $values.A.Value }} times in the last hour.'
     isPaused: false
+- orgId: 1
+  name: GitLab
+  folder: Argus
+  interval: 1m
+  rules:
+  - uid: argus-gitlab-component-down
+    title: GitLab component down
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (component) (gitlab_component_up{job="gitlab_server"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: GitLab's {{ $labels.component }} is down (as seen by GitLab's own Prometheus).
+    isPaused: false
+  # The latest pipeline on a watched branch failed. Only branches: a tag never gets a newer pipeline,
+  # so a failed tag would alert forever. Passing branches report 0, so the alert resolves on the next
+  # green run. The ID filter keeps only the newest label set (the exporter never drops old ones).
+  - uid: argus-gitlab-pipeline-failing
+    title: GitLab pipeline failing
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (project, ref) ((gitlab_ci_pipeline_status{kind="branch", status="failed"} == 1 and ignoring (status)
+          (gitlab_ci_pipeline_id == on (project, kind, ref) group_left max by (project, kind, ref) (gitlab_ci_pipeline_id)))
+          or (gitlab_ci_pipeline_id{kind="branch"} == on (project, kind, ref) group_left max by (project, kind, ref) (gitlab_ci_pipeline_id))
+          * 0)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: The latest pipeline on {{ $labels.project }} ({{ $labels.ref }}) failed.
+    isPaused: false

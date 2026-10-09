@@ -90,6 +90,41 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/gitlab.json]
 
+  # GitLab Runner's own metrics (`listen_address` in the runner's
+  # config.toml): jobs running against its concurrency limit, errors.
+  - job_name: gitlab_runner
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/gitlab_runner.json]
+
+  # GitLab's health (Omnibus): a subset of what GitLab's bundled Prometheus
+  # already scrapes from its components, read through /federate
+  # (`prometheus['listen_address']` in gitlab.rb). The component a series
+  # comes from becomes `component`; its `up` becomes gitlab_component_up so
+  # it isn't mistaken for an Argus scrape target.
+  - job_name: gitlab_server
+    scrape_interval: 30s
+    scrape_timeout: 25s
+    metrics_path: /federate
+    params:
+      match[]:
+        - up
+        - '{__name__=~"puma_.*"}'
+        - '{__name__=~"sidekiq_(queue_size|queue_latency_seconds|jobs_failed_total|concurrency)"}'
+        - '{__name__=~"gitlab_workhorse_http_requests_total|gitlab_workhorse_http_request_duration_seconds_(bucket|count|sum)"}'
+        - '{__name__=~"pg_up|redis_up|ruby_process_resident_memory_bytes"}'
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/gitlab_server.json]
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: up
+        target_label: __name__
+        replacement: gitlab_component_up
+      - source_labels: [exported_job]
+        target_label: component
+      - regex: exported_job|exported_instance
+        action: labeldrop
+
   # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
   # up as a down target like any other exporter.
   - job_name: loki

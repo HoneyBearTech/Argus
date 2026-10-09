@@ -8,6 +8,15 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- GitLab CI dashboard: a **Runner** row (jobs started and running against the concurrency limit, runner
+  errors, failed requests to GitLab) from GitLab Runner's metrics endpoint, and a **GitLab server** row
+  (component status, request rate and p95 latency, Puma capacity, Sidekiq backlog and failures, memory)
+  from a subset of GitLab's bundled Prometheus, read through `/federate`. Both are new scrape jobs
+  (`gitlab_runner`, `gitlab_server`) with targets in `targets/`; see the README for the GitLab settings.
+- Alerts "GitLab component down" and "GitLab pipeline failing" (latest pipeline on a watched branch).
+
 ## [0.4.1] - 2026-10-09
 
 ### Fixed

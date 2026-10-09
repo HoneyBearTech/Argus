@@ -108,3 +108,113 @@ tests:
         exp_samples:
           - labels: '{job_name="unit", key="g/p/branch/main/test/unit", kind="branch", project="g/p", ref="main", stage="test", status="success"}'
             value: 1
+
+  # Alert "GitLab pipeline failing": main's stale failed push label set (#10) must not alert once
+  # a scheduled run (#11) passed; dev's latest failed; a failed tag never alerts.
+  - interval: 1m
+    input_series:
+      - series: 'gitlab_ci_pipeline_id{project="g/p", kind="branch", ref="main", source="push"}'
+        values: "10x10"
+      - series: 'gitlab_ci_pipeline_id{project="g/p", kind="branch", ref="main", source="schedule"}'
+        values: "_x5 11x5"
+      - series: 'gitlab_ci_pipeline_status{project="g/p", kind="branch", ref="main", source="push", status="failed"}'
+        values: "1x10"
+      - series: 'gitlab_ci_pipeline_status{project="g/p", kind="branch", ref="main", source="schedule", status="success"}'
+        values: "_x5 1x5"
+      - series: 'gitlab_ci_pipeline_id{project="g/p", kind="branch", ref="dev", source="push"}'
+        values: "7x10"
+      - series: 'gitlab_ci_pipeline_status{project="g/p", kind="branch", ref="dev", source="push", status="failed"}'
+        values: "1x10"
+      - series: 'gitlab_ci_pipeline_id{project="g/p", kind="tag", ref="v1", source="push"}'
+        values: "5x10"
+      - series: 'gitlab_ci_pipeline_status{project="g/p", kind="tag", ref="v1", source="push", status="failed"}'
+        values: "1x10"
+    promql_expr_test:
+      - rule: argus-gitlab-pipeline-failing
+        eval_time: 10m
+        exp_samples:
+          - labels: '{project="g/p", ref="dev"}'
+            value: 1
+      - rule: argus-gitlab-pipeline-failing
+        eval_time: 4m
+        exp_samples:
+          - labels: '{project="g/p", ref="main"}'
+            value: 1
+          - labels: '{project="g/p", ref="dev"}'
+            value: 1
+      # Passing branches report 0 rather than nothing, so their alert resolves instead of going stale.
+      - rule: argus-gitlab-pipeline-failing
+        measurement: true
+        eval_time: 10m
+        exp_samples:
+          - labels: '{project="g/p", ref="main"}'
+            value: 0
+          - labels: '{project="g/p", ref="dev"}'
+            value: 1
+
+  # GitLab server health (federated from GitLab's own Prometheus) and the runner.
+  - interval: 1m
+    input_series:
+      - series: 'gitlab_component_up{job="gitlab_server", component="gitaly"}'
+        values: "0x10"
+      - series: 'gitlab_component_up{job="gitlab_server", component="gitlab-rails"}'
+        values: "1x10"
+      # Two Puma workers with 4 threads each: 3 busy on one, none on the other.
+      - series: 'puma_max_threads{job="gitlab_server", worker="worker_0"}'
+        values: "4x10"
+      - series: 'puma_max_threads{job="gitlab_server", worker="worker_1"}'
+        values: "4x10"
+      - series: 'puma_pool_capacity{job="gitlab_server", worker="worker_0"}'
+        values: "1x10"
+      - series: 'puma_pool_capacity{job="gitlab_server", worker="worker_1"}'
+        values: "4x10"
+      - series: 'gitlab_workhorse_http_requests_total{job="gitlab_server", code="200", route="a"}'
+        values: "0+60x10"
+      - series: 'gitlab_workhorse_http_requests_total{job="gitlab_server", code="204", route="b"}'
+        values: "0+60x10"
+      - series: 'gitlab_workhorse_http_requests_total{job="gitlab_server", code="502", route="a"}'
+        values: "0+6x10"
+      # Sidekiq's per-queue counter (resets with Sidekiq) and gitlab-exporter's instance-wide total
+      # (kept in Redis): only the total is used.
+      - series: 'sidekiq_jobs_failed_total{job="gitlab_server", component="gitlab-sidekiq", queue="mailers", worker="x"}'
+        values: "0+2x10"
+      - series: 'sidekiq_jobs_failed_total{job="gitlab_server", component="gitlab_exporter_sidekiq"}'
+        values: "80+2x10"
+      - series: 'gitlab_runner_jobs_total{job="gitlab_runner", runner="r"}'
+        values: "0 0 1 1 1 2 2 2 2 3 3"
+    promql_expr_test:
+      - rule: argus-gitlab-component-down
+        eval_time: 10m
+        exp_samples:
+          - labels: '{component="gitaly"}'
+            value: 0
+      - dashboard: argus-gitlab-ci
+        panel: 25
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      - dashboard: argus-gitlab-ci
+        panel: 23
+        vars: {__rate_interval: "5m"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{code_class="2"}'
+            value: 2
+          - labels: '{code_class="5"}'
+            value: 0.1
+      - dashboard: argus-gitlab-ci
+        panel: 26
+        ref_id: B
+        vars: {__interval: "5m"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 10
+      - dashboard: argus-gitlab-ci
+        panel: 18
+        vars: {__range: "10m"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 3
