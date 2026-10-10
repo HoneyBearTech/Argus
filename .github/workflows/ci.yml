@@ -154,5 +154,6 @@ jobs:
         run: |
           GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
           GF_SECURITY_ADMIN_PASSWORD=ci docker compose -f docker-compose.yml -f docker-compose.source.yml config --quiet
+          GF_SECURITY_ADMIN_PASSWORD=ci ARGUS_PROXY_NETWORK=ci docker compose -f docker-compose.yml -f docker-compose.source.yml -f docker-compose.proxy.yml config --quiet
           ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex config --quiet
           docker compose -f logs/compose.yml config --quiet

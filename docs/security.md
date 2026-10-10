@@ -72,7 +72,10 @@ Loki must not be reachable from outside it.
 ## Recommendations
 
 - Keep the server and agents on a network you control; publish only Grafana, through a reverse proxy with
-  TLS and a strong admin password.
+  TLS and a strong admin password. If the proxy runs in Docker on the same host, add
+  `docker-compose.proxy.yml` to `COMPOSE_FILE` with `ARGUS_PROXY_NETWORK` set to the proxy's network, point
+  the proxy at `argus-grafana:3000` and set `GRAFANA_BIND=127.0.0.1:3000`, so the plain-HTTP port isn't
+  open to the network.
 - Give each integration its own read-only account or token, and rotate them if they leak.
 - Pin `ARGUS_VERSION` and `ARGUS_AGENT_IMAGE` to a release, verify it, and upgrade when a release fixes a
   vulnerability.

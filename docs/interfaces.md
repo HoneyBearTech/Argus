@@ -8,7 +8,7 @@ what it accepts, and how it's configured. The trust placed in each is described 
 
 | Endpoint | Where | Protocol and authentication | Used by |
 | --- | --- | --- | --- |
-| Grafana | server, `GRAFANA_BIND` (default `0.0.0.0:3000`) | HTTP; Grafana login (sign-up and anonymous access off). Put a reverse proxy with TLS in front if it's reachable beyond your own network. | people (UI), Grafana's HTTP API |
+| Grafana | server, `GRAFANA_BIND` (default `0.0.0.0:3000`); with `docker-compose.proxy.yml` also `argus-grafana:3000` on the proxy's Docker network (`ARGUS_PROXY_NETWORK`) | HTTP; Grafana login (sign-up and anonymous access off). Put a reverse proxy with TLS in front if it's reachable beyond your own network; with the proxy on the same host, `docker-compose.proxy.yml` and `GRAFANA_BIND=127.0.0.1:3000` leave the proxy as the only way in. | people (UI), Grafana's HTTP API |
 | Prometheus | server, `PROMETHEUS_BIND` (default `0.0.0.0:9090`) | HTTP, **no authentication**: the remote-write receiver (`/api/v1/write`) and the query API | agents (push), Grafana, you |
 | Loki | server (`loki` profile, `LOKI_BIND`, default `0.0.0.0:3101`) or `logs/compose.yml` (`:3101`) | HTTP, **no authentication**: push (`/loki/api/v1/push`) and query APIs | agents (push), Grafana |
 | blackbox_exporter, the exporters | server, compose network only (not published) | HTTP `/metrics` or `/probe` | Prometheus |
@@ -30,7 +30,7 @@ Outbound connections:
 
 **Server `.env`** (template: [`.env.example`](../.env.example)): `GF_SECURITY_ADMIN_USER`,
 `GF_SECURITY_ADMIN_PASSWORD` (required), `GRAFANA_ROOT_URL`, `ARGUS_VERSION`, `ARGUS_REGISTRY`,
-`COMPOSE_FILE` (source mode), `GRAFANA_BIND`, `PROMETHEUS_BIND`, `LOKI_BIND`,
+`COMPOSE_FILE` (source mode, proxy network), `ARGUS_PROXY_NETWORK`, `GRAFANA_BIND`, `PROMETHEUS_BIND`, `LOKI_BIND`,
 `PROMETHEUS_RETENTION_TIME`, `PROMETHEUS_RETENTION_SIZE`, `COMPOSE_PROFILES` (`loki`, `snmp`, one per
 media app), `DISCORD_WEBHOOK_URL`, `UNIFI_VERIFY_SSL`, `LOKI_URL`.
 

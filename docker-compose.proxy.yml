@@ -1,0 +1,18 @@
+# Put Grafana on a reverse proxy's Docker network, for a proxy that runs in
+# Docker on the same host (for example Nginx Proxy Manager). The proxy then
+# reaches Grafana as argus-grafana:3000, so Grafana's own port can listen on
+# loopback only (GRAFANA_BIND=127.0.0.1:3000) and the plain-HTTP login is no
+# longer open to the network.
+# Enable by adding this file to COMPOSE_FILE in .env and setting
+# ARGUS_PROXY_NETWORK to the proxy's network (see `docker network ls`).
+services:
+  grafana:
+    networks:
+      default:
+      proxy:
+        aliases: [argus-grafana]
+
+networks:
+  proxy:
+    name: ${ARGUS_PROXY_NETWORK:?set ARGUS_PROXY_NETWORK in .env}
+    external: true
