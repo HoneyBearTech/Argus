@@ -59,6 +59,17 @@ def test_compose_files_publish_no_blackbox_or_exporter_ports() -> None:
     assert published == ["grafana", "loki", "prometheus"]
 
 
+def test_proxy_override_adds_only_grafana_to_the_proxy_network() -> None:
+    """Grafana keeps the compose network (to reach Prometheus) and joins only an existing proxy network."""
+    override = load("docker-compose.proxy.yml")
+    assert list(override["services"]) == ["grafana"]
+    networks = override["services"]["grafana"]["networks"]
+    assert "default" in networks
+    assert networks["proxy"]["aliases"] == ["argus-grafana"]
+    assert override["networks"]["proxy"]["external"] is True
+    assert "ports" not in override["services"]["grafana"]
+
+
 def test_unifi_exporter_verifies_tls_by_default() -> None:
     environment = load("docker-compose.yml")["services"]["unpoller"]["environment"]
     assert environment["UP_UNIFI_DEFAULT_VERIFY_SSL"] == "${UNIFI_VERIFY_SSL:-true}"

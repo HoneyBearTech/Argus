@@ -16,6 +16,9 @@ Each release's notes on GitHub are its section here.
   behind the new `vsphere` compose profile: a read-only vCenter account and the vCenter URL in
   `secrets/vsphere.env`, vCenter's CA certificate in `secrets/vsphere-ca.pem` (Telegraf verifies vCenter's
   certificate), and the collector in `targets/vsphere.json`.
+- `docker-compose.proxy.yml`: puts Grafana on a reverse proxy's Docker network (`ARGUS_PROXY_NETWORK`) as
+  `argus-grafana`, for a proxy such as Nginx Proxy Manager running on the same host. With
+  `GRAFANA_BIND=127.0.0.1:3000`, Grafana's plain-HTTP port is then no longer open to the network.
 
 ## [0.5.1] - 2026-10-09
 
