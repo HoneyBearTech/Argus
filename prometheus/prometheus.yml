@@ -7,7 +7,11 @@ global:
 # targets/<job>.json on the host (file_sd), so no addresses are committed. Prometheus picks up changes to those files
 # without a restart. Placeholder versions live in targets.example/.
 scrape_configs:
+  # Prometheus itself, with the password secrets/prometheus-web.yml may require.
   - job_name: prometheus
+    basic_auth:
+      username: argus
+      password_file: /etc/prometheus/secrets/prometheus_password
     static_configs:
       - targets: [localhost:9090]
 

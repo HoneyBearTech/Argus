@@ -16,7 +16,8 @@ if configured).
    configuration changed: `prometheus/` → Prometheus, `blackbox/` → blackbox, `provisioning/` → Grafana,
    `logs/loki.yaml` → Loki (if it runs here). Dashboard changes need no restart.
 4. Waits up to five minutes for Grafana (`/api/health`) and Prometheus (`/-/ready`) to answer on their
-   published ports. If they don't, or a step fails, it **rolls back** to the previous commit, redeploys
+   published ports (sending Prometheus' password from `secrets/prometheus_password`, in case it
+   [requires one](security.md#requiring-a-password-for-prometheus)). If they don't, or a step fails, it **rolls back** to the previous commit, redeploys
    it, and records the bad commit in `.git/argus-deploy-bad-commits` so later runs skip it until `main`
    moves on.
 

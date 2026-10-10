@@ -6,6 +6,8 @@
 //   ARGUS_HOST            name this host reports as (required)
 //   ARGUS_PROMETHEUS_URL  Argus Prometheus, e.g. http://argus.lan:9090 (required)
 //   ARGUS_LOKI_URL        Argus Loki, e.g. http://argus.lan:3101 (required)
+//   ARGUS_PROMETHEUS_PASSWORD  password of Prometheus' `argus` user, if it
+//                         requires one (optional)
 // Optional: mount Nginx Proxy Manager's data/logs directory at /var/log/npm to
 // also ship its access logs.
 
@@ -13,6 +15,11 @@
 prometheus.remote_write "argus" {
 	endpoint {
 		url = sys.env("ARGUS_PROMETHEUS_URL") + "/api/v1/write"
+		// Sent always; a Prometheus without users ignores it.
+		basic_auth {
+			username = "argus"
+			password = sys.env("ARGUS_PROMETHEUS_PASSWORD")
+		}
 	}
 	external_labels = {
 		host = sys.env("ARGUS_HOST"),

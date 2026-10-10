@@ -25,6 +25,8 @@ services:
       - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-8GB}
       # Argus agents push host and container metrics here.
       - --web.enable-remote-write-receiver
+      # Who may push and query: no one needs a password until it lists users.
+      - --web.config.file=/etc/prometheus/secrets/prometheus-web.yml
     volumes:
       # Scrape targets are host-specific and never committed (see targets.example/).
       - ./targets:/etc/prometheus/targets:ro
@@ -217,6 +219,13 @@ services:
       LOKI_URL: ${LOKI_URL:-http://loki:3100}
     volumes:
       - grafana_data:/var/lib/grafana
+      # Prometheus' password, for the provisioned datasource. Only this one
+      # file: Grafana never sees the other secrets.
+      - type: bind
+        source: ./secrets/prometheus_password
+        target: /etc/grafana/secrets/prometheus_password
+        read_only: true
+        bind: { create_host_path: false }
     ports:
       - ${GRAFANA_BIND:-0.0.0.0:3000}:3000
 

@@ -1,0 +1,11 @@
+# Prometheus web configuration (--web.config.file). With no users listed,
+# Prometheus accepts pushes and queries from anyone who can reach it.
+#
+# To require a password (user `argus`, the one in secrets/prometheus_password,
+# which Grafana and Prometheus' own scrape already send), add its bcrypt hash:
+#
+#   basic_auth_users:
+#     argus: <hash>
+#
+# and give each agent the same password as ARGUS_PROMETHEUS_PASSWORD. See
+# docs/security.md#requiring-a-password-for-prometheus.

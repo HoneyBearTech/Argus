@@ -101,7 +101,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 
 To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release; see [docs/upgrading.md](docs/upgrading.md). New to Argus? The [quick start](docs/quick-start.md) runs it on one machine in about ten minutes.
 
-**Security:** Prometheus (9090) and Loki (3101) accept pushes without authentication, so agents anywhere on the network can reach them. Run Argus on a trusted network, and put Grafana behind a reverse proxy with TLS if it's reachable from outside (`docker-compose.proxy.yml` puts Grafana on the network of a proxy running in Docker on the same host, so its own port can listen on loopback only). What Argus does and doesn't protect against is in [docs/security.md](docs/security.md).
+**Security:** Prometheus (9090) and Loki (3101) accept pushes without authentication, so agents anywhere on the network can reach them; Prometheus can [require a password](docs/security.md#requiring-a-password-for-prometheus). Run Argus on a trusted network, and put Grafana behind a reverse proxy with TLS if it's reachable from outside (`docker-compose.proxy.yml` puts Grafana on the network of a proxy running in Docker on the same host, so its own port can listen on loopback only). What Argus does and doesn't protect against is in [docs/security.md](docs/security.md).
 
 **Developing** — to edit dashboards, alert rules or configs live, run from the checkout instead of the published images by setting `COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml` in `.env`. Grafana then reads `dashboards/` and `provisioning/` straight from the repo (dashboard edits show up within 30 seconds), and `docker compose up -d --build` rebuilds the images. In this mode, deploying is `git pull` on the server; restart the stack only when `docker-compose.yml`, `provisioning/` or a config changes. A systemd timer can do that for you once CI passes: see [docs/auto-deploy.md](docs/auto-deploy.md).
 
@@ -126,7 +126,7 @@ Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and
 - **Nginx Proxy Manager access logs** (Reverse Proxy Traffic dashboard): on the host running NPM, set `NPM_LOG_DIR` to its `data/logs` directory.
 - **Plex** (Media Stack): on the Plex host (amd64), add the `plex` profile with `PLEX_SERVER` and `PLEX_TOKEN`, and list that host in the server's `targets/plex.json`.
 
-The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable from the host; those are the defaults.
+The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable from the host; those are the defaults. If Prometheus requires a password, add `-e ARGUS_PROMETHEUS_PASSWORD=...` (or set it in the agent's `.env`).
 
 ## Adding or changing a dashboard
 1. Build or edit it in the sandbox Grafana, then **Export → Export as JSON** (leave "Export for sharing externally" off), or edit the JSON directly in VS Code.

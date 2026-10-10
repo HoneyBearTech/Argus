@@ -1,0 +1,3 @@
+# CI only: requires the password in prometheus_password next to this file.
+basic_auth_users:
+  argus: $2y$10$CQLxFqR5Z7GYWDEXn18Ok.O5o5pHnzMas3bu3B/KKsZC4Hgc6LHlW

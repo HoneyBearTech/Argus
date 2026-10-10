@@ -136,3 +136,52 @@ def test_agent_skips_gitlab_runner_job_containers() -> None:
     # cache-init containers (seen on GitLab Runner 19.4 with the Docker executor)
     assert job.fullmatch(f"runner-{'a' * 32}-cache-{'b' * 32}-protected-set-permission-{'c' * 32}")
     assert not job.fullmatch("my-runner-app")
+
+
+def test_prometheus_reads_its_web_config_from_secrets() -> None:
+    """Whether Prometheus requires a password is decided by secrets/prometheus-web.yml."""
+    command = load("docker-compose.yml")["services"]["prometheus"]["command"]
+    assert "--web.config.file=/etc/prometheus/secrets/prometheus-web.yml" in command
+
+
+def test_example_web_config_requires_no_password() -> None:
+    """The shipped example lists no users, so no install ends up with a published password."""
+    assert load("secrets.example/prometheus-web.yml") is None
+
+
+def test_prometheus_password_is_read_from_a_file() -> None:
+    """Grafana and Prometheus' own scrape read the password from secrets/, never from committed config."""
+    datasource = next(d for d in load("provisioning/datasources/argus.yaml")["datasources"] if d["uid"] == "prometheus")
+    assert datasource["basicAuth"] is True
+    assert datasource["basicAuthUser"] == "argus"
+    assert datasource["secureJsonData"]["basicAuthPassword"] == "$__file{/etc/grafana/secrets/prometheus_password}"
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "prometheus")
+    assert job["basic_auth"] == {"username": "argus", "password_file": "/etc/prometheus/secrets/prometheus_password"}
+
+
+def test_grafana_gets_only_the_prometheus_password() -> None:
+    """Grafana mounts one secret file, read-only, and compose refuses to start rather than create it."""
+    volumes = load("docker-compose.yml")["services"]["grafana"]["volumes"]
+    secrets = [v for v in volumes if isinstance(v, dict) and "secrets" in v["source"]]
+    assert secrets == [
+        {
+            "type": "bind",
+            "source": "./secrets/prometheus_password",
+            "target": "/etc/grafana/secrets/prometheus_password",
+            "read_only": True,
+            "bind": {"create_host_path": False},
+        }
+    ]
+    assert not [v for v in volumes if isinstance(v, str) and "secrets" in v]
+
+
+def test_agent_sends_the_prometheus_password() -> None:
+    config = (ROOT / "agent" / "config.alloy").read_text()
+    remote_write = re.search(r'prometheus\.remote_write "argus" \{.*?\n\}', config, re.DOTALL)
+    assert remote_write
+    assert re.search(
+        r'basic_auth \{\s*username = "argus"\s*password = sys\.env\("ARGUS_PROMETHEUS_PASSWORD"\)\s*\}',
+        remote_write.group(),
+    )
+    environment = load("agent/compose.yml")["services"]["agent"]["environment"]
+    assert environment["ARGUS_PROMETHEUS_PASSWORD"] == "${ARGUS_PROMETHEUS_PASSWORD:-}"  # noqa: S105 - compose reference

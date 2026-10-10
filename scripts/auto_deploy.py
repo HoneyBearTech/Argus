@@ -19,6 +19,7 @@ library is used, so the script runs with the server's own python3.
 from __future__ import annotations
 
 import argparse
+import base64
 import http.client
 import json
 import re
@@ -44,8 +45,10 @@ RESTART_ON = {
     "logs/loki.yaml": "loki",
     "provisioning/": "grafana",
 }
-# Service, container port and the path that answers 200 once it's ready.
-HEALTH_CHECKS = (("grafana", 3000, "/api/health"), ("prometheus", 9090, "/-/ready"))
+# Service, container port, the path that answers 200 once it's ready, and whether it may need
+# Prometheus' password (secrets/prometheus-web.yml).
+HEALTH_CHECKS = (("grafana", 3000, "/api/health", False), ("prometheus", 9090, "/-/ready", True))
+PROMETHEUS_PASSWORD = ROOT / "secrets" / "prometheus_password"
 HEALTH_TIMEOUT = 300
 USER_AGENT = "argus-deploy"
 
@@ -132,10 +135,11 @@ def changed_services(changed: list[str], running: set[str]) -> list[str]:
     return sorted(wanted & running)
 
 
-def answers(url: str) -> bool:
-    """Whether the URL answers 200."""
+def answers(url: str, authorization: str | None = None) -> bool:
+    """Whether the URL answers 200, sending the Authorization header if there is one."""
+    request = urllib.request.Request(url, headers={"Authorization": authorization} if authorization else {})  # noqa: S310 - local health endpoint
     try:
-        with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310 - local health endpoint
+        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310 - local health endpoint
             return response.status == 200  # noqa: PLR2004 - HTTP OK
     except urllib.error.HTTPError as err:
         err.close()
@@ -144,14 +148,22 @@ def answers(url: str) -> bool:
         return False
 
 
-def health_urls() -> list[str]:
-    """Health URLs of the published Grafana and Prometheus ports."""
-    urls = []
-    for service, port, path in HEALTH_CHECKS:
+def prometheus_authorization() -> str | None:
+    """Return the basic auth header for Prometheus' `argus` user, if secrets/ has its password."""
+    if not PROMETHEUS_PASSWORD.exists():
+        return None
+    password = PROMETHEUS_PASSWORD.read_text().strip()
+    return "Basic " + base64.b64encode(f"argus:{password}".encode()).decode()
+
+
+def health_urls() -> dict[str, str | None]:
+    """Health URLs of the published Grafana and Prometheus ports, with the Authorization header for each."""
+    urls = {}
+    for service, port, path, needs_password in HEALTH_CHECKS:
         published = run("docker", "compose", "port", service, str(port))
         host, _, host_port = published.rpartition(":")
         host = "127.0.0.1" if host in {"0.0.0.0", "", "::", "[::]"} else host  # noqa: S104 - mapping, not binding
-        urls.append(f"http://{host}:{host_port}{path}")
+        urls[f"http://{host}:{host_port}{path}"] = prometheus_authorization() if needs_password else None
     return urls
 
 
@@ -160,7 +172,7 @@ def healthy(timeout: float = HEALTH_TIMEOUT) -> bool:
     deadline = time.monotonic() + timeout
     pending = health_urls()
     while pending and time.monotonic() < deadline:
-        pending = [url for url in pending if not answers(url)]
+        pending = {url: auth for url, auth in pending.items() if not answers(url, auth)}
         if pending:
             time.sleep(5)
     for url in pending:
