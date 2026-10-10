@@ -70,7 +70,9 @@ Containers** shows every container (including Argus itself), and **Logs** lets y
 - Light up the other dashboards (Pi-hole, UniFi, NAS, Home Assistant, media apps, UPS) by adding their
   targets and credentials; the README's [table](../README.md#running-it) lists what each needs.
 - Send alerts to Discord by setting `DISCORD_WEBHOOK_URL` in `.env` and running `docker compose up -d`.
-- Read [security.md](security.md) before running Argus anywhere but your own trusted network.
+- Read [security.md](security.md) before running Argus anywhere but your own trusted network, and
+  [require a password for Prometheus](security.md#requiring-a-password-for-prometheus) once agents on other
+  hosts push to it.
 - Pin `ARGUS_VERSION` in `.env` to a release and [verify it](verifying-releases.md).
 
 To remove everything: `docker rm -f argus-agent && docker compose down -v` (the `-v` deletes the stored

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import socket
 import subprocess
@@ -263,22 +264,37 @@ def test_changed_services_only_restarts_running_ones() -> None:
     assert deploy.changed_services(changed, {"grafana", "blackbox", "prometheus"}) == ["blackbox", "grafana"]
 
 
-def test_health_urls(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_health_urls(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     published = {"grafana": "0.0.0.0:3000", "prometheus": "127.0.0.1:9091"}
     monkeypatch.setattr(deploy, "run", lambda *cmd: published[cmd[3]])
-    assert deploy.health_urls() == ["http://127.0.0.1:3000/api/health", "http://127.0.0.1:9091/-/ready"]
+    monkeypatch.setattr(deploy, "PROMETHEUS_PASSWORD", tmp_path / "missing")
+    assert deploy.health_urls() == {"http://127.0.0.1:3000/api/health": None, "http://127.0.0.1:9091/-/ready": None}
+
+
+def test_health_urls_send_prometheus_password_only_to_prometheus(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    published = {"grafana": "0.0.0.0:3000", "prometheus": "127.0.0.1:9091"}
+    monkeypatch.setattr(deploy, "run", lambda *cmd: published[cmd[3]])
+    password = tmp_path / "prometheus_password"
+    password.write_text("s3cret\n")  # a trailing newline isn't part of the password
+    monkeypatch.setattr(deploy, "PROMETHEUS_PASSWORD", password)
+    assert deploy.health_urls() == {
+        "http://127.0.0.1:3000/api/health": None,
+        "http://127.0.0.1:9091/-/ready": "Basic " + base64.b64encode(b"argus:s3cret").decode(),
+    }
 
 
 def test_healthy_waits_until_everything_answers(monkeypatch: pytest.MonkeyPatch) -> None:
     answers = iter([False, True, True])
-    monkeypatch.setattr(deploy, "health_urls", lambda: ["http://a", "http://b"])
-    monkeypatch.setattr(deploy, "answers", lambda _url: next(answers))
+    monkeypatch.setattr(deploy, "health_urls", lambda: {"http://a": None, "http://b": "Basic x"})
+    monkeypatch.setattr(deploy, "answers", lambda _url, _auth: next(answers))
     monkeypatch.setattr(deploy.time, "sleep", lambda _s: None)
     assert deploy.healthy()
 
 
 def test_healthy_gives_up(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    monkeypatch.setattr(deploy, "health_urls", lambda: ["http://a"])
+    monkeypatch.setattr(deploy, "health_urls", lambda: {"http://a": None})
     assert not deploy.healthy(timeout=0)
     assert "not answering: http://a" in capsys.readouterr().out
 
@@ -289,8 +305,10 @@ class Handler(BaseHTTPRequestHandler):
     status = 200
     body = b"{}"
     posted: ClassVar[list[bytes]] = []
+    authorization: ClassVar[list[str | None]] = []
 
     def do_GET(self) -> None:
+        self.authorization.append(self.headers.get("Authorization"))
         self.send_response(self.status)
         self.end_headers()
         self.wfile.write(self.body)
@@ -308,6 +326,7 @@ class Handler(BaseHTTPRequestHandler):
 def http() -> Iterator[str]:
     Handler.status, Handler.body = 200, b"{}"
     Handler.posted.clear()
+    Handler.authorization.clear()
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -320,6 +339,14 @@ def test_answers(http: str) -> None:
     assert deploy.answers(http + "/api/health")
     Handler.status = 503
     assert not deploy.answers(http + "/api/health")
+    assert Handler.authorization == [None, None]
+
+
+def test_answers_sends_the_authorization_header(http: str) -> None:
+    assert deploy.answers(http + "/-/ready", "Basic abc")
+    Handler.status = 401
+    assert not deploy.answers(http + "/-/ready", "Basic wrong")
+    assert Handler.authorization == ["Basic abc", "Basic wrong"]
 
 
 def test_answers_nothing_listening() -> None:

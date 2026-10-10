@@ -43,10 +43,11 @@ Loki must not be reachable from outside it.
 
 ## What Argus does not protect against
 
-- **Anyone on the trusted network can push to and read from Prometheus and Loki.** They have no
-  authentication: a machine on the network can read every metric and every collected log line, or push
-  false metrics and logs (hiding a problem or raising false alerts). Keep them off untrusted networks;
-  firewall them to the agents' addresses if your network isn't fully trusted.
+- **Anyone on the trusted network can push to and read from Loki, and from Prometheus unless you
+  [give it a password](#requiring-a-password-for-prometheus).** Without one, a machine on the network can
+  read every metric and every collected log line, or push false metrics and logs (hiding a problem or
+  raising false alerts). Loki has no authentication of its own: keep it off untrusted networks and
+  firewall it to the agents' addresses if your network isn't fully trusted.
 - **Logs can contain secrets.** Whatever your containers print (tokens, personal data) is stored in Loki
   for 30 days and readable through Grafana by every Grafana user and through Loki by anyone who can reach
   it. CI job containers started by GitLab Runner (the label it marks them with as managed) are never read:
@@ -54,8 +55,9 @@ Loki must not be reachable from outside it.
 - **The agent is root on its host.** It runs privileged, in the host's PID and network namespaces, with
   read access to the host's filesystem and the Docker and containerd sockets (which are equivalent to root). A compromised
   agent image or Argus release is a compromised host; that's why releases are signed.
-- **Agent traffic is not encrypted by default.** Agents push over plain HTTP. Put Prometheus and Loki
-  behind a TLS proxy and use `https://` URLs for the agents if traffic crosses a network you don't trust.
+- **Agent traffic is not encrypted by default.** Agents push over plain HTTP, Prometheus' password
+  included. Put Prometheus and Loki behind a TLS proxy and use `https://` URLs for the agents if traffic
+  crosses a network you don't trust.
 - **A compromised monitored host or service** can send whatever metrics and logs it likes about itself.
 - **Grafana users can read everything.** Argus doesn't separate dashboards or data by user; give Grafana
   accounts only to people who may see all of it.
@@ -76,6 +78,7 @@ Loki must not be reachable from outside it.
   `docker-compose.proxy.yml` to `COMPOSE_FILE` with `ARGUS_PROXY_NETWORK` set to the proxy's network, point
   the proxy at `argus-grafana:3000` and set `GRAFANA_BIND=127.0.0.1:3000`, so the plain-HTTP port isn't
   open to the network.
+- [Require a password for Prometheus](#requiring-a-password-for-prometheus).
 - Give each integration its own read-only account or token, and rotate them if they leak.
 - Pin `ARGUS_VERSION` and `ARGUS_AGENT_IMAGE` to a release, verify it, and upgrade when a release fixes a
   vulnerability.
@@ -83,3 +86,36 @@ Loki must not be reachable from outside it.
 - If you open GitLab's bundled Prometheus (`prometheus['listen_address']`) or GitLab Runner's metrics port
   for Argus, they answer anyone who can reach them, without authentication; allow only the Argus server
   with a host firewall (for example `ufw allow from <argus-server> to any port 9090`).
+
+## Requiring a password for Prometheus
+
+Prometheus' web configuration, `secrets/prometheus-web.yml`, lists who may push to and query it. The
+example lists no one, so Prometheus answers anyone. The password of its user `argus` is in
+`secrets/prometheus_password`; Grafana's datasource, Prometheus' scrape of itself and
+[auto-deploy](auto-deploy.md)'s health check always send it, so they keep working once it's required.
+
+1. Put a random password in `secrets/prometheus_password` (readable by the containers, like the other
+   secrets):
+
+   ```sh
+   openssl rand -base64 24 | tr -d '/+=' > secrets/prometheus_password
+   chmod 644 secrets/prometheus_password
+   docker compose up -d   # Grafana reads the password at start-up
+   ```
+
+2. On every agent host, set `ARGUS_PROMETHEUS_PASSWORD` in the agent's `.env` to that password (agent
+   0.6.0 or later; older agents send no password) and run `docker compose up -d`. A Prometheus that
+   requires no password ignores it, so this can happen before the next step.
+3. Add the password's bcrypt hash to `secrets/prometheus-web.yml` and restart Prometheus:
+
+   ```sh
+   hash=$(docker run --rm httpd:2.4-alpine htpasswd -nbB argus "$(cat secrets/prometheus_password)" | cut -d: -f2)
+   printf 'basic_auth_users:\n  argus: %s\n' "$hash" > secrets/prometheus-web.yml
+   docker compose restart prometheus
+   ```
+
+4. Check that every host still reports (the "Host stopped reporting" alert stays quiet); an agent without
+   the password logs `401 Unauthorized`.
+
+Every request then needs the password, including `/metrics` and the health endpoints. To turn it off
+again, empty the user list (copy `secrets.example/prometheus-web.yml`) and restart Prometheus.

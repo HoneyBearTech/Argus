@@ -9,7 +9,7 @@ what it accepts, and how it's configured. The trust placed in each is described 
 | Endpoint | Where | Protocol and authentication | Used by |
 | --- | --- | --- | --- |
 | Grafana | server, `GRAFANA_BIND` (default `0.0.0.0:3000`); with `docker-compose.proxy.yml` also `argus-grafana:3000` on the proxy's Docker network (`ARGUS_PROXY_NETWORK`) | HTTP; Grafana login (sign-up and anonymous access off). Put a reverse proxy with TLS in front if it's reachable beyond your own network; with the proxy on the same host, `docker-compose.proxy.yml` and `GRAFANA_BIND=127.0.0.1:3000` leave the proxy as the only way in. | people (UI), Grafana's HTTP API |
-| Prometheus | server, `PROMETHEUS_BIND` (default `0.0.0.0:9090`) | HTTP, **no authentication**: the remote-write receiver (`/api/v1/write`) and the query API | agents (push), Grafana, you |
+| Prometheus | server, `PROMETHEUS_BIND` (default `0.0.0.0:9090`) | HTTP: the remote-write receiver (`/api/v1/write`) and the query API. **No authentication** until `secrets/prometheus-web.yml` lists a user; then basic auth as `argus` with `secrets/prometheus_password` on every path ([security.md](security.md#requiring-a-password-for-prometheus)) | agents (push), Grafana, you |
 | Loki | server (`loki` profile, `LOKI_BIND`, default `0.0.0.0:3101`) or `logs/compose.yml` (`:3101`) | HTTP, **no authentication**: push (`/loki/api/v1/push`) and query APIs | agents (push), Grafana |
 | blackbox_exporter, the exporters | server, compose network only (not published) | HTTP `/metrics` or `/probe` | Prometheus |
 | Plex exporter | the Plex host, `:9594` (`plex` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/plex.json`) |
@@ -36,7 +36,7 @@ media app), `DISCORD_WEBHOOK_URL`, `UNIFI_VERIFY_SSL`, `LOKI_URL`.
 
 **Agent** (environment, or `agent/.env` from [`agent/.env.example`](../agent/.env.example)):
 `ARGUS_HOST` (the `host` label), `ARGUS_PROMETHEUS_URL`, `ARGUS_LOKI_URL` (all required);
-`NPM_LOG_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`; `ARGUS_AGENT_IMAGE`. Host
+`ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`; `ARGUS_AGENT_IMAGE`. Host
 mounts (all read-only): `/` as `/rootfs`, `/sys`, `/run/udev`, `/dev/disk`, `/var/lib/docker`, the Docker
 socket, and `NPM_LOG_DIR`. It needs the host's PID and network namespaces and `--privileged`.
 

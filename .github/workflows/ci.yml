@@ -88,6 +88,10 @@ jobs:
             -v "$PWD/secrets.example:/etc/prometheus/secrets:ro" \
             --entrypoint promtool prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e \
             check config /etc/prometheus/prometheus.yml
+          docker run --rm \
+            -v "$PWD/secrets.example:/w/example:ro" -v "$PWD/tests/fixtures/prometheus-auth:/w/ci:ro" \
+            --entrypoint promtool prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e \
+            check web-config /w/example/prometheus-web.yml /w/ci/prometheus-web.yml
 
       # The shipped alert rule and dashboard queries, run against synthetic series (tests/promql/).
       - name: PromQL tests (promtool)
@@ -119,10 +123,19 @@ jobs:
           done
 
       # Grafana refuses to start on an invalid provisioned alert rule, so start the image and
-      # check that every dashboard, alert rule, datasource and the contact point loaded.
+      # check that every dashboard, alert rule, datasource and the contact point loaded. Prometheus
+      # requires a password here (tests/fixtures/prometheus-auth/), which Grafana and Prometheus'
+      # own scrape must send.
       - name: Grafana starts with everything provisioned
         run: |
-          docker run -d --name grafana -p 127.0.0.1:3000:3000 \
+          docker network create argus-ci
+          docker run -d --name prometheus --network argus-ci -p 127.0.0.1:9090:9090 \
+            -v "$PWD/tests/fixtures/prometheus-auth:/etc/prometheus/secrets:ro" \
+            argus-prometheus:ci \
+            --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus \
+            --web.config.file=/etc/prometheus/secrets/prometheus-web.yml
+          docker run -d --name grafana --network argus-ci -p 127.0.0.1:3000:3000 \
+            -v "$PWD/tests/fixtures/prometheus-auth/prometheus_password:/etc/grafana/secrets/prometheus_password:ro" \
             -e GF_SECURITY_ADMIN_PASSWORD=ci \
             -e LOKI_URL=http://loki:3100 \
             -e DISCORD_WEBHOOK_URL=https://discord.invalid/argus-ci \
@@ -132,7 +145,7 @@ jobs:
             api /api/health > /dev/null 2>&1 && break
             sleep 2
           done
-          fail() { echo "::error::$1"; docker logs grafana; exit 1; }
+          fail() { echo "::error::$1"; docker logs grafana; docker logs prometheus; exit 1; }
           api /api/health > /dev/null || fail "Grafana did not start"
           dashboards=$(api '/api/search?type=dash-db&limit=5000' | jq length)
           want_dashboards=$(find dashboards -name '*.json' | wc -l)
@@ -149,6 +162,18 @@ jobs:
           for plugin in prometheus loki; do
             api "/api/plugins/$plugin/settings" > /dev/null || fail "datasource plugin $plugin is missing"
           done
+          prom() { curl -sS -o /dev/null -w '%{http_code}' "$@" 'http://127.0.0.1:9090/api/v1/query?query=up'; }
+          [ "$(prom)" = 401 ] || fail "Prometheus answered without a password"
+          [ "$(prom -u argus:argus-ci-password)" = 200 ] || fail "Prometheus refused its password"
+          datasource=$(api /api/datasources/uid/prometheus/health | jq -r .status)
+          [ "$datasource" = OK ] || fail "Grafana can't query Prometheus: $datasource"
+          for _ in $(seq 30); do
+            self=$(curl -fsS -u argus:argus-ci-password 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22prometheus%22%7D' | jq -r '.data.result[0].value[1]')
+            [ "$self" = 1 ] && break
+            sleep 2
+          done
+          [ "$self" = 1 ] || fail "Prometheus can't scrape itself with its password"
+          echo "Prometheus requires its password; Grafana and Prometheus' own scrape send it"
 
       - name: Compose files
         run: |

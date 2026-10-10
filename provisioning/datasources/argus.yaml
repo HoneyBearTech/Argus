@@ -9,8 +9,13 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: false
+    # Sent always; Prometheus checks it once secrets/prometheus-web.yml lists users.
+    basicAuth: true
+    basicAuthUser: argus
     jsonData:
       timeInterval: 15s
+    secureJsonData:
+      basicAuthPassword: $__file{/etc/grafana/secrets/prometheus_password}
 
   # Logs (logs/compose.yml). The URL is host-specific, so it comes from the
   # LOKI_URL environment variable.

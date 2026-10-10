@@ -8,6 +8,24 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Upgrading
+
+- Before upgrading the server, copy `secrets.example/prometheus_password` and
+  `secrets.example/prometheus-web.yml` into `secrets/` (or put a random password in the first, see
+  [docs/security.md](docs/security.md#requiring-a-password-for-prometheus)). Without the password file
+  `docker compose up` refuses to start Grafana, and without the web configuration Prometheus doesn't start.
+  The example web configuration requires no password, so nothing else changes until you add one.
+
+### Security
+
+- Prometheus can require a password: list its `argus` user's bcrypt hash in `secrets/prometheus-web.yml`
+  (Prometheus' `--web.config.file`), and nobody can push to it or query it without the password in
+  `secrets/prometheus_password`. Grafana's datasource reads that file, Prometheus' scrape of itself and
+  auto-deploy's health check send it, and the agent sends `ARGUS_PROMETHEUS_PASSWORD`. Every client sends it
+  whether or not it's required, so it can be rolled out before Prometheus starts asking for it. CI starts
+  Prometheus with a password and checks that it refuses requests without it and that Grafana and the
+  self-scrape get through.
+
 ### Added
 
 - ESXi / vCenter dashboard: per-host CPU and memory, how much memory the running VMs are granted and how many
