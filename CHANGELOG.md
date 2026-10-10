@@ -8,6 +8,15 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- ESXi / vCenter dashboard: per-host CPU and memory, how much memory the running VMs are granted and how many
+  vCPUs they have per logical CPU (overcommit), CPU ready time per vCPU, datastore space with provisioned share
+  and days until full, and a table of running VMs. Data comes from vCenter through Telegraf's vSphere input,
+  behind the new `vsphere` compose profile: a read-only vCenter account and the vCenter URL in
+  `secrets/vsphere.env`, vCenter's CA certificate in `secrets/vsphere-ca.pem` (Telegraf verifies vCenter's
+  certificate), and the collector in `targets/vsphere.json`.
+
 ## [0.5.1] - 2026-10-09
 
 ### Security

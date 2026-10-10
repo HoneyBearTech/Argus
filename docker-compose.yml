@@ -174,6 +174,21 @@ services:
     volumes:
       - ./secrets/gitlab.yml:/etc/gitlab-ci-pipelines-exporter/config.yml:ro
 
+  # vCenter: ESXi host, VM and datastore metrics through Telegraf's vSphere input
+  # (`vsphere` profile). vCenter's URL and a read-only account come from
+  # secrets/vsphere.env, its CA certificate from secrets/vsphere-ca.pem (see
+  # secrets.example/); the collectors are configured in vsphere/telegraf.conf.
+  telegraf-vsphere:
+    image: telegraf:1.40.1
+    restart: unless-stopped
+    profiles: [vsphere]
+    env_file:
+      - path: ./secrets/vsphere.env
+        required: false
+    volumes:
+      - ./vsphere/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./secrets/vsphere-ca.pem:/etc/telegraf/vsphere-ca.pem:ro
+
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
   # at it either way.

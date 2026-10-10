@@ -129,6 +129,21 @@ scrape_configs:
       - regex: exported_job|exported_instance
         action: labeldrop
 
+  # ESXi hosts, VMs and datastores from vCenter via Telegraf (only runs with the
+  # `vsphere` compose profile): :9273 serves hosts and VMs, :9274 datastores.
+  # Only the vsphere_* series are kept, without vCenter's internal IDs.
+  - job_name: vsphere
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/vsphere.json]
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: vsphere_.+
+        action: keep
+      - regex: uuid|moid|rpname|dcname|vcenter|source
+        action: labeldrop
+
   # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
   # up as a down target like any other exporter.
   - job_name: loki
