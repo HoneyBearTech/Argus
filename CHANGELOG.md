@@ -8,6 +8,8 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-11
+
 ### Upgrading
 
 - Before upgrading the server, copy `secrets.example/prometheus_password` and
@@ -15,6 +17,9 @@ Each release's notes on GitHub are its section here.
   [docs/security.md](docs/security.md#requiring-a-password-for-prometheus)). Without the password file
   `docker compose up` refuses to start Grafana, and without the web configuration Prometheus doesn't start.
   The example web configuration requires no password, so nothing else changes until you add one.
+- Agents: copy the new `agent/compose.yml` and set `ARGUS_AGENT_IMAGE` to `0.6.0`, then `docker compose up -d`.
+  The compose file passes the new optional `ARGUS_PROMETHEUS_PASSWORD` (see `agent/.env.example`); set it on
+  every agent before Prometheus starts requiring a password. Older agents keep working until then.
 
 ### Security
 
@@ -254,7 +259,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/HoneyBearTech/Argus/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/HoneyBearTech/Argus/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/HoneyBearTech/Argus/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/HoneyBearTech/Argus/compare/v0.4.0...v0.4.1
