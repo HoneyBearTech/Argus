@@ -1,0 +1,51 @@
+# "NAS storage pool almost full" (argus-pool-full) and the NAS dashboard's volume columns. Regression
+# test: a storage pool given entirely to its volume reports no free space, and an SSD cache is always
+# full, so only volumes count. Sizes in bytes, scaled down from a real Synology.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # A 100-byte volume with 7 free: 93 % full, over the 90 % threshold.
+      - series: 'raidFreeSize{job="snmp", host="nas", raidName="Volume 1"}'
+        values: "7x40"
+      - series: 'raidTotalSize{job="snmp", host="nas", raidName="Volume 1"}'
+        values: "100x40"
+      # A pool allocated entirely to Volume 2, which is empty.
+      - series: 'raidFreeSize{job="snmp", host="nas", raidName="Storage Pool 1"}'
+        values: "0x40"
+      - series: 'raidTotalSize{job="snmp", host="nas", raidName="Storage Pool 1"}'
+        values: "50x40"
+      - series: 'raidFreeSize{job="snmp", host="nas", raidName="Volume 2"}'
+        values: "48x40"
+      - series: 'raidTotalSize{job="snmp", host="nas", raidName="Volume 2"}'
+        values: "48x40"
+      - series: 'raidFreeSize{job="snmp", host="nas", raidName="SSD Cache 1"}'
+        values: "0x40"
+      - series: 'raidTotalSize{job="snmp", host="nas", raidName="SSD Cache 1"}'
+        values: "10x40"
+    promql_expr_test:
+      - rule: argus-pool-full
+        eval_time: 30m
+        exp_samples:
+          - labels: '{job="snmp", host="nas", raidName="Volume 1"}'
+            value: 93
+      - dashboard: argus-nas
+        panel: 5  # Volume used
+        vars: {host: ".*"}
+        eval_time: 30m
+        exp_samples:
+          - labels: '{job="snmp", host="nas", raidName="Volume 1"}'
+            value: 93
+          - labels: '{job="snmp", host="nas", raidName="Volume 2"}'
+            value: 0
+      # Used % in the table: volumes only, keyed host/raidName.
+      - dashboard: argus-nas
+        panel: 2
+        ref_id: B
+        vars: {host: ".*"}
+        eval_time: 30m
+        exp_samples:
+          - labels: '{key="nas/Volume 1"}'
+            value: 93
+          - labels: '{key="nas/Volume 2"}'
+            value: 0

@@ -217,7 +217,9 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: 100 * (1 - raidFreeSize / raidTotalSize)
+        # Volumes only: a storage pool's free space is what isn't allocated to a volume yet,
+        # so a pool given entirely to its volumes reads 100 % full; SSD caches are always full.
+        expr: 100 * (1 - raidFreeSize{raidName=~"Volume .*"} / raidTotalSize{raidName=~"Volume .*"})
         instant: true
         range: false
         intervalMs: 15000

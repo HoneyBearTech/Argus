@@ -545,7 +545,7 @@
       "id": 2,
       "type": "table",
       "title": "Storage pools",
-      "description": "Each RAID volume / storage pool. 'Full in' extrapolates the last 24 hours of growth \u2014 it needs a day of data and shows '> 1 year' when the pool isn't filling.",
+      "description": "Each storage pool and volume with its status. Used, free and 'Full in' are shown for volumes only: a storage pool's free space is what isn't allocated to a volume yet. 'Full in' extrapolates the last 24 hours of growth \u2014 it needs a day of data and shows '> 1 year' when the volume isn't filling.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -574,7 +574,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(100 * (1 - raidFreeSize{job=\"snmp\", host=~\"$host\"} / raidTotalSize{job=\"snmp\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"raidName\"))",
+          "expr": "max by (key) (label_join(100 * (1 - raidFreeSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"} / raidTotalSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"raidName\"))",
           "legendFormat": "__auto",
           "refId": "B",
           "instant": true,
@@ -586,7 +586,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(raidFreeSize{job=\"snmp\", host=~\"$host\"}, \"key\", \"/\", \"host\", \"raidName\"))",
+          "expr": "max by (key) (label_join(raidFreeSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"}, \"key\", \"/\", \"host\", \"raidName\"))",
           "legendFormat": "__auto",
           "refId": "C",
           "instant": true,
@@ -598,7 +598,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(raidTotalSize{job=\"snmp\", host=~\"$host\"}, \"key\", \"/\", \"host\", \"raidName\"))",
+          "expr": "max by (key) (label_join(raidTotalSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"}, \"key\", \"/\", \"host\", \"raidName\"))",
           "legendFormat": "__auto",
           "refId": "D",
           "instant": true,
@@ -610,7 +610,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(raidFreeSize{job=\"snmp\", host=~\"$host\"} / clamp_min(-deriv(raidFreeSize{job=\"snmp\", host=~\"$host\"}[24h]), 0.001) / 86400, \"key\", \"/\", \"host\", \"raidName\"))",
+          "expr": "max by (key) (label_join(raidFreeSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"} / clamp_min(-deriv(raidFreeSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"}[24h]), 0.001) / 86400, \"key\", \"/\", \"host\", \"raidName\"))",
           "legendFormat": "__auto",
           "refId": "E",
           "instant": true,
@@ -1426,8 +1426,8 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Pool used",
-      "description": "How full each storage pool is over time.",
+      "title": "Volume used",
+      "description": "How full each volume is over time.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1444,7 +1444,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * (1 - raidFreeSize{job=\"snmp\", host=~\"$host\"} / raidTotalSize{job=\"snmp\", host=~\"$host\"})",
+          "expr": "100 * (1 - raidFreeSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"} / raidTotalSize{job=\"snmp\", raidName=~\"Volume .*\", host=~\"$host\"})",
           "legendFormat": "{{host}} {{raidName}}",
           "refId": "A"
         }
