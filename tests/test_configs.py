@@ -235,3 +235,45 @@ def test_redaction_replaces_only_the_secret_values(line: str, redacted: str) -> 
         return match.group(0)[: start - match.start()] + "REDACTED" + match.group(0)[end - match.start() :]
 
     assert pattern.sub(replace, line) == redacted
+
+
+EXPORTARR_APPS = ["radarr", "radarr4k", "sonarr", "sonarr4k", "lidarr", "bazarr", "prowlarr", "sabnzbd"]
+
+
+def test_exporter_credentials_are_mounted_files_not_environment() -> None:
+    """Credentials reach exporters as files under /run/secrets, so `docker inspect` doesn't show them."""
+    compose = load("docker-compose.yml")
+    services = compose["services"]
+    for app in EXPORTARR_APPS:
+        assert services[f"exportarr-{app}"]["secrets"] == [{"source": f"{app}_api_key", "target": "api_key"}]
+        assert services[f"exportarr-{app}"]["environment"]["API_KEY_FILE"] == "/run/secrets/api_key"
+    assert services["unpoller"]["secrets"] == ["unifi_password"]
+    assert services["unpoller"]["environment"]["UP_UNIFI_DEFAULT_PASS"] == "file:///run/secrets/unifi_password"  # noqa: S105 - a path
+    assert services["qbittorrent-exporter"]["secrets"] == ["qbittorrent_password"]
+    qbittorrent = services["qbittorrent-exporter"]["environment"]
+    assert qbittorrent["QBITTORRENT_PASSWORD_FILE"] == "/run/secrets/qbittorrent_password"  # noqa: S105 - a path
+    assert services["telegraf-vsphere"]["secrets"] == ["vsphere_password"]
+    assert "env_file" not in services["gitlab-ci-pipelines-exporter"]  # its token is in the mounted config file
+    telegraf = (ROOT / "vsphere" / "telegraf.conf").read_text()
+    assert telegraf.count('password = "@{docker_secretstore:vsphere_password}"') == 2
+    assert "VSPHERE_PASSWORD" not in telegraf
+
+
+def test_every_secret_is_a_file_in_secrets_with_a_template() -> None:
+    for name, secret in load("docker-compose.yml")["secrets"].items():
+        assert secret == {"file": f"./secrets/{name}"}
+        assert (ROOT / "secrets.example" / name).is_file(), f"secrets.example/{name} is missing"
+
+
+def test_example_env_files_hold_no_credentials() -> None:
+    """Passwords, API keys and tokens moved to their own files; the env files keep URLs and user names."""
+    for env in sorted((ROOT / "secrets.example").glob("*.env")):
+        if env.name == "pihole-exporter.env":  # pihole-exporter reads its passwords only from the environment
+            continue
+        keys = re.findall(r"^([A-Z0-9_]+)=", env.read_text(), re.MULTILINE)
+        assert not [k for k in keys if re.search(r"PASS|API_KEY|TOKEN|SECRET", k)], env.name
+
+
+def test_vsphere_password_template_has_no_trailing_newline() -> None:
+    """Telegraf's docker secret store keeps a trailing newline as part of the password."""
+    assert not (ROOT / "secrets.example" / "vsphere_password").read_bytes().endswith(b"\n")

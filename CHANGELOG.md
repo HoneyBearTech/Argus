@@ -8,6 +8,25 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Upgrading
+
+- Exporter credentials moved out of the env files into their own files in `secrets/` (templates in
+  `secrets.example/`): `<app>_api_key` for each exportarr instance, `qbittorrent_password`, `unifi_password`,
+  `vsphere_password` (written **without** a trailing newline, e.g. `printf '%s' '…' > secrets/vsphere_password`:
+  Telegraf keeps it as part of the password), and the GitLab token as `token:` under `gitlab:` in
+  `secrets/gitlab.yml` (`secrets/gitlab.env` is no longer read). Before upgrading, create the files for the
+  services you run from the values in your env files; the old variables can stay until you've upgraded and
+  are ignored or overridden afterwards. Then delete them from the env files and run
+  `docker compose up -d --force-recreate` for those services: compose doesn't recreate a container when only an
+  env file's contents change. A service whose file is missing doesn't start (`bind source path does not exist`).
+
+### Security
+
+- Exporter passwords, API keys and tokens no longer sit in the containers' environment, where `docker inspect`
+  and Portainer's container view show them: exportarr, qbittorrent-exporter, unpoller and Telegraf read them
+  from compose secrets (files under `/run/secrets/`, one per service), gitlab-ci-pipelines-exporter from its
+  config file. The Pi-hole exporter can't read a file and keeps its passwords in `pihole-exporter.env`.
+
 ## [0.6.0] - 2026-10-11
 
 ### Upgrading

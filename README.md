@@ -87,17 +87,17 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Service up/down, certificates (Overview) | `blackbox_http.json` (URLs), `blackbox_dns.json` (DNS servers) | — | — |
 | Uptime Kuma monitors (Overview) | `uptime_kuma.json` | `uptime_kuma_api_key` | — |
 | DNS / Pi-hole | `blackbox_dns.json` | `pihole-exporter.env` | — |
-| Network / UniFi, Internet / ISP | — | `unpoller.env` (read-only local account) | — |
+| Network / UniFi, Internet / ISP | — | `unpoller.env` (console URL + read-only local account), `unifi_password` | — |
 | NAS / Storage | `snmp.json` | `snmp-auth.yml` (SNMPv3) | `COMPOSE_PROFILES=snmp` |
 | Smart Home | `homeassistant.json` | `home_assistant_token` | — |
 | UPS / Power | `peanut.json` | `peanut_username`, `peanut_password` (PeaNUT 6's login; PeaNUT 5 ignores them) | — |
-| Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL, API key) | the app's profile, e.g. `radarr,sonarr` |
+| Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL), `<app>_api_key` (qBittorrent: `qbittorrent.env` with URL + user, `qbittorrent_password`) | the app's profile, e.g. `radarr,sonarr` |
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `COMPOSE_PROFILES=plex` on that agent |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
-| GitLab CI (pipelines) | `gitlab.json` | `gitlab.env` (`read_api` token), `gitlab.yml` (GitLab's URL) | `COMPOSE_PROFILES=gitlab` |
+| GitLab CI (pipelines) | `gitlab.json` | `gitlab.yml` (GitLab's URL and a `read_api` token) | `COMPOSE_PROFILES=gitlab` |
 | GitLab CI (runner) | `gitlab_runner.json` (`<runner>:9252`); set `listen_address = ":9252"` in the runner's `config.toml` | — | — |
 | GitLab CI (GitLab's health) | `gitlab_server.json` (`<gitlab>:9090`); set `prometheus['listen_address'] = '0.0.0.0:9090'` in `gitlab.rb` and run `gitlab-ctl reconfigure` (restarts Puma and Sidekiq: a minute or two of 502s) | — | — |
-| ESXi / vCenter | `vsphere.json` (`telegraf-vsphere:9273` and `:9274`) | `vsphere.env` (vCenter URL + a read-only account), `vsphere-ca.pem` (vCenter's CA, from `https://<vcenter>/certs/download.zip`) | `COMPOSE_PROFILES=vsphere` |
+| ESXi / vCenter | `vsphere.json` (`telegraf-vsphere:9273` and `:9274`) | `vsphere.env` (vCenter URL + a read-only account), `vsphere_password` (no trailing newline), `vsphere-ca.pem` (vCenter's CA, from `https://<vcenter>/certs/download.zip`) | `COMPOSE_PROFILES=vsphere` |
 
 To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release; see [docs/upgrading.md](docs/upgrading.md). New to Argus? The [quick start](docs/quick-start.md) runs it on one machine in about ten minutes.
 
