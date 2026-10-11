@@ -50,8 +50,11 @@ Loki must not be reachable from outside it.
   firewall it to the agents' addresses if your network isn't fully trusted.
 - **Logs can contain secrets.** Whatever your containers print (tokens, personal data) is stored in Loki
   for 30 days and readable through Grafana by every Grafana user and through Loki by anyone who can reach
-  it. CI job containers started by GitLab Runner (the label it marks them with as managed) are never read:
-  Docker keeps their output without the secret masking GitLab applies to job logs.
+  it. The agent blanks the values of credential-looking URL parameters (`apikey`, `api_key`, `access_token`,
+  `token`, `X-Plex-Token`, `key`, `signature`, `password`, `passwd`, `secret`) in container and Nginx Proxy
+  Manager logs before shipping them, but secrets printed any other way are stored as they are. CI job
+  containers started by GitLab Runner (the label it marks them with as managed) are never read: Docker
+  keeps their output without the secret masking GitLab applies to job logs.
 - **The agent is root on its host.** It runs privileged, in the host's PID and network namespaces, with
   read access to the host's filesystem and the Docker and containerd sockets (which are equivalent to root). A compromised
   agent image or Argus release is a compromised host; that's why releases are signed.

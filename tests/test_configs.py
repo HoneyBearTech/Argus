@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -185,3 +187,51 @@ def test_agent_sends_the_prometheus_password() -> None:
     )
     environment = load("agent/compose.yml")["services"]["agent"]["environment"]
     assert environment["ARGUS_PROMETHEUS_PASSWORD"] == "${ARGUS_PROMETHEUS_PASSWORD:-}"  # noqa: S105 - compose reference
+
+
+def redaction_patterns() -> list[str]:
+    """The agent's stage.replace expressions, unescaped from Alloy strings."""
+    config = (ROOT / "agent" / "config.alloy").read_text()
+    return [json.loads(m) for m in re.findall(r'stage\.replace \{\s*expression = ("(?:[^"\\]|\\.)*")', config)]
+
+
+def test_agent_redacts_credentials_in_urls_of_every_log_pipeline() -> None:
+    """Both log pipelines (containers, NPM) carry the same redaction (secrets reached Loki, 2026-10-11)."""
+    patterns = redaction_patterns()
+    assert len(patterns) == 2
+    assert patterns[0] == patterns[1]
+
+
+@pytest.mark.parametrize(
+    ("line", "redacted"),
+    [
+        (
+            'GET "/api/v3/queue?page=1&apikey=0123abcd&sortKey=time" [Client',
+            'GET "/api/v3/queue?page=1&apikey=REDACTED&sortKey=time" [Client',
+        ),
+        (
+            '"/signalr/messages/negotiate?access_token=f2d9&negotiateVersion=1"',
+            '"/signalr/messages/negotiate?access_token=REDACTED&negotiateVersion=1"',
+        ),
+        (
+            "/library/sections?X-Plex-Token=AbCd&X-Plex-Product=Plexamp",
+            "/library/sections?X-Plex-Token=REDACTED&X-Plex-Product=Plexamp",
+        ),
+        (
+            "http://sab:8080/api?mode=queue&api_key=dead output",
+            "http://sab:8080/api?mode=queue&api_key=REDACTED output",
+        ),
+        ("/s3/obj?X-Amz-Date=1&Signature=abc%2Fdef", "/s3/obj?X-Amz-Date=1&Signature=REDACTED"),
+        ("/login?token=t1;password=p2", "/login?token=REDACTED;password=REDACTED"),
+        ('/search?q=hello&page=2 "curl"', '/search?q=hello&page=2 "curl"'),  # nothing secret: unchanged
+        ("/keys?monkey=1&keyboard=2", "/keys?monkey=1&keyboard=2"),  # only whole parameter names
+    ],
+)
+def test_redaction_replaces_only_the_secret_values(line: str, redacted: str) -> None:
+    pattern = re.compile(redaction_patterns()[0])
+
+    def replace(match: re.Match[str]) -> str:
+        start, end = match.span(1)
+        return match.group(0)[: start - match.start()] + "REDACTED" + match.group(0)[end - match.start() :]
+
+    assert pattern.sub(replace, line) == redacted

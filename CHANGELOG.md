@@ -18,6 +18,12 @@ Each release's notes on GitHub are its section here.
 
 ### Security
 
+- The agent no longer ships credentials found in URLs to Loki: in container and Nginx Proxy Manager logs it
+  replaces the values of `apikey`, `api_key`, `access_token`, `token`, `X-Plex-Token`, `key`, `signature`,
+  `password`, `passwd` and `secret` parameters with `REDACTED`. Before this, the *arr apps' API keys (which
+  they pass to each other as `?apikey=`), Radarr's and Sonarr's web UI keys (`access_token=`) and Plex tokens
+  were stored in Loki for 30 days and readable by every Grafana user. Lines already in Loki keep them until
+  they expire; rotate keys you consider exposed.
 - Prometheus can require a password: list its `argus` user's bcrypt hash in `secrets/prometheus-web.yml`
   (Prometheus' `--web.config.file`), and nobody can push to it or query it without the password in
   `secrets/prometheus_password`. Grafana's datasource reads that file, Prometheus' scrape of itself and
