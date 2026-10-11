@@ -38,6 +38,13 @@ Each release's notes on GitHub are its section here.
   `argus-grafana`, for a proxy such as Nginx Proxy Manager running on the same host. With
   `GRAFANA_BIND=127.0.0.1:3000`, Grafana's plain-HTTP port is then no longer open to the network.
 
+### Fixed
+
+- "NAS storage pool almost full" and the NAS dashboard's used, free and "Full in" columns look at volumes only.
+  Synology lists storage pools and SSD caches in the same table, and a pool given entirely to its volumes reports
+  no free space, so adding a second storage pool raised a false alert at 100 %. Pools and caches still show their
+  status, and "NAS storage pool degraded" still covers them. The "Pool used" panel is now "Volume used".
+
 ## [0.5.1] - 2026-10-09
 
 ### Security
