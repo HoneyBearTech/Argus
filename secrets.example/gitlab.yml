@@ -1,8 +1,11 @@
-# gitlab-ci-pipelines-exporter settings: where GitLab is and what to watch. The token comes from
-# secrets/gitlab.env. The container runs as uid 65534, so this file must be world-readable (644).
+# gitlab-ci-pipelines-exporter settings: where GitLab is, its token and what to watch. The container
+# runs as uid 65534, so this file must be world-readable (644).
 # Full syntax: https://github.com/mvisonneau/gitlab-ci-pipelines-exporter/blob/main/docs/configuration_syntax.md
 gitlab:
   url: https://gitlab.example
+  # A personal access token with only the read_api scope. It sees what its user can see: Reporter
+  # on the watched projects is enough.
+  token: glpat-token
   # Only for the exporter's own readiness check; GitLab answers /-/health only to its monitoring allowlist.
   health_url: https://gitlab.example/users/sign_in
 

@@ -18,8 +18,11 @@ Loki must not be reachable from outside it.
    access to the server or a new image.
 2. **No credentials in the repository or the images.** Credentials for the watched services, the Grafana
    admin password and the Discord webhook come from the server's `secrets/` and `.env`, which are
-   gitignored, mounted read-only and never baked into an image. Prometheus reads tokens from files. GitHub
-   secret scanning with push protection guards the repository.
+   gitignored, mounted read-only and never baked into an image. Prometheus, Grafana and the exporters read
+   passwords, API keys and tokens from files, so they don't show in `docker inspect` or Portainer's
+   container view; the exceptions are the Pi-hole exporter (it takes its passwords only from the
+   environment), the Grafana admin password and the Discord webhook. GitHub secret scanning with push
+   protection guards the repository.
 3. **No network details in the repository.** Addresses, host names and domains live only in the server's
    `targets/` and `.env`; CI rejects private IP addresses and a private list of internal names in every
    committed file.
