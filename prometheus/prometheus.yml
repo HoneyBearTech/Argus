@@ -151,7 +151,8 @@ scrape_configs:
   # Proxmox VE through prometheus-pve-exporter (`proxmox` compose profile).
   # Each target is a node's API address, which its certificate must name. In a
   # cluster, give every node but one the label `cluster: "0"`, or each guest is
-  # reported once per node. The deprecated non-counter traffic gauges are dropped.
+  # reported once per node. The deprecated non-counter traffic gauges are dropped,
+  # and so are quorum and QDevice: the pve_quorum job below owns those.
   - job_name: pve
     scrape_interval: 60s
     scrape_timeout: 30s
@@ -177,6 +178,9 @@ scrape_configs:
     metric_relabel_configs:
       - source_labels: [__name__]
         regex: pve_(network_transmit|network_receive|disk_write|disk_read)_bytes
+        action: drop
+      - source_labels: [__name__, id]
+        regex: pve_up;cluster/.+|pve_qdevice_.+;.*
         action: drop
 
   # Each Proxmox node's own view of quorum and of its QDevice, for the quorum
