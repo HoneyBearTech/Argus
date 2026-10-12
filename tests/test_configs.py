@@ -310,6 +310,10 @@ def test_pve_quorum_job_asks_every_node_for_its_own_view() -> None:
     assert job["metric_relabel_configs"] == [
         {"source_labels": ["__name__", "id"], "regex": "pve_up;cluster/.+|pve_qdevice_up;.*", "action": "keep"}
     ]
+    # Regression test: the pve job kept its own copy of the cluster's pve_up, and the dashboard's joins
+    # on (instance, id) failed with "found duplicate series for the match group".
+    drop = {"source_labels": ["__name__", "id"], "regex": "pve_up;cluster/.+|pve_qdevice_.+;.*", "action": "drop"}
+    assert drop in jobs["pve"]["metric_relabel_configs"]
 
 
 def test_secrets_mounts_never_create_the_host_path() -> None:

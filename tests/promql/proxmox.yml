@@ -5,6 +5,12 @@ evaluation_interval: 1m
 tests:
   - interval: 1m
     input_series:
+      # Regression test: the cluster's pve_up from both jobs, as the pve job stored it before it dropped its
+      # copy. The overcommit queries join pve_up on (instance, id) and must only match guests.
+      - series: 'pve_up{job="pve", instance="pve1", id="cluster/c"}'
+        values: "1x10"
+      - series: 'pve_up{job="pve_quorum", instance="pve1", id="cluster/c"}'
+        values: "1x10"
       # Node n1 (target pve1): 4 CPUs at 25 %, 1000 bytes of memory, 400 used.
       - series: 'pve_node_info{instance="pve1", id="node/n1", name="n1"}'
         values: "1x10"

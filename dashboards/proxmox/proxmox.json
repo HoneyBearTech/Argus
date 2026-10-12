@@ -428,7 +428,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
+          "expr": "max(sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -498,7 +498,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(sum by (node) (pve_cpu_usage_limit * on (instance, id) pve_up * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_cpu_usage_limit{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
+          "expr": "max(sum by (node) (pve_cpu_usage_limit * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_cpu_usage_limit{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -686,7 +686,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "expr": "sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "E",
           "instant": true,
           "range": false,
@@ -698,7 +698,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (node) (pve_cpu_usage_limit * on (instance, id) pve_up * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_cpu_usage_limit{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "expr": "sum by (node) (pve_cpu_usage_limit * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_cpu_usage_limit{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "F",
           "instant": true,
           "range": false,
@@ -1195,7 +1195,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * (sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
+          "expr": "100 * (sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
           "refId": "B",
           "range": true,
           "legendFormat": "{{node}} committed"
