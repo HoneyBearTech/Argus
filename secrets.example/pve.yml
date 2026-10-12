@@ -1,0 +1,14 @@
+# prometheus-pve-exporter: how to log in to the Proxmox VE API. Mounted as a compose secret; the
+# container runs as uid 101, so this file must be readable by it (644).
+# Create a read-only API token on a Proxmox node (as root):
+#   pveum user add argus@pve --comment "Argus monitoring (read-only)"
+#   pveum acl modify / --users argus@pve --roles PVEAuditor
+#   pveum user token add argus@pve monitoring --privsep 1
+#   pveum acl modify / --tokens 'argus@pve!monitoring' --roles PVEAuditor
+default:
+  user: argus@pve
+  token_name: monitoring
+  token_value: 00000000-0000-0000-0000-000000000000
+  # The cluster's CA (/etc/pve/pve-root-ca.pem on any node), mounted from secrets/pve-ca.pem. The
+  # node's certificate must name the address in targets/pve.json (see the README).
+  verify_ssl: /etc/pve-exporter/pve-ca.pem

@@ -148,6 +148,37 @@ scrape_configs:
       - regex: uuid|moid|rpname|dcname|vcenter|source
         action: labeldrop
 
+  # Proxmox VE through prometheus-pve-exporter (`proxmox` compose profile).
+  # Each target is a node's API address, which its certificate must name. In a
+  # cluster, give every node but one the label `cluster: "0"`, or each guest is
+  # reported once per node. The deprecated non-counter traffic gauges are dropped.
+  - job_name: pve
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ["1"]
+      node: ["1"]
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/pve.json]
+    relabel_configs:
+      - source_labels: [cluster]
+        regex: (.+)
+        target_label: __param_cluster
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+      - regex: cluster
+        action: labeldrop
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: pve_(network_transmit|network_receive|disk_write|disk_read)_bytes
+        action: drop
+
   # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
   # up as a down target like any other exporter.
   - job_name: loki

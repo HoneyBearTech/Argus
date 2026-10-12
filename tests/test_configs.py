@@ -254,6 +254,10 @@ def test_exporter_credentials_are_mounted_files_not_environment() -> None:
     assert qbittorrent["QBITTORRENT_PASSWORD_FILE"] == "/run/secrets/qbittorrent_password"  # noqa: S105 - a path
     assert services["telegraf-vsphere"]["secrets"] == ["vsphere_password"]
     assert "env_file" not in services["gitlab-ci-pipelines-exporter"]  # its token is in the mounted config file
+    assert services["pve-exporter"]["secrets"] == ["pve.yml"]
+    assert services["pve-exporter"]["command"] == ["--config.file=/run/secrets/pve.yml"]
+    assert "environment" not in services["pve-exporter"]
+    assert "env_file" not in services["pve-exporter"]
     telegraf = (ROOT / "vsphere" / "telegraf.conf").read_text()
     assert telegraf.count('password = "@{docker_secretstore:vsphere_password}"') == 2
     assert "VSPHERE_PASSWORD" not in telegraf
@@ -272,6 +276,26 @@ def test_example_env_files_hold_no_credentials() -> None:
             continue
         keys = re.findall(r"^([A-Z0-9_]+)=", env.read_text(), re.MULTILINE)
         assert not [k for k in keys if re.search(r"PASS|API_KEY|TOKEN|SECRET", k)], env.name
+
+
+def test_pve_exporter_verifies_tls_against_the_cluster_ca() -> None:
+    """The template points verify_ssl at the mounted CA certificate instead of turning verification off."""
+    module = load("secrets.example/pve.yml")["default"]
+    assert module["verify_ssl"] == "/etc/pve-exporter/pve-ca.pem"
+    volumes = load("docker-compose.yml")["services"]["pve-exporter"]["volumes"]
+    assert "./secrets/pve-ca.pem:/etc/pve-exporter/pve-ca.pem:ro" in volumes
+
+
+def test_pve_job_asks_the_exporter_about_each_target() -> None:
+    """Multi-target exporter: the node's address goes in ?target=, the scrape goes to pve-exporter."""
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "pve")
+    assert job["metrics_path"] == "/pve"
+    assert job["params"] == {"module": ["default"], "cluster": ["1"], "node": ["1"]}
+    rules = job["relabel_configs"]
+    assert {"source_labels": ["__address__"], "target_label": "__param_target"} in rules
+    assert {"target_label": "__address__", "replacement": "pve-exporter:9221"} in rules
+    # A target labelled cluster: "0" skips the cluster-wide collectors (one node per cluster reports guests).
+    assert {"source_labels": ["cluster"], "regex": "(.+)", "target_label": "__param_cluster"} in rules
 
 
 def test_vsphere_password_template_has_no_trailing_newline() -> None:
