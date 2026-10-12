@@ -22,6 +22,14 @@ Each release's notes on GitHub are its section here.
   QDevice, so the alerts still work when the node the dashboard reads the cluster from is the one that's down;
   the dashboard's Quorum and QDevice stats show the worst view.
 
+### Changed
+
+- Web services are probed once a minute instead of every 15 seconds. Nothing between blackbox_exporter and the
+  DNS server caches, so every probe, and every redirect it follows, was a fresh A + AAAA lookup: with a few dozen
+  URLs that came to tens of thousands of queries an hour, and a busy DNS server log. The "Service down" alert
+  still pages after 5 minutes of failed probes; a service now counts as having been up once it has passed more
+  than an hour of probes in the last week (60 probes, was 240 at the old rate).
+
 ### Fixed
 
 - A file from `secrets/` that a service mounts (`pve-ca.pem`, `vsphere-ca.pem`, `snmp-auth.yml`, `gitlab.yml`,
@@ -30,6 +38,8 @@ Each release's notes on GitHub are its section here.
 
 ### Upgrading
 
+- In `targets/blackbox_http.json`, list the URL each service ends on (its login page, for example) rather than
+  one that redirects there: each redirect is another DNS lookup and request per probe.
 - If one of those paths is already a directory (Docker created it while the file was missing), the service
   keeps running without its file. Check with `ls -ld secrets/*.pem secrets/*.yml`, then replace the directory
   with the file (`sudo rmdir secrets/<name>`, it's owned by root) and recreate the service.

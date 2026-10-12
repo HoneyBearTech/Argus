@@ -38,8 +38,9 @@ that keep it correct.
    labelled with the host's name (`host`). Prometheus scrapes everything else on its own schedule
    (15 s by default, 30–60 s for slower exporters), with targets and their labels from `targets/`.
 2. **Probes.** For each URL in `targets/blackbox_http.json` (and DNS server in `blackbox_dns.json`),
-   Prometheus asks blackbox_exporter to probe it and stores `probe_success`, timings and certificate
-   expiry.
+   Prometheus asks blackbox_exporter to probe it once a minute and stores `probe_success`, timings and
+   certificate expiry. Each probe, and each redirect it follows, looks the name up again, so list the URL
+   a service ends on (its login page, for example) rather than one that redirects there.
 3. **Logs.** The agent reads container logs through the Docker socket, labels them (`host`, `container`,
    `compose_project`), drops lines older than an hour (first-start backfill) and pushes them to Loki.
    GitLab Runner's CI job containers are skipped, for both logs and container metrics. NPM

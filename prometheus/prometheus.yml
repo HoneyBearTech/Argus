@@ -243,7 +243,10 @@ scrape_configs:
 
   # Web services probed through blackbox_exporter. Each target is a URL with
   # `service` and `group` labels; the probe itself runs on the exporter.
+  # Once a minute: nothing between the exporter and the DNS server caches, so
+  # every probe (and every redirect it follows) is a fresh A + AAAA lookup.
   - job_name: blackbox_http
+    scrape_interval: 60s
     metrics_path: /probe
     params:
       module: [http_service]
