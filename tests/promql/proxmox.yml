@@ -280,20 +280,29 @@ tests:
         exp_samples:
           - labels: '{name="a"}'
             value: 29.999999999999993
-  # A two-node cluster: quorate for 5 minutes, then node n2 goes down and the cluster loses quorum.
-  # The QDevice is configured at minute 3 (no series before), disconnected, then connected at 6.
+  # A two-node cluster, each node scraped by the pve_quorum job for its own view. Both are quorate
+  # for 5 minutes; then n2 (pve2) is cut off: n1 keeps quorum (it still has the QDevice's vote), n2
+  # loses it. The QDevice is configured at minute 3 (no series before). n1 loses it for one minute
+  # (a qnetd restart: too short to alert); n2 loses it for good at minute 5.
   - interval: 1m
     input_series:
-      - series: 'pve_up{instance="pve1", id="cluster/c"}'
-        values: "1x4 0x5"
-      - series: 'pve_up{instance="pve1", id="node/n1"}'
-        values: "1x9"
-      - series: 'pve_up{instance="pve1", id="node/n2"}'
-        values: "1x4 0x5"
-      - series: 'pve_cpu_usage_ratio{instance="pve1", id="node/n1"}'
-        values: "0.5x9"
-      - series: 'pve_qdevice_up{instance="pve1", id="cluster/c"}'
-        values: "_ _ _ 0 0 0 1 1 1 1"
+      - series: 'pve_up{job="pve_quorum", instance="pve1", id="cluster/c"}'
+        values: "1x15"
+      - series: 'pve_up{job="pve_quorum", instance="pve2", id="cluster/c"}'
+        values: "1x4 0x11"
+      - series: 'pve_qdevice_up{job="pve_quorum", instance="pve1", id="cluster/c"}'
+        values: "_ _ _ 1 1 1 0 1 1 1 1 1 1 1 1 1"
+      - series: 'pve_qdevice_up{job="pve_quorum", instance="pve2", id="cluster/c"}'
+        values: "_ _ _ 1 1 0 0 0 0 0 0 0 0 0 0 0"
+      # The pve job (one node's cluster view, here n1's): what Nodes online and the Nodes table use.
+      - series: 'pve_up{job="pve", instance="pve1", id="cluster/c"}'
+        values: "1x15"
+      - series: 'pve_up{job="pve", instance="pve1", id="node/n1"}'
+        values: "1x15"
+      - series: 'pve_up{job="pve", instance="pve1", id="node/n2"}'
+        values: "1x4 0x11"
+      - series: 'pve_cpu_usage_ratio{job="pve", instance="pve1", id="node/n1"}'
+        values: "0.5x15"
     promql_expr_test:
       - dashboard: argus-proxmox
         panel: Quorum
@@ -301,12 +310,21 @@ tests:
         exp_samples:
           - labels: "{}"
             value: 1
+      # n1 still has quorum, but n2 doesn't: the worst view counts.
       - dashboard: argus-proxmox
         panel: Quorum
         eval_time: 8m
         exp_samples:
           - labels: "{}"
             value: 0
+      - rule: argus-pve-quorum-lost
+        eval_time: 8m
+        exp_samples:
+          - labels: '{instance="pve2"}'
+            value: 0
+      - rule: argus-pve-quorum-lost
+        eval_time: 3m
+        exp_samples: []
       - dashboard: argus-proxmox
         panel: Nodes online
         vars: {node: ".*"}
@@ -325,9 +343,12 @@ tests:
             value: 1
           - labels: '{node="n2"}'
             value: 0
-      # No QDevice configured yet: no series, so the panel shows "None configured".
+      # No QDevice configured yet: no series, so the panel shows "None configured" and nothing alerts.
       - dashboard: argus-proxmox
         panel: QDevice
+        eval_time: 1m
+        exp_samples: []
+      - rule: argus-pve-qdevice-down
         eval_time: 1m
         exp_samples: []
       - dashboard: argus-proxmox
@@ -335,10 +356,24 @@ tests:
         eval_time: 4m
         exp_samples:
           - labels: "{}"
-            value: 0
+            value: 1
       - dashboard: argus-proxmox
         panel: QDevice
-        eval_time: 8m
+        eval_time: 6m
         exp_samples:
           - labels: "{}"
-            value: 1
+            value: 0
+      # Both nodes' views fall below 1 at minute 6 (the measurement the rule's `for: 5m` then waits on);
+      # by minute 10 only n2 is still disconnected.
+      - rule: argus-pve-qdevice-down
+        eval_time: 6m
+        exp_samples:
+          - labels: '{instance="pve1"}'
+            value: 0
+          - labels: '{instance="pve2"}'
+            value: 0
+      - rule: argus-pve-qdevice-down
+        eval_time: 10m
+        exp_samples:
+          - labels: '{instance="pve2"}'
+            value: 0

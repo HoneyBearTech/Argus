@@ -126,7 +126,7 @@
       "id": 19,
       "type": "stat",
       "title": "Quorum",
-      "description": "Whether the cluster has quorum: more than half of its votes (one per node, plus the QDevice's) present. Without it, the cluster's configuration is read-only: guests can't be started, migrated or changed. In a two-node cluster, one node going down loses quorum unless a QDevice casts the deciding vote. Empty when the nodes aren't in a cluster.",
+      "description": "Whether the cluster has quorum: more than half of its votes (one per node, plus the QDevice's) present. Without it, the cluster's configuration is read-only: guests can't be started, migrated or changed. In a two-node cluster, one node going down loses quorum unless a QDevice casts the deciding vote. Each node is asked for its own view, and the worst one counts. Empty when the nodes aren't in a cluster.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -143,7 +143,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(pve_up{id=~\"cluster/.+\"})",
+          "expr": "min(pve_up{job=\"pve_quorum\", id=~\"cluster/.+\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -208,7 +208,7 @@
       "id": 20,
       "type": "stat",
       "title": "QDevice",
-      "description": "Whether the cluster's QDevice (an external tie-breaker vote, corosync-qnetd) is connected, as the scraped node sees it. Empty when no QDevice is configured.",
+      "description": "Whether the cluster's QDevice (an external tie-breaker vote, corosync-qnetd) is connected; each node is asked, and the worst view counts. Empty when no QDevice is configured.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -225,7 +225,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(pve_qdevice_up)",
+          "expr": "min(pve_qdevice_up{job=\"pve_quorum\"})",
           "refId": "A",
           "instant": true,
           "range": false
