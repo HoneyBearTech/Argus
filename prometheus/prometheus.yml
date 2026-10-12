@@ -179,6 +179,35 @@ scrape_configs:
         regex: pve_(network_transmit|network_receive|disk_write|disk_read)_bytes
         action: drop
 
+  # Each Proxmox node's own view of quorum and of its QDevice, for the quorum
+  # alerts and the dashboard's Quorum and QDevice stats. The `pve` job reads the
+  # cluster from one node only, which may be the node that's down; here every
+  # node in targets/pve.json is asked (its `cluster` label is ignored) and only
+  # those two series are kept.
+  - job_name: pve_quorum
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ["1"]
+      node: ["0"]
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/pve.json]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+      - regex: cluster
+        action: labeldrop
+    metric_relabel_configs:
+      - source_labels: [__name__, id]
+        regex: pve_up;cluster/.+|pve_qdevice_up;.*
+        action: keep
+
   # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
   # up as a down target like any other exporter.
   - job_name: loki

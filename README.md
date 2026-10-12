@@ -56,7 +56,7 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 
 | Group | Rules |
 |---|---|
-| Availability | host stopped reporting (its agent went silent), service down (only services that were up for at least an hour in the last 7 days), DNS server not answering, monitoring target down |
+| Availability | host stopped reporting (its agent went silent), service down (only services that were up for at least an hour in the last 7 days), DNS server not answering, monitoring target down, Proxmox node without cluster quorum, Proxmox QDevice disconnected for 5 minutes |
 | Capacity | local disk > 90 % (network shares are covered by the NAS pool rule), NAS storage pool > 90 %, certificate < 14 days |
 | Power and hardware | UPS on battery, UPS battery < 50 %, NAS disk unhealthy, NAS pool degraded, NAS disk > 55 °C, network device > 85 °C |
 | Network | internet on backup WAN, internet dropped, internet much slower than usual (latest speed test under half its 14-day median), no speed test in 8 days, Pi-hole blocklists out of sync |

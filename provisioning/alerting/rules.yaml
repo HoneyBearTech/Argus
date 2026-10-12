@@ -162,6 +162,84 @@ groups:
       summary: Prometheus can't scrape {{ $labels.job }} at {{ $labels.instance }} — the dashboards relying on it are missing
         data.
     isPaused: false
+  - uid: argus-pve-quorum-lost
+    title: Proxmox cluster without quorum
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (instance) (pve_up{job="pve_quorum", id=~"cluster/.+"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: The Proxmox node at {{ $labels.instance }} has no cluster quorum — guests on it can't be started, migrated
+        or changed until enough nodes (or the QDevice) are back.
+    isPaused: false
+  - uid: argus-pve-qdevice-down
+    title: Proxmox QDevice disconnected
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (instance) (pve_qdevice_up{job="pve_quorum"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: The Proxmox node at {{ $labels.instance }} has lost the cluster's QDevice — one more node going down would
+        cost the cluster its quorum.
+    isPaused: false
 - orgId: 1
   name: Capacity
   folder: Argus

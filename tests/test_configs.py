@@ -298,6 +298,20 @@ def test_pve_job_asks_the_exporter_about_each_target() -> None:
     assert {"source_labels": ["cluster"], "regex": "(.+)", "target_label": "__param_cluster"} in rules
 
 
+def test_pve_quorum_job_asks_every_node_for_its_own_view() -> None:
+    """The quorum alerts can't depend on the one node the pve job reads the cluster from."""
+    jobs = {j["job_name"]: j for j in load("prometheus/prometheus.yml")["scrape_configs"]}
+    job = jobs["pve_quorum"]
+    assert job["file_sd_configs"] == jobs["pve"]["file_sd_configs"]
+    assert job["params"] == {"module": ["default"], "cluster": ["1"], "node": ["0"]}
+    # Every target asks for the cluster view: the targets' cluster label is dropped, not passed on.
+    assert not [r for r in job["relabel_configs"] if r.get("target_label") == "__param_cluster"]
+    assert {"regex": "cluster", "action": "labeldrop"} in job["relabel_configs"]
+    assert job["metric_relabel_configs"] == [
+        {"source_labels": ["__name__", "id"], "regex": "pve_up;cluster/.+|pve_qdevice_up;.*", "action": "keep"}
+    ]
+
+
 def test_secrets_mounts_never_create_the_host_path() -> None:
     """Regression test: a missing secrets/ file must stop the service, not become an empty root-owned directory.
 
