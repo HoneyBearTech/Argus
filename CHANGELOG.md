@@ -8,6 +8,16 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Proxmox VE dashboard: per-node CPU and memory, how much memory the running guests are allocated and how many
+  vCPUs they have per logical CPU (overcommit), guests that are set to start at boot but aren't running,
+  storage space with days until full, and a table of every VM and container. Data comes from the Proxmox API
+  through [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) 3.10.1, behind
+  the new `proxmox` compose profile: a read-only API token (`PVEAuditor`) in `secrets/pve.yml`, the cluster's CA
+  certificate in `secrets/pve-ca.pem` (the exporter verifies the node's certificate), and each node's address
+  in `targets/pve.json`.
+
 ### Upgrading
 
 - Exporter credentials moved out of the env files into their own files in `secrets/` (templates in

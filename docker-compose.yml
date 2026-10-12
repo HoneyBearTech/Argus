@@ -209,6 +209,19 @@ services:
       - ./secrets/vsphere-ca.pem:/etc/telegraf/vsphere-ca.pem:ro
     secrets: [vsphere_password]
 
+  # Proxmox VE: node, guest and storage metrics through prometheus-pve-exporter
+  # (`proxmox` profile). A read-only API token comes from secrets/pve.yml, the
+  # cluster's CA certificate from secrets/pve-ca.pem (see secrets.example/);
+  # Prometheus names the node to ask in each scrape (targets/pve.json).
+  pve-exporter:
+    image: prompve/prometheus-pve-exporter:3.10.1
+    restart: unless-stopped
+    profiles: [proxmox]
+    command: [--config.file=/run/secrets/pve.yml]
+    volumes:
+      - ./secrets/pve-ca.pem:/etc/pve-exporter/pve-ca.pem:ro
+    secrets: [pve.yml]
+
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
   # at it either way.
@@ -262,6 +275,7 @@ secrets:
   sabnzbd_api_key: {file: ./secrets/sabnzbd_api_key}
   qbittorrent_password: {file: ./secrets/qbittorrent_password}
   vsphere_password: {file: ./secrets/vsphere_password}
+  pve.yml: {file: ./secrets/pve.yml}
 
 volumes:
   prometheus_data:
