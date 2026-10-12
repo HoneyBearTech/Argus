@@ -96,6 +96,8 @@ tests:
         values: "2x10"
       - series: 'pve_memory_size_bytes{instance="pve2", id="node/n2"}'
         values: "1000x10"
+      - series: 'pve_memory_usage_bytes{instance="pve2", id="node/n2"}'
+        values: "950x10"
       - series: 'pve_guest_info{instance="pve2", id="qemu/100", node="n2", name="d", type="qemu", template="0", tags=""}'
         values: "1x10"
       - series: 'pve_up{instance="pve2", id="qemu/100"}'
@@ -216,6 +218,27 @@ tests:
         exp_samples:
           - labels: '{node="n1"}'
             value: 40
+          - labels: '{node="n2"}'
+            value: 95
+      # Alerts: n2 uses 95 % of its memory (n1 40 %); n1's running guests are allocated 110 % (n2 10 %).
+      - rule: argus-pve-memory-high
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n2"}'
+            value: 95
+      - rule: argus-pve-memory-overcommitted
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 110
+      - rule: argus-pve-memory-overcommitted
+        measurement: true
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 110
+          - labels: '{node="n2"}'
+            value: 10
       # local: 910 of 1000; the inactive NFS storage (size 0) is left out.
       - dashboard: argus-proxmox
         panel: Fullest storage

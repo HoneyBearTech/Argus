@@ -363,6 +363,87 @@ groups:
     annotations:
       summary: The certificate for {{ $labels.service }} expires in {{ humanize $values.A.Value }} days.
     isPaused: false
+  - uid: argus-pve-memory-high
+    title: Proxmox node memory almost full
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 100 * max by (node) (label_replace(pve_memory_usage_bytes{id=~"node/.+"} / pve_memory_size_bytes{id=~"node/.+"},
+          "node", "$1", "id", "node/(.+)"))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 90
+    noDataState: OK
+    execErrState: Error
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: Proxmox node {{ $labels.node }} is using {{ printf "%.1f" $values.A.Value }}% of its memory — move a guest
+        to another node or shrink one.
+    isPaused: false
+  - uid: argus-pve-memory-overcommitted
+    title: Proxmox node memory overcommitted
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 100 * sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~"(qemu|lxc)/.+"} * on (instance,
+          id) group_left (node) pve_guest_info{template!="1"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~"node/.+"},
+          "node", "$1", "id", "node/(.+)"))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 100
+    noDataState: OK
+    execErrState: Error
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: The guests running on Proxmox node {{ $labels.node }} are allocated {{ printf "%.0f" $values.A.Value }}% of
+        its memory — if they all use it, the node runs out.
+    isPaused: false
 - orgId: 1
   name: Power and hardware
   folder: Argus

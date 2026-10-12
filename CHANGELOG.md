@@ -17,7 +17,9 @@ Each release's notes on GitHub are its section here.
   the new `proxmox` compose profile: a read-only API token (`PVEAuditor`) in `secrets/pve.yml`, the cluster's CA
   certificate in `secrets/pve-ca.pem` (the exporter verifies the node's certificate), and each node's address
   in `targets/pve.json`.
-- Alerts: a Proxmox node without cluster quorum (critical) and a Proxmox QDevice disconnected for 5 minutes. A
+- Alerts: a Proxmox node using more than 90 % of its memory, a Proxmox node whose running guests are allocated more
+  than its memory (both warnings), a Proxmox node without cluster quorum (critical) and a Proxmox QDevice
+  disconnected for 5 minutes. A
   new scrape job, `pve_quorum`, asks every node in `targets/pve.json` for its own view of quorum and of its
   QDevice, so the alerts still work when the node the dashboard reads the cluster from is the one that's down;
   the dashboard's Quorum and QDevice stats show the worst view.
