@@ -10,7 +10,7 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
-- Proxmox VE dashboard: per-node CPU and memory, how much memory the running guests are allocated and how many
+- Proxmox VE dashboard: cluster quorum and QDevice status, which nodes are online, per-node CPU and memory, how much memory the running guests are allocated and how many
   vCPUs they have per logical CPU (overcommit), guests that are set to start at boot but aren't running,
   storage space with days until full, and a table of every VM and container. Data comes from the Proxmox API
   through [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) 3.10.1, behind

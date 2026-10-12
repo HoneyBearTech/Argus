@@ -80,7 +80,7 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -123,6 +123,170 @@
       "interval": "1m"
     },
     {
+      "id": 19,
+      "type": "stat",
+      "title": "Quorum",
+      "description": "Whether the cluster has quorum: more than half of its votes (one per node, plus the QDevice's) present. Without it, the cluster's configuration is read-only: guests can't be started, migrated or changed. In a two-node cluster, one node going down loses quorum unless a QDevice casts the deciding vote. Empty when the nodes aren't in a cluster.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 3,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(pve_up{id=~\"cluster/.+\"})",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "Not clustered",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Quorate",
+                  "index": 0
+                },
+                "0": {
+                  "text": "No quorum",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "QDevice",
+      "description": "Whether the cluster's QDevice (an external tie-breaker vote, corosync-qnetd) is connected, as the scraped node sees it. Empty when no QDevice is configured.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(pve_qdevice_up)",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "None configured",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Connected",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Disconnected",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "interval": "1m"
+    },
+    {
       "id": 2,
       "type": "stat",
       "title": "Running guests",
@@ -132,9 +296,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 4,
+        "x": 9,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -187,9 +351,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 8,
+        "x": 12,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -253,9 +417,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
+        "x": 15,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -323,9 +487,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 16,
+        "x": 18,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -393,9 +557,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 20,
+        "x": 21,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -457,7 +621,7 @@
       "id": 7,
       "type": "table",
       "title": "Nodes",
-      "description": "Each Proxmox VE node. Memory committed: memory allocated to running guests over the node's memory. vCPU : CPU: vCPUs of running guests per logical CPU.",
+      "description": "Each Proxmox VE node; one that is offline keeps its row with CPU and memory empty. Memory committed: memory allocated to running guests over the node's memory. vCPU : CPU: vCPUs of running guests per logical CPU.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -564,6 +728,18 @@
           "range": false,
           "legendFormat": "__auto",
           "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (node) (label_replace(pve_up{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "refId": "I",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
         }
       ],
       "fieldConfig": {
@@ -576,6 +752,40 @@
           "noValue": "No nodes reporting"
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Online"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Yes",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "No",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -862,21 +1072,24 @@
               "Time 5": true,
               "Time 6": true,
               "Time 7": true,
-              "Time 8": true
+              "Time 8": true,
+              "Time 9": true
             },
             "indexByName": {
               "node": 0,
-              "Value #A": 1,
-              "Value #B": 2,
-              "Value #C": 3,
-              "Value #D": 4,
-              "Value #E": 5,
-              "Value #F": 6,
-              "Value #G": 7,
-              "Value #H": 8
+              "Value #I": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6,
+              "Value #F": 7,
+              "Value #G": 8,
+              "Value #H": 9
             },
             "renameByName": {
               "node": "Node",
+              "Value #I": "Online",
               "Value #A": "CPU",
               "Value #B": "CPUs",
               "Value #C": "Memory used",

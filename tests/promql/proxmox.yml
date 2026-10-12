@@ -280,3 +280,65 @@ tests:
         exp_samples:
           - labels: '{name="a"}'
             value: 29.999999999999993
+  # A two-node cluster: quorate for 5 minutes, then node n2 goes down and the cluster loses quorum.
+  # The QDevice is configured at minute 3 (no series before), disconnected, then connected at 6.
+  - interval: 1m
+    input_series:
+      - series: 'pve_up{instance="pve1", id="cluster/c"}'
+        values: "1x4 0x5"
+      - series: 'pve_up{instance="pve1", id="node/n1"}'
+        values: "1x9"
+      - series: 'pve_up{instance="pve1", id="node/n2"}'
+        values: "1x4 0x5"
+      - series: 'pve_cpu_usage_ratio{instance="pve1", id="node/n1"}'
+        values: "0.5x9"
+      - series: 'pve_qdevice_up{instance="pve1", id="cluster/c"}'
+        values: "_ _ _ 0 0 0 1 1 1 1"
+    promql_expr_test:
+      - dashboard: argus-proxmox
+        panel: Quorum
+        eval_time: 2m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-proxmox
+        panel: Quorum
+        eval_time: 8m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      - dashboard: argus-proxmox
+        panel: Nodes online
+        vars: {node: ".*"}
+        eval_time: 8m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      # n2 is offline: its row keeps Online = 0 (its CPU and memory are simply missing).
+      - dashboard: argus-proxmox
+        panel: 7
+        ref_id: I
+        vars: {node: ".*"}
+        eval_time: 8m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 1
+          - labels: '{node="n2"}'
+            value: 0
+      # No QDevice configured yet: no series, so the panel shows "None configured".
+      - dashboard: argus-proxmox
+        panel: QDevice
+        eval_time: 1m
+        exp_samples: []
+      - dashboard: argus-proxmox
+        panel: QDevice
+        eval_time: 4m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      - dashboard: argus-proxmox
+        panel: QDevice
+        eval_time: 8m
+        exp_samples:
+          - labels: "{}"
+            value: 1
