@@ -14,14 +14,24 @@ tests:
       # Three minutes of "up", then never again: was never really up, so never pages.
       - series: 'probe_success{job="blackbox_http", instance="never-up"}'
         values: "1x2 0x307"
+      # Probes run once a minute, so "really up" means more than 60 good probes (an hour) in
+      # the last week. The threshold was 240, sized for 15 s probes, which at one a minute
+      # would have kept a service quiet for its first four hours.
+      - series: 'probe_success{job="blackbox_http", instance="up-90m"}'
+        values: "0x209 1x89 0x10"
+      - series: 'probe_success{job="blackbox_http", instance="up-50m"}'
+        values: "0x249 1x49 0x10"
     promql_expr_test:
       # Two minutes after the blip, nothing alerts (the outage is too young to alert as well).
       - rule: argus-service-down
         eval_time: 302m
         exp_samples: []
-      # Once every probe in five minutes has failed, only the outage alerts.
+      # Once every probe in five minutes has failed, the outage and the service that was up for
+      # 90 minutes alert; 50 minutes of "up" isn't enough.
       - rule: argus-service-down
         eval_time: 306m
         exp_samples:
           - labels: '{instance="outage", job="blackbox_http"}'
+            value: 0
+          - labels: '{instance="up-90m", job="blackbox_http"}'
             value: 0

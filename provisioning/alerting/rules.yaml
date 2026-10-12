@@ -58,7 +58,7 @@ groups:
       model:
         refId: A
         expr: max_over_time(probe_success{job="blackbox_http"}[5m]) and on (instance) (sum_over_time(probe_success{job="blackbox_http"}[7d])
-          > 240)
+          > 60)
         instant: true
         range: false
         intervalMs: 15000
