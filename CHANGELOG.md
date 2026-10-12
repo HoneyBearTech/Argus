@@ -18,8 +18,17 @@ Each release's notes on GitHub are its section here.
   certificate in `secrets/pve-ca.pem` (the exporter verifies the node's certificate), and each node's address
   in `targets/pve.json`.
 
+### Fixed
+
+- A file from `secrets/` that a service mounts (`pve-ca.pem`, `vsphere-ca.pem`, `snmp-auth.yml`, `gitlab.yml`,
+  and Prometheus' `secrets/` directory) no longer turns into an empty, root-owned directory when it's missing at
+  start-up: compose now refuses to start that service (`bind source path does not exist`) until the file is there.
+
 ### Upgrading
 
+- If one of those paths is already a directory (Docker created it while the file was missing), the service
+  keeps running without its file. Check with `ls -ld secrets/*.pem secrets/*.yml`, then replace the directory
+  with the file (`sudo rmdir secrets/<name>`, it's owned by root) and recreate the service.
 - Exporter credentials moved out of the env files into their own files in `secrets/` (templates in
   `secrets.example/`): `<app>_api_key` for each exportarr instance, `qbittorrent_password`, `unifi_password`,
   `vsphere_password` (written **without** a trailing newline, e.g. `printf '%s' '…' > secrets/vsphere_password`:

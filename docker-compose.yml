@@ -33,7 +33,11 @@ services:
       # Scrape targets are host-specific and never committed (see targets.example/).
       - ./targets:/etc/prometheus/targets:ro
       # Credentials Prometheus scrapes with (e.g. API keys), never committed (see secrets.example/).
-      - ./secrets:/etc/prometheus/secrets:ro
+      - type: bind
+        source: ./secrets
+        target: /etc/prometheus/secrets
+        read_only: true
+        bind: { create_host_path: false }
       - prometheus_data:/prometheus
     ports:
       # Reachable from the monitored hosts, whose agents push metrics here.
@@ -91,7 +95,11 @@ services:
       - --config.file=/etc/snmp_exporter/snmp.yml
       - --config.file=/etc/snmp_exporter/auth.yml
     volumes:
-      - ./secrets/snmp-auth.yml:/etc/snmp_exporter/auth.yml:ro
+      - type: bind
+        source: ./secrets/snmp-auth.yml
+        target: /etc/snmp_exporter/auth.yml
+        read_only: true
+        bind: { create_host_path: false }
 
   # Media apps. Each exporter is behind its own compose profile and reads the
   # app's URL from secrets/<profile>.env and its API key from
@@ -189,7 +197,11 @@ services:
     profiles: [gitlab]
     command: [run, --config, /etc/gitlab-ci-pipelines-exporter/config.yml]
     volumes:
-      - ./secrets/gitlab.yml:/etc/gitlab-ci-pipelines-exporter/config.yml:ro
+      - type: bind
+        source: ./secrets/gitlab.yml
+        target: /etc/gitlab-ci-pipelines-exporter/config.yml
+        read_only: true
+        bind: { create_host_path: false }
 
   # vCenter: ESXi host, VM and datastore metrics through Telegraf's vSphere input
   # (`vsphere` profile). vCenter's URL and a read-only account come from
@@ -206,7 +218,11 @@ services:
         required: false
     volumes:
       - ./vsphere/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - ./secrets/vsphere-ca.pem:/etc/telegraf/vsphere-ca.pem:ro
+      - type: bind
+        source: ./secrets/vsphere-ca.pem
+        target: /etc/telegraf/vsphere-ca.pem
+        read_only: true
+        bind: { create_host_path: false }
     secrets: [vsphere_password]
 
   # Proxmox VE: node, guest and storage metrics through prometheus-pve-exporter
@@ -219,7 +235,11 @@ services:
     profiles: [proxmox]
     command: [--config.file=/run/secrets/pve.yml]
     volumes:
-      - ./secrets/pve-ca.pem:/etc/pve-exporter/pve-ca.pem:ro
+      - type: bind
+        source: ./secrets/pve-ca.pem
+        target: /etc/pve-exporter/pve-ca.pem
+        read_only: true
+        bind: { create_host_path: false }
     secrets: [pve.yml]
 
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
@@ -260,6 +280,10 @@ services:
     ports:
       - ${GRAFANA_BIND:-0.0.0.0:3000}:3000
 
+# Every bind mount from secrets/ sets create_host_path: false: if the file is
+# missing, compose refuses to start the service instead of Docker creating an
+# empty, root-owned directory in its place.
+#
 # Credentials the exporters read from files under /run/secrets/, so they don't
 # show up in `docker inspect` or Portainer's container view. Each file is
 # needed only by a service that runs; templates are in secrets.example/.

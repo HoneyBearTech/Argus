@@ -283,7 +283,7 @@ def test_pve_exporter_verifies_tls_against_the_cluster_ca() -> None:
     module = load("secrets.example/pve.yml")["default"]
     assert module["verify_ssl"] == "/etc/pve-exporter/pve-ca.pem"
     volumes = load("docker-compose.yml")["services"]["pve-exporter"]["volumes"]
-    assert "./secrets/pve-ca.pem:/etc/pve-exporter/pve-ca.pem:ro" in volumes
+    assert {"source": "./secrets/pve-ca.pem", "target": "/etc/pve-exporter/pve-ca.pem"}.items() <= volumes[0].items()
 
 
 def test_pve_job_asks_the_exporter_about_each_target() -> None:
@@ -296,6 +296,26 @@ def test_pve_job_asks_the_exporter_about_each_target() -> None:
     assert {"target_label": "__address__", "replacement": "pve-exporter:9221"} in rules
     # A target labelled cluster: "0" skips the cluster-wide collectors (one node per cluster reports guests).
     assert {"source_labels": ["cluster"], "regex": "(.+)", "target_label": "__param_cluster"} in rules
+
+
+def test_secrets_mounts_never_create_the_host_path() -> None:
+    """Regression test: a missing secrets/ file must stop the service, not become an empty root-owned directory.
+
+    With the short syntax, Docker creates a bind mount's missing source as a directory; that happened to
+    secrets/pve-ca.pem on a server, and the exporter ran without its CA certificate.
+    """
+    services = load("docker-compose.yml")["services"]
+    mounts = 0
+    for name, service in services.items():
+        for volume in service.get("volumes", []):
+            if isinstance(volume, str):
+                assert not volume.startswith("./secrets"), f"{name}: use the long syntax for {volume}"
+            elif volume["source"].startswith("./secrets"):
+                mounts += 1
+                assert volume["type"] == "bind"
+                assert volume["read_only"] is True, f"{name}: {volume['source']} must be read-only"
+                assert volume["bind"] == {"create_host_path": False}, f"{name}: {volume['source']}"
+    assert mounts == 6  # Prometheus' directory, Grafana's password, 4 exporter files
 
 
 def test_vsphere_password_template_has_no_trailing_newline() -> None:
