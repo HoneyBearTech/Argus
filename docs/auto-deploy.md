@@ -21,7 +21,8 @@ if configured).
    it, and records the bad commit in `.git/argus-deploy-bad-commits` so later runs skip it until `main`
    moves on.
 
-If `DISCORD_WEBHOOK_URL` is set in `.env`, every deploy and rollback is posted to that channel. Everything
+Every deploy and rollback is posted to the Discord webhook in `secrets/discord_webhook_url` (the one Grafana's
+alerts use) or, if that file is missing or empty, to `DISCORD_WEBHOOK_URL` in `.env`. Everything
 is also in the journal: `journalctl --user -u argus-deploy`.
 
 ## Installing

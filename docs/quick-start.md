@@ -12,11 +12,15 @@ cp .env.example .env
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp secrets.example/* secrets/
 ```
 
-Edit `.env`:
+Put a password of your choice for Grafana's `admin` user in `secrets/grafana_admin_password` (Grafana
+won't start while that file is empty), for example a random one:
 
-- set `GF_SECURITY_ADMIN_PASSWORD` to a password of your choice;
-- for a trial on your own machine, change the three `*_BIND` lines to listen on loopback only:
-  `GRAFANA_BIND=127.0.0.1:3000`, `PROMETHEUS_BIND=127.0.0.1:9090`, `LOKI_BIND=127.0.0.1:3101`.
+```sh
+openssl rand -base64 24 > secrets/grafana_admin_password && cat secrets/grafana_admin_password
+```
+
+Edit `.env`: for a trial on your own machine, change the three `*_BIND` lines to listen on loopback only:
+`GRAFANA_BIND=127.0.0.1:3000`, `PROMETHEUS_BIND=127.0.0.1:9090`, `LOKI_BIND=127.0.0.1:3101`.
 
 `COMPOSE_PROFILES=loki` is already set, so Loki (the log store) starts too. Then:
 
@@ -49,13 +53,14 @@ On the same machine:
 
 ```sh
 docker run -d --name argus-agent --restart unless-stopped \
-  --network host --pid host --privileged \
+  --network host --pid host --read-only \
+  --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt no-new-privileges:true \
   -e ARGUS_HOST=$(hostname) \
   -e ARGUS_PROMETHEUS_URL=http://127.0.0.1:9090 \
   -e ARGUS_LOKI_URL=http://127.0.0.1:3101 \
   -v /:/rootfs:ro,rslave -v /sys:/sys:ro -v /run/udev:/run/udev:ro -v /dev/disk:/dev/disk:ro \
   -v /var/lib/docker:/var/lib/docker:ro -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -v /run/containerd:/run/containerd:ro \
+  -v /run/containerd:/run/containerd:ro -v argus-agent-data:/var/lib/alloy/data \
   ghcr.io/honeybeartech/argus-agent:latest
 ```
 
@@ -69,7 +74,8 @@ Containers** shows every container (including Argus itself), and **Logs** lets y
   [Adding a host](../README.md#adding-a-host).
 - Light up the other dashboards (Pi-hole, UniFi, NAS, Home Assistant, media apps, UPS) by adding their
   targets and credentials; the README's [table](../README.md#running-it) lists what each needs.
-- Send alerts to Discord by setting `DISCORD_WEBHOOK_URL` in `.env` and running `docker compose up -d`.
+- Send alerts to Discord by putting the channel's webhook URL in `secrets/discord_webhook_url` and running
+  `docker compose restart grafana`.
 - Read [security.md](security.md) before running Argus anywhere but your own trusted network, and
   [require a password for Prometheus](security.md#requiring-a-password-for-prometheus) once agents on other
   hosts push to it.

@@ -9,6 +9,13 @@ services:
     image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-loki:${ARGUS_VERSION:-latest}
     container_name: argus-loki
     restart: unless-stopped
+    # Runs as uid 10001 with no capabilities, can't gain any, and writes only
+    # its volume (docs/security.md#hardening).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
     volumes:
       - loki_data:/loki
     ports:

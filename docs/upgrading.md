@@ -30,7 +30,8 @@ released last; pinning a version is recommended so that upgrades happen when you
 
 On each host, set `ARGUS_AGENT_IMAGE` in the agent's `.env` to the new tag (for example
 `ghcr.io/honeybeartech/argus-agent:0.6.0`), then `docker compose pull && docker compose up -d`. With
-`docker run`, remove the container and run it again with the new tag. Agents and server don't need to be
+`docker run`, remove the container and run it again with the new tag, using the README's current command
+(its flags can change between releases; copy `agent/compose.yml` again too). Agents and server don't need to be
 upgraded at the same moment: an older agent keeps pushing to a newer server.
 
 ## Loki on a separate host

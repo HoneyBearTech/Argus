@@ -17,26 +17,28 @@ Loki must not be reachable from outside it.
    are provisioned from files and can't be changed or deleted in Grafana's UI; changing them needs write
    access to the server or a new image.
 2. **No credentials in the repository or the images.** Credentials for the watched services, the Grafana
-   admin password and the Discord webhook come from the server's `secrets/` and `.env`, which are
-   gitignored, mounted read-only and never baked into an image. Prometheus, Grafana and the exporters read
-   passwords, API keys and tokens from files, so they don't show in `docker inspect` or Portainer's
-   container view; the exceptions are the Pi-hole exporter (it takes its passwords only from the
-   environment), the Grafana admin password and the Discord webhook. GitHub secret scanning with push
-   protection guards the repository.
+   admin password and the Discord webhook come from the server's `secrets/`, which is gitignored,
+   mounted read-only and never baked into an image. Prometheus, Grafana and the exporters read
+   passwords, API keys, tokens and the webhook from files, so they don't show in `docker inspect` or
+   Portainer's container view; the exceptions are the Pi-hole exporter and the Plex exporter, which take
+   their passwords and token only from the environment. GitHub secret scanning with push protection
+   guards the repository.
 3. **No network details in the repository.** Addresses, host names and domains live only in the server's
    `targets/` and `.env`; CI rejects private IP addresses and a private list of internal names in every
    committed file.
-4. **Grafana requires a login.** Sign-up and anonymous access are off, and the stack refuses to start
-   without an admin password.
+4. **Grafana requires a login.** Sign-up and anonymous access are off, and Grafana refuses to start
+   without an admin password (`secrets/grafana_admin_password` missing, empty or unreadable).
 5. **Only three services listen on the network**: Grafana, Prometheus and Loki (plus the Plex exporter on
    a Plex host, if enabled). blackbox_exporter and the exporters are reachable only from the compose
    network, and the agent accepts no connections from other machines.
 6. **TLS is verified by default** on every outgoing connection that uses it: web probes (an invalid or
    expired certificate fails the probe), the UniFi console (unless `UNIFI_VERIFY_SSL=false`), the Discord
    webhook, and HTTPS scrape targets.
-7. **Least privilege for the server.** Grafana, Prometheus, Loki and blackbox_exporter run as non-root
-   users in their containers. The integrations are designed for read-only accounts on the watched
-   services (a read-only UniFi user, a non-admin Home Assistant user, Pi-hole app passwords, SNMPv3).
+7. **Least privilege for the server.** Every server container runs as a non-root user, with no Linux
+   capabilities, can't gain privileges (`no-new-privileges`), and has a read-only root filesystem: it
+   writes only its own volume and, where needed, `/tmp` in memory ([hardening](#hardening)). The
+   integrations are designed for read-only accounts on the watched services (a read-only UniFi user, a
+   non-admin Home Assistant user, Pi-hole app passwords, SNMPv3).
 8. **Releases are verifiable.** Images are signed keylessly by the release workflow and carry an SBOM and
    provenance; release files are covered by a signed checksum file; version tags are signed
    ([verifying-releases.md](verifying-releases.md)). Base images are pinned by digest, and Grafana runs
@@ -58,9 +60,10 @@ Loki must not be reachable from outside it.
   Manager logs before shipping them, but secrets printed any other way are stored as they are. CI job
   containers started by GitLab Runner (the label it marks them with as managed) are never read: Docker
   keeps their output without the secret masking GitLab applies to job logs.
-- **The agent is root on its host.** It runs privileged, in the host's PID and network namespaces, with
-  read access to the host's filesystem and the Docker and containerd sockets (which are equivalent to root). A compromised
-  agent image or Argus release is a compromised host; that's why releases are signed.
+- **The agent is root on its host.** It no longer runs privileged, but it runs as root in the host's PID
+  and network namespaces, can read every file on the host, and holds the Docker and containerd sockets,
+  which are equivalent to root even when mounted read-only ([its exceptions](#the-agents-exceptions)). A
+  compromised agent image or Argus release is a compromised host; that's why releases are signed.
 - **Agent traffic is not encrypted by default.** Agents push over plain HTTP, Prometheus' password
   included. Put Prometheus and Loki behind a TLS proxy and use `https://` URLs for the agents if traffic
   crosses a network you don't trust.
@@ -92,6 +95,63 @@ Loki must not be reachable from outside it.
 - If you open GitLab's bundled Prometheus (`prometheus['listen_address']`) or GitLab Runner's metrics port
   for Argus, they answer anyone who can reach them, without authentication; allow only the Argus server
   with a host firewall (for example `ufw allow from <argus-server> to any port 9090`).
+
+## Hardening
+
+What each container runs with. Every service in `docker-compose.yml`, `logs/compose.yml` and
+`agent/compose.yml` drops all Linux capabilities (`cap_drop: [ALL]`), can't gain privileges through setuid
+binaries or file capabilities (`no-new-privileges:true`), and has a read-only root filesystem; it writes only
+to its volume and, where it needs one, a `/tmp` in memory. A capability may be added back only from Docker's
+default set, with the reason next to it in the compose file. `tests/test_configs.py` fails if a service breaks
+any of this, and CI's boot test starts Grafana and Prometheus with these settings.
+
+| Service | Runs as | Capabilities added back | Read-only root | Writes | Why |
+| --- | --- | --- | --- | --- | --- |
+| grafana | uid 472 (image) | none | yes | its volume; `/tmp` in memory | Its datasource plugins run as separate processes and talk to Grafana over sockets in `/tmp` |
+| prometheus | `nobody` (image) | none | yes | its volume | |
+| loki (both compose files) | uid 10001 (image) | none | yes | its volume | |
+| blackbox | uid 65534 (Argus image) | none | yes | nothing | HTTP and DNS probes need no privileges (ICMP probes would need root and `NET_RAW`) |
+| pihole-exporter | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Needs no file |
+| unpoller | uid 65534 (compose; the image sets root) | none | yes | nothing | Only reads its password file |
+| snmp-exporter | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Only reads its configuration |
+| exportarr (each app) | uid 65532 (image) | none | yes | nothing | |
+| qbittorrent-exporter | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Only reads its password file |
+| gitlab-ci-pipelines-exporter | uid 65534 (image) | none | yes | nothing | |
+| pve-exporter | uid 101 (image) | none | yes | `/tmp` in memory | Python won't start without a writable temporary directory |
+| agent | root | `DAC_OVERRIDE` | yes | its data volume | [The agent's exceptions](#the-agents-exceptions) |
+| plex-exporter (agent's `plex` profile) | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Needs no file |
+
+Since no server container holds a capability, none can read another user's private file: everything in
+`secrets/` that a container mounts must be readable by its user, which means mode 644 (as the templates and
+`docs/interfaces.md` say). A file with mode 600 makes that service fail to read it; Grafana then refuses to
+start, unpoller logs `Reading UniFi Password File: … permission denied`. The env files in `secrets/` are read by
+the compose command, not by the containers, and can stay 600.
+
+### The agent's exceptions
+
+The agent has to see the host it reports on, so it keeps more than the server's services. Each of these was
+checked by running the agent without it and comparing what reached Prometheus and Loki:
+
+- **Host network** (`network_mode: host`): node_exporter reads the network interfaces from `/proc/net`,
+  which shows only the network namespace the agent runs in. Without it the Host Health network panels show the
+  container's own `eth0` instead of the host's interfaces.
+- **Host PID** (`pid: host`): node_exporter finds the filesystems to report through PID 1's mount table, and
+  cAdvisor reads each container's network counters through the container's processes. Without it the disk
+  panels list the agent container's own mounts and container network traffic is incomplete.
+- **The Docker and containerd sockets, mounted read-only**: cAdvisor and the log collection find containers,
+  their names and labels through them, and read their logs through Docker's API. A read-only mount protects
+  the socket file, not the API: whoever controls the agent controls Docker, which is root on the host.
+- **The host's filesystem, read-only**: `/` as `/rootfs`, `/sys`, `/run/udev`, `/dev/disk`, `/var/lib/docker`,
+  and Nginx Proxy Manager's logs where configured.
+- **Root with `DAC_OVERRIDE`**: without capabilities, root can only open files it owns. The agent's data
+  directory belongs to the image's `alloy` user (uid 473) and Alloy exits without access to it, and the host
+  files it reads (logs, mount points below private directories) can belong to anyone. Every host mount is
+  read-only, so this lets it read, not change, them.
+
+It no longer runs `--privileged`: it has no other capability, no access to the host's devices, and Docker's
+default seccomp and AppArmor profiles apply. The one thing that costs is cAdvisor's `machine_*` metrics
+(the host's CPU count and memory size as cAdvisor sees them), which need `SYS_PTRACE`; Argus doesn't use them,
+and node_exporter reports the same facts.
 
 ## Requiring a password for Prometheus
 

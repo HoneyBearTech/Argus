@@ -17,6 +17,9 @@ USER 472
 
 COPY provisioning /etc/grafana/provisioning
 COPY dashboards /etc/argus/dashboards
+# Refuses to start without an admin password, then runs the image's /run.sh.
+COPY --chmod=0755 images/grafana/start.sh /argus-start.sh
+ENTRYPOINT ["/argus-start.sh"]
 
 ENV GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/argus/dashboards/overview/homelab-overview.json \
     GF_PATHS_PLUGINS=/usr/share/grafana/data/plugins-argus \

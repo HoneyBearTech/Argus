@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -51,7 +52,7 @@ def test_credentials_come_from_files_or_environment() -> None:
     config = (ROOT / "prometheus" / "prometheus.yml").read_text()
     assert not re.search(r"^\s*(password|bearer_token|credentials):", config, re.MULTILINE)
     contact_points = (ROOT / "provisioning" / "alerting" / "contact-points.yaml").read_text()
-    assert "url: ${DISCORD_WEBHOOK_URL}" in contact_points
+    assert "url: $__file{/run/secrets/discord_webhook_url}" in contact_points
 
 
 def test_compose_files_publish_no_blackbox_or_exporter_ports() -> None:
@@ -98,6 +99,69 @@ def test_grafana_image_does_not_run_as_root() -> None:
     users = re.findall(r"^USER\s+(\S+)", dockerfile, re.MULTILINE)
     assert users
     assert users[-1].split(":")[0] not in {"0", "root"}
+
+
+def test_grafana_reads_its_admin_password_and_webhook_from_files() -> None:
+    """Neither shows in `docker inspect`: compose secrets, read through __FILE and $__file{}."""
+    grafana = load("docker-compose.yml")["services"]["grafana"]
+    environment = grafana["environment"]
+    assert environment["GF_SECURITY_ADMIN_PASSWORD__FILE"] == "/run/secrets/grafana_admin_password"  # noqa: S105 - a path
+    assert "GF_SECURITY_ADMIN_PASSWORD" not in environment
+    assert "DISCORD_WEBHOOK_URL" not in environment
+    assert grafana["secrets"] == ["grafana_admin_password", "discord_webhook_url"]
+    receivers = [r for p in load("provisioning/alerting/contact-points.yaml")["contactPoints"] for r in p["receivers"]]
+    assert [r["settings"]["url"] for r in receivers] == ["$__file{/run/secrets/discord_webhook_url}"]
+
+
+def test_secret_templates_cant_post_alerts_or_set_a_known_password() -> None:
+    """A copy of secrets.example/ must neither reach a real channel nor start Grafana with a published password."""
+    webhook = (ROOT / "secrets.example" / "discord_webhook_url").read_text().strip()
+    assert re.fullmatch(r"https://[^/]+\.invalid/\S*", webhook)
+    assert not (ROOT / "secrets.example" / "grafana_admin_password").read_text().strip()
+
+
+def test_grafana_image_starts_through_the_password_check() -> None:
+    dockerfile = (ROOT / "images" / "grafana" / "Dockerfile").read_text()
+    assert re.search(r'^ENTRYPOINT \["/argus-start.sh"\]$', dockerfile, re.MULTILINE)
+    assert "images/grafana/start.sh /argus-start.sh" in dockerfile
+    assert (ROOT / "images" / "grafana" / "start.sh").read_text().rstrip().endswith('exec /run.sh "$@"')
+
+
+@pytest.mark.parametrize(
+    ("password_file", "env_password", "refused"),
+    [
+        ("", None, True),  # the template: empty
+        (" \n\t\n", None, True),
+        (None, None, True),  # file missing (or unreadable)
+        ("s3cret\n", None, False),
+        (None, "from-env", False),  # GF_SECURITY_ADMIN_PASSWORD still works without __FILE (CI's boot test)
+        (None, "", True),
+    ],
+)
+def test_grafana_refuses_to_start_without_an_admin_password(
+    tmp_path: Path, password_file: str | None, env_password: str | None, *, refused: bool
+) -> None:
+    """Grafana would fall back to admin/admin; the entrypoint stops first. Otherwise it execs /run.sh (absent here)."""
+    environment = {"PATH": "/usr/bin:/bin"}
+    if env_password is None:
+        environment["GF_SECURITY_ADMIN_PASSWORD__FILE"] = str(tmp_path / "password")
+        if password_file is not None:
+            (tmp_path / "password").write_text(password_file)
+    else:
+        environment["GF_SECURITY_ADMIN_PASSWORD"] = env_password
+    done = subprocess.run(
+        ["/bin/bash", str(ROOT / "images" / "grafana" / "start.sh")],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if refused:
+        assert done.returncode == 1
+        assert "no Grafana admin password" in done.stderr
+    else:
+        assert "/run.sh" in done.stderr  # reached `exec /run.sh`, which only the image has
+        assert "no Grafana admin password" not in done.stderr
 
 
 def test_agent_can_reach_containerd() -> None:
@@ -330,3 +394,78 @@ def test_secrets_mounts_never_create_the_host_path() -> None:
                 assert volume["read_only"] is True, f"{name}: {volume['source']} must be read-only"
                 assert volume["bind"] == {"create_host_path": False}, f"{name}: {volume['source']}"
     assert mounts == 5  # Prometheus' directory, Grafana's password, 3 exporter files
+
+
+# Every compose file a user runs; each of their services gets the hardening in docs/security.md#hardening.
+COMPOSE_FILES = ["docker-compose.yml", "logs/compose.yml", "agent/compose.yml"]
+# Docker's default capability set: a service may add back one of these, never one beyond it.
+DOCKER_DEFAULT_CAPABILITIES = {
+    "AUDIT_WRITE",
+    "CHOWN",
+    "DAC_OVERRIDE",
+    "FOWNER",
+    "FSETID",
+    "KILL",
+    "MKNOD",
+    "NET_BIND_SERVICE",
+    "NET_RAW",
+    "SETFCAP",
+    "SETGID",
+    "SETPCAP",
+    "SETUID",
+    "SYS_CHROOT",
+}
+SERVICES = [(path, name) for path in COMPOSE_FILES for name in load(path)["services"]]
+
+
+def service(path: str, name: str) -> dict:
+    return load(path)["services"][name]
+
+
+@pytest.mark.parametrize(("path", "name"), SERVICES)
+def test_every_service_drops_all_capabilities_and_cannot_gain_privileges(path: str, name: str) -> None:
+    config = service(path, name)
+    assert "no-new-privileges:true" in config.get("security_opt", []), f"{path}: {name}"
+    assert config.get("cap_drop") == ["ALL"], f"{path}: {name}"
+    assert not config.get("privileged"), f"{path}: {name}"
+    added = {c.upper().removeprefix("CAP_") for c in config.get("cap_add", [])}
+    assert added <= DOCKER_DEFAULT_CAPABILITIES, f"{path}: {name} adds {sorted(added - DOCKER_DEFAULT_CAPABILITIES)}"
+
+
+@pytest.mark.parametrize(("path", "name"), SERVICES)
+def test_every_service_has_a_read_only_root_filesystem(path: str, name: str) -> None:
+    """They write only to their volumes and tmpfs mounts."""
+    assert service(path, name).get("read_only") is True, f"{path}: {name}"
+
+
+def test_only_the_agent_gets_a_capability_back() -> None:
+    """Adding one is a decision: document it in docs/security.md#hardening and list it here."""
+    configs = {(path, name): service(path, name) for path, name in SERVICES}
+    added = {key: config["cap_add"] for key, config in configs.items() if "cap_add" in config}
+    assert added == {("agent/compose.yml", "agent"): ["DAC_OVERRIDE"]}
+
+
+def test_only_the_agent_shares_the_hosts_namespaces_or_docker() -> None:
+    """The agent's exceptions (docs/security.md#hardening); no other service gets any of them."""
+    for path, name in SERVICES:
+        config = service(path, name)
+        mounts = [v for v in config.get("volumes", []) if isinstance(v, str)]
+        host_access = {
+            "network": config.get("network_mode") == "host",
+            "pid": config.get("pid") == "host",
+            "docker": any(m.startswith("/var/run/docker.sock:") for m in mounts),
+        }
+        if (path, name) == ("agent/compose.yml", "agent"):
+            assert host_access == {"network": True, "pid": True, "docker": True}
+            host_mounts = [m for m in mounts if m.startswith("/")]
+            assert all(m.split(":")[2].startswith("ro") for m in host_mounts), "the agent mounts the host read-only"
+        else:
+            assert not any(host_access.values()), f"{path}: {name}: {host_access}"
+
+
+def test_images_that_default_to_root_run_as_nobody() -> None:
+    """They only read their settings and secrets, so they don't need root (or any capability)."""
+    services = load("docker-compose.yml")["services"]
+    for name in ["pihole-exporter", "unpoller", "snmp-exporter", "qbittorrent-exporter"]:
+        assert services[name]["user"] == "65534:65534", name
+    assert service("agent/compose.yml", "plex-exporter")["user"] == "65534:65534"

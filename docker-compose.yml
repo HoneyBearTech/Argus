@@ -5,9 +5,22 @@
 # configs instead, add docker-compose.source.yml (see that file).
 name: argus
 
+# Every service starts with no Linux capabilities and can't gain privileges
+# (setuid binaries, file capabilities), and its root filesystem is read-only:
+# it writes only to its volume and, where it needs one, a tmpfs. None of them
+# needs a capability back, so there is no cap_add; docs/security.md#hardening
+# lists what each one runs as and why (tests/test_configs.py enforces it).
+x-hardened: &hardened
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  read_only: true
+
 # Shared settings for the exportarr services below (one per *arr / SABnzbd app).
 # Each mounts its app's API key, secrets/<app>_api_key, as /run/secrets/api_key.
 x-exportarr: &exportarr
+  <<: *hardened
   image: ghcr.io/onedr0p/exportarr:v2.3.0
   restart: unless-stopped
   environment:
@@ -18,6 +31,7 @@ x-exportarr: &exportarr
 
 services:
   prometheus:
+    <<: *hardened
     image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-prometheus:${ARGUS_VERSION:-latest}
     restart: unless-stopped
     command:
@@ -46,6 +60,7 @@ services:
   # Runs HTTP and DNS probes on Prometheus' behalf. Only Prometheus talks to
   # it, so it publishes no port.
   blackbox:
+    <<: *hardened
     image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-blackbox:${ARGUS_VERSION:-latest}
     restart: unless-stopped
 
@@ -53,7 +68,10 @@ services:
   # gitignored secrets/pihole-exporter.env (see secrets.example/); without that
   # file the exporter starts but has nothing to scrape.
   pihole-exporter:
+    <<: *hardened
     image: ekofr/pihole-exporter:v1.2.0
+    # The image runs as root; it needs no file of its own.
+    user: "65534:65534"
     restart: unless-stopped
     env_file:
       - path: ./secrets/pihole-exporter.env
@@ -64,7 +82,10 @@ services:
   # password from secrets/unifi_password (see secrets.example/); everything else
   # is fixed here.
   unpoller:
+    <<: *hardened
     image: ghcr.io/unpoller/unpoller:v5.5.1
+    # The image runs as root; it only reads its password file.
+    user: "65534:65534"
     restart: unless-stopped
     environment:
       UP_INFLUXDB_DISABLE: "true"
@@ -88,7 +109,10 @@ services:
   # secrets.example/), so the service only starts where the `snmp` profile is
   # enabled (COMPOSE_PROFILES=snmp in .env) and that file exists.
   snmp-exporter:
+    <<: *hardened
     image: prom/snmp-exporter:v0.30.1
+    # The image runs as root; it only reads its configuration.
+    user: "65534:65534"
     restart: unless-stopped
     profiles: [snmp]
     command:
@@ -178,7 +202,10 @@ services:
     secrets: [{source: sabnzbd_api_key, target: api_key}]
 
   qbittorrent-exporter:
+    <<: *hardened
     image: ghcr.io/martabal/qbittorrent-exporter:v2.0.3
+    # The image runs as root; it only reads its password file.
+    user: "65534:65534"
     restart: unless-stopped
     profiles: [qbittorrent]
     environment:
@@ -192,6 +219,7 @@ services:
   # Which GitLab and projects, and the read_api token, come from
   # secrets/gitlab.yml (see secrets.example/).
   gitlab-ci-pipelines-exporter:
+    <<: *hardened
     image: ghcr.io/mvisonneau/gitlab-ci-pipelines-exporter:v0.6.0
     restart: unless-stopped
     profiles: [gitlab]
@@ -208,10 +236,14 @@ services:
   # cluster's CA certificate from secrets/pve-ca.pem (see secrets.example/);
   # Prometheus names the node to ask in each scrape (targets/pve.json).
   pve-exporter:
+    <<: *hardened
     image: prompve/prometheus-pve-exporter:3.10.1
     restart: unless-stopped
     profiles: [proxmox]
     command: [--config.file=/run/secrets/pve.yml]
+    # Python won't start without a writable temporary directory.
+    tmpfs:
+      - /tmp
     volumes:
       - type: bind
         source: ./secrets/pve-ca.pem
@@ -224,6 +256,7 @@ services:
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
   # at it either way.
   loki:
+    <<: *hardened
     image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-loki:${ARGUS_VERSION:-latest}
     restart: unless-stopped
     profiles: [loki]
@@ -233,19 +266,27 @@ services:
       - ${LOKI_BIND:-0.0.0.0:3101}:3100
 
   grafana:
+    <<: *hardened
     image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-grafana:${ARGUS_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       - prometheus
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?set GF_SECURITY_ADMIN_PASSWORD in .env}
+      # The admin password, from secrets/grafana_admin_password. Grafana sets it
+      # when it first creates its database; the image refuses to start if the
+      # file is empty.
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
-      # Alert notifications (provisioning/alerting/contact-points.yaml). Unset
-      # outside production, so a sandbox can't post to the real channel.
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-https://discord.invalid/argus-sandbox}
       # Where Loki runs: the bundled one (`loki` profile) by default.
       LOKI_URL: ${LOKI_URL:-http://loki:3100}
+    # The alert contact point (provisioning/alerting/contact-points.yaml) reads
+    # the Discord webhook from secrets/discord_webhook_url; its template points
+    # nowhere, so a sandbox can't post to the real channel.
+    secrets: [grafana_admin_password, discord_webhook_url]
+    # Its datasource plugins (separate processes) talk to it over sockets in /tmp.
+    tmpfs:
+      - /tmp
     volumes:
       - grafana_data:/var/lib/grafana
       # Prometheus' password, for the provisioned datasource. Only this one
@@ -262,10 +303,14 @@ services:
 # missing, compose refuses to start the service instead of Docker creating an
 # empty, root-owned directory in its place.
 #
-# Credentials the exporters read from files under /run/secrets/, so they don't
-# show up in `docker inspect` or Portainer's container view. Each file is
-# needed only by a service that runs; templates are in secrets.example/.
+# Credentials Grafana and the exporters read from files under /run/secrets/, so
+# they don't show up in `docker inspect` or Portainer's container view. Each
+# file is needed only by a service that runs; templates are in secrets.example/.
+# They must be readable by the containers' users (mode 644): no service runs
+# with the capability to read another user's private file.
 secrets:
+  grafana_admin_password: {file: ./secrets/grafana_admin_password}
+  discord_webhook_url: {file: ./secrets/discord_webhook_url}
   unifi_password: {file: ./secrets/unifi_password}
   radarr_api_key: {file: ./secrets/radarr_api_key}
   radarr4k_api_key: {file: ./secrets/radarr4k_api_key}
