@@ -12,10 +12,10 @@
 [![Grafana](https://img.shields.io/badge/grafana-13.2.4-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
 [![License](https://img.shields.io/github/license/HoneyBearTech/Argus)](LICENSE)
 
-Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts and their logs, the Plex/arr media stack, reverse proxy traffic, DNS, the network and internet connection, NAS storage, UPS power, the smart home, GitLab CI and the Proxmox VE cluster — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
+Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts and their logs, the Plex/arr media stack, reverse proxy traffic, DNS, the network and internet connection, NAS storage, UPS power, the smart home, GitLab CI, Tdarr and the Proxmox VE cluster — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
 
 ## How it works
-Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP, the media apps, GitLab CI and Proxmox run on one server from [`docker-compose.yml`](docker-compose.yml) (the optional ones behind Compose profiles, and Loki on another host if you prefer); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
+Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP, the media apps, Tdarr, GitLab CI and Proxmox run on one server from [`docker-compose.yml`](docker-compose.yml) (the optional ones behind Compose profiles, and Loki on another host if you prefer); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
 
 ```
 dashboards/          dashboard JSON, one folder per Grafana folder
@@ -42,6 +42,7 @@ docs/                user, security and project documentation
 | Network / UniFi | network | How's the internet connection, and what's on the network? | [unpoller](https://github.com/unpoller/unpoller) with a read-only UniFi account |
 | Internet / ISP | network | Is the ISP delivering the speed we pay for, and how often does the connection drop? | unpoller: the UniFi gateway's own speed tests and the plan speeds set in UniFi |
 | Media Stack | media | Who's watching what, is the download pipeline flowing, and is the library healthy? | [exportarr](https://github.com/onedr0p/exportarr) (*arr, SABnzbd), [qbittorrent-exporter](https://github.com/martabal/qbittorrent-exporter); Plex exporter beside Plex (`agent/compose.yml`, `plex` profile) |
+| Tdarr | media | Is Tdarr keeping up, and how much space has it saved? | [tdarr-exporter](https://github.com/homeylab/tdarr-exporter) through Tdarr's API (`tdarr` profile); the Tdarr container's CPU, memory and logs from the Argus agent |
 | NAS / Storage | storage | Are the NAS units healthy, and how fast are they filling? | snmp-exporter (bundled `synology` + standard MIB modules), SNMPv3 |
 | Smart Home | home | What's the house doing — temperatures, HVAC, energy? | Home Assistant's Prometheus integration (long-lived token) |
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
@@ -61,6 +62,7 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 | Network | internet on backup WAN, internet dropped, internet much slower than usual (latest speed test under half its 14-day median), no speed test in 8 days, Pi-hole blocklists out of sync |
 | Containers | container restarted more than 3 times in an hour |
 | Logs | a site returning > 20 server errors (5xx) in 10 minutes, log pipeline stalled (Loki receiving almost nothing for 15 minutes) |
+| Tdarr | new transcode or health-check errors in the last hour, files queued but no transcode or health check finished in a day |
 | GitLab | a GitLab component (Puma, Sidekiq, Gitaly, PostgreSQL, …) down for 5 minutes, the latest pipeline on a watched branch failed |
 
 Alerts are grouped per rule and repeat every 12 hours while firing.
@@ -93,6 +95,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Smart Home | `homeassistant.json` | `home_assistant_token` | — |
 | UPS / Power | `peanut.json` | `peanut_username`, `peanut_password` (PeaNUT 6's login; PeaNUT 5 ignores them) | — |
 | Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL), `<app>_api_key` (qBittorrent: `qbittorrent.env` with URL + user, `qbittorrent_password`) | the app's profile, e.g. `radarr,sonarr` |
+| Tdarr | `tdarr.json` (`tdarr-exporter:9090`) | `tdarr.env` (Tdarr's URL; and `TDARR_API_KEY` once Tdarr's own login is on, which the exporter reads only from its environment) | `tdarr` |
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `plex`, in that host's agent `.env` |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
 | GitLab CI (pipelines) | `gitlab.json` | `gitlab.yml` (GitLab's URL and a `read_api` token) | `gitlab` |

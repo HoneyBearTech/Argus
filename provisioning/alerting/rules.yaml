@@ -1090,3 +1090,98 @@ groups:
     annotations:
       summary: The latest pipeline on {{ $labels.project }} ({{ $labels.ref }}) failed.
     isPaused: false
+- orgId: 1
+  name: Tdarr
+  folder: Argus
+  interval: 5m
+  rules:
+  # Files whose transcode or health check failed in the last hour, per library. Tdarr keeps a failed
+  # file in its error list until it's requeued or cleared, so the alert compares with an hour ago: it
+  # fires once for new errors and resolves an hour later, while old ones stay on the dashboard.
+  - uid: argus-tdarr-errors
+    title: Tdarr reported new errors
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 3600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (library_name, check) ((label_replace(tdarr_library_transcodes{status="error"}
+          - tdarr_library_transcodes{status="error"} offset 1h, "check", "transcode", "", "")
+          or label_replace(tdarr_library_health_checks{status="error"}
+          - tdarr_library_health_checks{status="error"} offset 1h, "check", "health check", "", ""))
+          * on (tdarr_instance, library_id) group_left (library_name) tdarr_library_info)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Tdarr: {{ with $values.A }}{{ humanize .Value }}{{ end }} new {{ $labels.check }} error(s) in {{ $labels.library_name }} in the last hour.'
+    isPaused: false
+  # Files are queued but nothing finished in a day: a node paused, never inside its schedule, or stuck.
+  # A day, so a node whose schedule allows only some hours still finishes something; and only once
+  # the exporter has a day of history, so a fresh install doesn't alert before it could know.
+  - uid: argus-tdarr-stalled
+    title: Tdarr queue not moving
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 86400
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (sum by (tdarr_instance) (tdarr_library_transcodes{status="queued"})
+          + sum by (tdarr_instance) (tdarr_library_health_checks{status="queued"}))
+          unless on (tdarr_instance) (sum by (tdarr_instance) (increase(tdarr_library_transcodes_completed_total[1d]))
+          + sum by (tdarr_instance) (increase(tdarr_library_health_checks_completed_total[1d])) > 0)
+          and on (tdarr_instance) (tdarr_up offset 23h)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Tdarr: {{ with $values.A }}{{ humanize .Value }}{{ end }} file(s) queued, but no transcode or health check finished in a day (node paused, outside its schedule, or stuck).'
+    isPaused: false

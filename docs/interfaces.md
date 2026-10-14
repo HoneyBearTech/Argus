@@ -54,7 +54,8 @@ format; placeholders in [`targets.example/`](../targets.example/)): a list of
 read-only, so the containers' users must be able to read them (mode 644; the env files, which only the compose
 command reads, can stay 600): Grafana's admin password (`grafana_admin_password`, required) and the Discord
 webhook (`discord_webhook_url`), both mounted under `/run/secrets/`; env files with the exporters' URLs and user names (`pihole-exporter.env`, which also holds
-the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`); the exporters' passwords and API
+the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`, and `tdarr.env`, which also holds Tdarr's API key once Tdarr's
+own login is on); the exporters' passwords and API
 keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, `qbittorrent_password`);
 `gitlab.yml` (GitLab, its token and what to watch); `pve.yml` (the Proxmox VE API token, mounted under
 `/run/secrets/`); the CA certificate of Proxmox VE (`pve-ca.pem`); files Prometheus reads

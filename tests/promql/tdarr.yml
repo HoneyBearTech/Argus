@@ -1,0 +1,201 @@
+# Tdarr dashboard and alerts. Per-library series carry only library_id; the name comes from
+# tdarr_library_info. Error and queue counts are gauges of Tdarr's current lists, not counters.
+evaluation_interval: 1m
+tests:
+  # Two libraries. HD Movies has an old health-check error and gets two new transcode errors at
+  # 105m; 4k Movies gets a new health-check error at 125m.
+  - interval: 5m
+    input_series:
+      - series: 'tdarr_library_info{tdarr_instance="tdarr", library_id="L1", library_name="HD Movies"}'
+        values: "1x45"
+      - series: 'tdarr_library_info{tdarr_instance="tdarr", library_id="L2", library_name="4k Movies"}'
+        values: "1x45"
+      - series: 'tdarr_library_transcodes{tdarr_instance="tdarr", library_id="L1", status="error"}'
+        values: "1x20 3x25"
+      - series: 'tdarr_library_transcodes{tdarr_instance="tdarr", library_id="L2", status="error"}'
+        values: "0x45"
+      - series: 'tdarr_library_health_checks{tdarr_instance="tdarr", library_id="L1", status="error"}'
+        values: "1x45"
+      - series: 'tdarr_library_health_checks{tdarr_instance="tdarr", library_id="L2", status="error"}'
+        values: "0x24 1x21"
+      - series: 'tdarr_library_transcodes{tdarr_instance="tdarr", library_id="L1", status="queued"}'
+        values: "5x45"
+      - series: 'tdarr_library_transcodes{tdarr_instance="tdarr", library_id="L2", status="queued"}'
+        values: "0x45"
+      - series: 'tdarr_library_health_checks{tdarr_instance="tdarr", library_id="L2", status="queued"}'
+        values: "2x45"
+      - series: 'tdarr_library_files{tdarr_instance="tdarr", library_id="L1"}'
+        values: "687x45"
+      - series: 'tdarr_library_files{tdarr_instance="tdarr", library_id="L2"}'
+        values: "149x45"
+      - series: 'tdarr_library_size_diff_bytes{tdarr_instance="tdarr", library_id="L1"}'
+        values: "70000000000x45"
+      - series: 'tdarr_library_size_diff_bytes{tdarr_instance="tdarr", library_id="L2"}'
+        values: "78000000000x45"
+    promql_expr_test:
+      # Only what's new since an hour ago, per library and kind; the old error doesn't alert.
+      - rule: argus-tdarr-errors
+        eval_time: 150m
+        exp_samples:
+          - labels: '{library_name="HD Movies", check="transcode"}'
+            value: 2
+          - labels: '{library_name="4k Movies", check="health check"}'
+            value: 1
+      # An hour later nothing is new: the alert resolves, the dashboard still shows the errors.
+      - rule: argus-tdarr-errors
+        eval_time: 210m
+        exp_samples: []
+      - dashboard: argus-tdarr
+        panel: Transcode errors
+        vars: {library: ".*"}
+        eval_time: 150m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      - dashboard: argus-tdarr
+        panel: Health-check errors
+        vars: {library: ".*"}
+        eval_time: 150m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-tdarr
+        panel: Transcode queue
+        vars: {library: ".*"}
+        eval_time: 150m
+        exp_samples:
+          - labels: "{}"
+            value: 5
+      - dashboard: argus-tdarr
+        panel: Health-check queue
+        vars: {library: ".*"}
+        eval_time: 150m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      # The Library variable narrows every count.
+      - dashboard: argus-tdarr
+        panel: Files
+        vars: {library: "4k Movies"}
+        eval_time: 150m
+        exp_samples:
+          - labels: "{}"
+            value: 149
+      - dashboard: argus-tdarr
+        panel: Transcode queue
+        vars: {library: "4k Movies"}
+        eval_time: 150m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      - dashboard: argus-tdarr
+        panel: Space saved
+        vars: {library: ".*"}
+        eval_time: 150m
+        exp_samples:
+          - labels: "{}"
+            value: 148000000000
+      - dashboard: argus-tdarr
+        panel: Libraries
+        ref_id: E
+        vars: {library: ".*"}
+        eval_time: 150m
+        exp_samples:
+          - labels: '{library_name="HD Movies"}'
+            value: 3
+          - labels: '{library_name="4k Movies"}'
+            value: 0
+
+  # "Tdarr queue not moving" (argus-tdarr-stalled). tdarr: work finished until 4h, then three files
+  # sat in the queue. fresh: the exporter only started at 20h, so it can't know yet.
+  - interval: 1h
+    input_series:
+      - series: 'tdarr_up{tdarr_instance="tdarr"}'
+        values: "1x30"
+      - series: 'tdarr_library_transcodes{tdarr_instance="tdarr", library_id="L1", status="queued"}'
+        values: "3x30"
+      - series: 'tdarr_library_health_checks{tdarr_instance="tdarr", library_id="L1", status="queued"}'
+        values: "0x30"
+      - series: 'tdarr_library_transcodes_completed_total{tdarr_instance="tdarr", library_id="L1"}'
+        values: "100+1x4 104x25"
+      - series: 'tdarr_library_health_checks_completed_total{tdarr_instance="tdarr", library_id="L1"}'
+        values: "50x30"
+      - series: 'tdarr_up{tdarr_instance="fresh"}'
+        values: "_x20 1x10"
+      - series: 'tdarr_library_transcodes{tdarr_instance="fresh", library_id="L1", status="queued"}'
+        values: "_x20 5x10"
+      - series: 'tdarr_library_health_checks{tdarr_instance="fresh", library_id="L1", status="queued"}'
+        values: "_x20 0x10"
+      - series: 'tdarr_library_transcodes_completed_total{tdarr_instance="fresh", library_id="L1"}'
+        values: "_x20 10x10"
+      - series: 'tdarr_library_health_checks_completed_total{tdarr_instance="fresh", library_id="L1"}'
+        values: "_x20 10x10"
+    promql_expr_test:
+      # Within a day of the last finished transcode: not stalled.
+      - rule: argus-tdarr-stalled
+        eval_time: 26h
+        exp_samples: []
+      - rule: argus-tdarr-stalled
+        eval_time: 29h
+        exp_samples:
+          - labels: '{tdarr_instance="tdarr"}'
+            value: 3
+
+  # Workers and nodes: one GPU transcode running on the internal node.
+  - interval: 30s
+    input_series:
+      - series: 'tdarr_node_worker_info{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode", worker_id="w1", worker_type="transcode", compute_type="gpu", flow_worker="true", worker_connected="true", worker_file="/media/HD Movies/A Film (2020)/A Film (2020).mkv"}'
+        values: "1x10"
+      - series: 'tdarr_node_worker_status{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode", worker_id="w1", worker_status="Transcoding"}'
+        values: "1x10"
+      - series: 'tdarr_node_worker_ratio{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode", worker_id="w1"}'
+        values: "0.25x10"
+      - series: 'tdarr_node_host_mem_used_bytes{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode"}'
+        values: "16x10"
+      - series: 'tdarr_node_host_mem_total_bytes{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode"}'
+        values: "64x10"
+      - series: 'tdarr_node_worker_count{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode", worker_type="transcode", compute_type="gpu"}'
+        values: "1x10"
+      - series: 'tdarr_node_worker_count{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode", worker_type="transcode", compute_type="cpu"}'
+        values: "0x10"
+      - series: 'tdarr_node_worker_limit{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode", worker_type="transcode", compute_type="gpu"}'
+        values: "3x10"
+      - series: 'tdarr_node_worker_limit{tdarr_instance="tdarr", node_id="n1", node_name="MyInternalNode", worker_type="transcode", compute_type="cpu"}'
+        values: "0x10"
+    promql_expr_test:
+      # The file's name without its folders.
+      - dashboard: argus-tdarr
+        panel: Workers
+        eval_time: 5m
+        exp_samples:
+          - labels: '{worker_id="w1", node_name="MyInternalNode", worker_type="transcode", compute_type="gpu", file="A Film (2020).mkv"}'
+            value: 1
+      - dashboard: argus-tdarr
+        panel: Workers
+        ref_id: C
+        eval_time: 5m
+        exp_samples:
+          - labels: '{worker_id="w1"}'
+            value: 25
+      # Workers and limits add up over CPU and GPU.
+      - dashboard: argus-tdarr
+        panel: Nodes
+        ref_id: C
+        eval_time: 5m
+        exp_samples:
+          - labels: '{node_name="MyInternalNode"}'
+            value: 1
+      - dashboard: argus-tdarr
+        panel: Nodes
+        ref_id: D
+        eval_time: 5m
+        exp_samples:
+          - labels: '{node_name="MyInternalNode"}'
+            value: 3
+      - dashboard: argus-tdarr
+        panel: Nodes
+        ref_id: H
+        eval_time: 5m
+        exp_samples:
+          - labels: '{node_name="MyInternalNode"}'
+            value: 25

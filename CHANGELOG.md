@@ -23,6 +23,15 @@ Each release's notes on GitHub are its section here.
   new scrape job, `pve_quorum`, asks every node in `targets/pve.json` for its own view of quorum and of its
   QDevice, so the alerts still work when the node the dashboard reads the cluster from is the one that's down;
   the dashboard's Quorum and QDevice stats show the worst view.
+- Tdarr dashboard: whether Tdarr is up and its version, files, the transcode and health-check queues, files whose
+  transcode or health check failed, space saved (in total and per library), what each worker is doing (file,
+  progress, speed, ETA), each node's workers against its limits, transcodes and health checks finished per hour,
+  the libraries' video codecs and resolutions, and the Tdarr container's CPU, memory and logged errors. A Library
+  filter narrows it. Data comes from Tdarr's API through
+  [tdarr-exporter](https://github.com/homeylab/tdarr-exporter) 3.1.0, behind the new `tdarr` compose profile:
+  Tdarr's URL in `secrets/tdarr.env`, the exporter in `targets/tdarr.json` (scrape job `tdarr`).
+- Alerts: Tdarr reported new transcode or health-check errors in the last hour, and Tdarr has files queued but
+  finished no transcode or health check in a day (both warnings).
 
 ### Changed
 
