@@ -1,3 +1,0 @@
-[
-  {"targets": ["telegraf-vsphere:9273", "telegraf-vsphere:9274"]}
-]

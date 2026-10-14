@@ -252,15 +252,11 @@ def test_exporter_credentials_are_mounted_files_not_environment() -> None:
     assert services["qbittorrent-exporter"]["secrets"] == ["qbittorrent_password"]
     qbittorrent = services["qbittorrent-exporter"]["environment"]
     assert qbittorrent["QBITTORRENT_PASSWORD_FILE"] == "/run/secrets/qbittorrent_password"  # noqa: S105 - a path
-    assert services["telegraf-vsphere"]["secrets"] == ["vsphere_password"]
     assert "env_file" not in services["gitlab-ci-pipelines-exporter"]  # its token is in the mounted config file
     assert services["pve-exporter"]["secrets"] == ["pve.yml"]
     assert services["pve-exporter"]["command"] == ["--config.file=/run/secrets/pve.yml"]
     assert "environment" not in services["pve-exporter"]
     assert "env_file" not in services["pve-exporter"]
-    telegraf = (ROOT / "vsphere" / "telegraf.conf").read_text()
-    assert telegraf.count('password = "@{docker_secretstore:vsphere_password}"') == 2
-    assert "VSPHERE_PASSWORD" not in telegraf
 
 
 def test_every_secret_is_a_file_in_secrets_with_a_template() -> None:
@@ -333,9 +329,4 @@ def test_secrets_mounts_never_create_the_host_path() -> None:
                 assert volume["type"] == "bind"
                 assert volume["read_only"] is True, f"{name}: {volume['source']} must be read-only"
                 assert volume["bind"] == {"create_host_path": False}, f"{name}: {volume['source']}"
-    assert mounts == 6  # Prometheus' directory, Grafana's password, 4 exporter files
-
-
-def test_vsphere_password_template_has_no_trailing_newline() -> None:
-    """Telegraf's docker secret store keeps a trailing newline as part of the password."""
-    assert not (ROOT / "secrets.example" / "vsphere_password").read_bytes().endswith(b"\n")
+    assert mounts == 5  # Prometheus' directory, Grafana's password, 3 exporter files

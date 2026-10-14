@@ -203,28 +203,6 @@ services:
         read_only: true
         bind: { create_host_path: false }
 
-  # vCenter: ESXi host, VM and datastore metrics through Telegraf's vSphere input
-  # (`vsphere` profile). vCenter's URL and a read-only account come from
-  # secrets/vsphere.env, the account's password from secrets/vsphere_password
-  # (no trailing newline: Telegraf keeps it), its CA certificate from
-  # secrets/vsphere-ca.pem (see secrets.example/); the collectors are
-  # configured in vsphere/telegraf.conf.
-  telegraf-vsphere:
-    image: telegraf:1.40.1
-    restart: unless-stopped
-    profiles: [vsphere]
-    env_file:
-      - path: ./secrets/vsphere.env
-        required: false
-    volumes:
-      - ./vsphere/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - type: bind
-        source: ./secrets/vsphere-ca.pem
-        target: /etc/telegraf/vsphere-ca.pem
-        read_only: true
-        bind: { create_host_path: false }
-    secrets: [vsphere_password]
-
   # Proxmox VE: node, guest and storage metrics through prometheus-pve-exporter
   # (`proxmox` profile). A read-only API token comes from secrets/pve.yml, the
   # cluster's CA certificate from secrets/pve-ca.pem (see secrets.example/);
@@ -298,7 +276,6 @@ secrets:
   prowlarr_api_key: {file: ./secrets/prowlarr_api_key}
   sabnzbd_api_key: {file: ./secrets/sabnzbd_api_key}
   qbittorrent_password: {file: ./secrets/qbittorrent_password}
-  vsphere_password: {file: ./secrets/vsphere_password}
   pve.yml: {file: ./secrets/pve.yml}
 
 volumes:
