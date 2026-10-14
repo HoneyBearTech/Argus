@@ -1,0 +1,40 @@
+# "NAS storage pool degraded" (argus-nas-pool-degraded). Regression test: it alerted on every status
+# code above 10, so a scheduled data scrub (13) paged as a crashed pool. Only Degraded (11) and
+# Crashed (12) alert.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'raidStatus{job="snmp", host="nas", raidName="Volume 1"}'
+        values: "13x10"
+      - series: 'raidStatus{job="snmp", host="nas", raidName="Volume 2"}'
+        values: "11x10"
+      - series: 'raidStatus{job="snmp", host="nas", raidName="Storage Pool 1"}'
+        values: "12x10"
+      - series: 'raidStatus{job="snmp", host="nas", raidName="Volume 3"}'
+        values: "2x10"
+      - series: 'raidStatus{job="snmp", host="nas", raidName="Volume 4"}'
+        values: "21x10"
+    promql_expr_test:
+      - rule: argus-nas-pool-degraded
+        eval_time: 5m
+        exp_samples:
+          - labels: '{host="nas", raidName="Volume 2"}'
+            value: 11
+          - labels: '{host="nas", raidName="Storage Pool 1"}'
+            value: 12
+      # Every pool keeps a series, so the summary always has a value.
+      - rule: argus-nas-pool-degraded
+        measurement: true
+        eval_time: 5m
+        exp_samples:
+          - labels: '{host="nas", raidName="Volume 1"}'
+            value: 0
+          - labels: '{host="nas", raidName="Volume 2"}'
+            value: 11
+          - labels: '{host="nas", raidName="Storage Pool 1"}'
+            value: 12
+          - labels: '{host="nas", raidName="Volume 3"}'
+            value: 0
+          - labels: '{host="nas", raidName="Volume 4"}'
+            value: 0

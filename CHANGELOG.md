@@ -58,6 +58,13 @@ Each release's notes on GitHub are its section here.
 - A file from `secrets/` that a service mounts (`pve-ca.pem`, `vsphere-ca.pem`, `snmp-auth.yml`, `gitlab.yml`,
   and Prometheus' `secrets/` directory) no longer turns into an empty, root-owned directory when it's missing at
   start-up: compose now refuses to start that service (`bind source path does not exist`) until the file is there.
+- "NAS storage pool degraded" (critical) fired for every RAID status code above 10, so Synology's routine work
+  (a scheduled data scrub, mounting a cache, converting a pool) paged as a degraded or crashed pool. It now fires
+  only for Degraded (11) and Crashed (12).
+- NAS / Storage: the Storage pools table uses SNMP's names, which aren't DSM's (a pool with a single volume is
+  listed only as that volume, so SNMP's "Storage Pool 1" can be DSM's Storage Pool 2; SSD caches aren't listed).
+  It now has a Type column (volume or storage pool), its name column reads "Name (SNMP)", and its description
+  explains the difference.
 
 ### Security
 

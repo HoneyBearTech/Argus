@@ -545,7 +545,7 @@
       "id": 2,
       "type": "table",
       "title": "Storage pools",
-      "description": "Each storage pool and volume with its status. Used, free and 'Full in' are shown for volumes only: a storage pool's free space is what isn't allocated to a volume yet. 'Full in' extrapolates the last 24 hours of growth \u2014 it needs a day of data and shows '> 1 year' when the volume isn't filling.",
+      "description": "Each storage pool and volume with its status, under the names SNMP gives them, which differ from DSM's: a storage pool that holds a single volume is listed only as that volume, and SNMP numbers the remaining pools on its own, so its 'Storage Pool 1' can be the pool DSM calls Storage Pool 2. SSD caches aren't listed. Used, free and 'Full in' are shown for volumes only: a storage pool's free space is what isn't allocated to a volume yet. 'Full in' extrapolates the last 24 hours of growth \u2014 it needs a day of data and shows '> 1 year' when the volume isn't filling.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -562,7 +562,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_join(max by (host, raidName) (raidStatus{job=\"snmp\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"raidName\")",
+          "expr": "label_replace(label_replace(label_join(max by (host, raidName) (raidStatus{job=\"snmp\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"raidName\"), \"type\", \"Volume\", \"raidName\", \"Volume .*\"), \"type\", \"Storage pool\", \"raidName\", \"Storage Pool .*\")",
           "legendFormat": "__auto",
           "refId": "A",
           "instant": true,
@@ -936,20 +936,22 @@
             "indexByName": {
               "host": 0,
               "raidName": 1,
-              "Value #A": 2,
-              "Value #B": 3,
-              "Value #C": 4,
-              "Value #D": 5,
-              "Value #E": 6
+              "Value #A": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "Value #D": 6,
+              "Value #E": 7,
+              "type": 2
             },
             "renameByName": {
               "host": "NAS",
-              "raidName": "Pool",
+              "raidName": "Name (SNMP)",
               "Value #A": "Status",
               "Value #B": "Used",
               "Value #C": "Free",
               "Value #D": "Size",
-              "Value #E": "Full in"
+              "Value #E": "Full in",
+              "type": "Type"
             }
           }
         }

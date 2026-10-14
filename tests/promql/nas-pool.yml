@@ -1,6 +1,8 @@
 # "NAS storage pool almost full" (argus-pool-full) and the NAS dashboard's volume columns. Regression
-# test: a storage pool given entirely to its volume reports no free space, and an SSD cache is always
-# full, so only volumes count. Sizes in bytes, scaled down from a real Synology.
+# test: a storage pool given entirely to its volume reports no free space (on a real Synology, SNMP's
+# "Storage Pool 1" was DSM's Storage Pool 2, an SSD pool whose one volume took all but 562 MB), so only
+# volumes count; any other name (DSM doesn't list SSD caches here) never does. Sizes in bytes, scaled down
+# from a real Synology.
 evaluation_interval: 1m
 tests:
   - interval: 1m
