@@ -9,7 +9,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/honeybeartech/argus-grafana?logo=docker&logoColor=white)](https://hub.docker.com/r/honeybeartech/argus-grafana)
 [![Version](https://img.shields.io/github/v/tag/HoneyBearTech/Argus?sort=semver&logo=docker&logoColor=white&label=version)](https://hub.docker.com/r/honeybeartech/argus-grafana/tags)
 [![Agent image size](https://img.shields.io/docker/image-size/honeybeartech/argus-agent/latest?logo=docker&logoColor=white&label=agent%20image)](https://hub.docker.com/r/honeybeartech/argus-agent)
-[![Grafana](https://img.shields.io/badge/grafana-13.2.3-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
+[![Grafana](https://img.shields.io/badge/grafana-13.2.4-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
 [![License](https://img.shields.io/github/license/HoneyBearTech/Argus)](LICENSE)
 
 Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts and their logs, the Plex/arr media stack, reverse proxy traffic, DNS, the network and internet connection, NAS storage, UPS power, the smart home, GitLab CI and the Proxmox VE cluster — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.

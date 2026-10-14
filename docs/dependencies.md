@@ -73,23 +73,34 @@ Each finding is triaged within 14 days:
 
 ### Current findings
 
-As of 9 October 2026 (0.5.1):
+As of 14 October 2026 (main after 0.6.0, with Grafana 13.2.4): 28 open code scanning alerts, which are five
+vulnerabilities repeated across the images' Go programs. All five are denial of service (CPU or memory
+exhaustion, or a crash); none allows code execution or data access.
 
-- **blackbox_exporter v0.29.0**, the latest upstream release (built with Go 1.27.1): two Go standard library
-  vulnerabilities (CVE-2026-78667, CVE-2026-97031), down from 43 HIGH findings in v0.28.0. Assessment:
-  blackbox_exporter isn't published on the host, so only Prometheus can call it, and it only connects to the
-  URLs and DNS servers the operator lists; the realistic impact is a probed service crashing or stalling the
-  prober (a false "down" alert), not a compromise. Argus' image runs it as an unprivileged user. Fixed when
-  upstream releases a build with a patched Go; Argus doesn't build blackbox_exporter itself.
-- **Grafana 13.2.3**, the latest release: CVE-2026-84445 (gRPC-Go denial of service) in the bundled
-  Prometheus datasource plugin. Assessment: the plugin's gRPC is the local channel between Grafana and
-  its plugin process, not a network listener; the queries it sends go to Argus' own Prometheus. Fixed when
-  Grafana ships a release with gRPC 1.83.2 or later. Argus' image removes the bundled datasource plugins it
-  doesn't use, which took the Grafana image from eight HIGH findings to this one.
-- **argus-agent**: none. Its image applies Ubuntu's security updates at build time (0.3.0 fixed
-  CVE-2026-84782 in OpenSSL, which Alloy v1.20.1's base image still shipped).
-
-Prometheus and Loki have no fixable HIGH or CRITICAL findings.
+- **Go standard library, CVE-2026-78667** (`net/http`: many small ranges in a `Range` header make
+  `FileServer`, `ServeContent` and `ServeFile` burn CPU), **CVE-2026-78669** (`net/http` and
+  `golang.org/x/net/http2`: excessive HTTP/2 `SETTINGS` frames) and **CVE-2026-97031** (`crypto/tls`:
+  repeated ECH outer extensions exhaust a TLS server's memory). Fixed in Go 1.26.9 and 1.27.2 and
+  `golang.org/x/net` 0.60.0. They're in Prometheus and promtool (v3.15.0), Loki (3.7.8), Alloy in the agent
+  (v1.20.1), blackbox_exporter (v0.29.0) and the two datasource plugins Grafana keeps; each is that
+  project's latest release, and none has been rebuilt with the fixed Go yet.
+  Assessment: **CVE-2026-97031** needs a Go TLS server, and none of Argus' Go programs terminates TLS
+  (Grafana sits behind the reverse proxy, which isn't Go). **CVE-2026-78669** on the server side needs
+  HTTP/2, which Go only speaks over TLS unless a program turns on h2c, so the plain-HTTP listeners
+  (Prometheus, Loki, blackbox_exporter, the exporters) aren't affected; as a client, Prometheus, Alloy and
+  blackbox_exporter only talk to the targets and URLs the operator lists, so a hostile target could at worst
+  slow the prober down. **CVE-2026-78667** affects Prometheus, whose web UI serves its static files with
+  `ServeContent`: someone who can reach port 9090 could burn its CPU. Argus runs on a trusted network, and
+  with a password set (`prometheus-web.yml`, [security.md](security.md#requiring-a-password-for-prometheus))
+  Prometheus answers nothing without it. Loki serves no files; Alloy's own HTTP server listens on the host's
+  loopback only; the Grafana plugins talk to Grafana over a local channel, not the network. Fixed by the
+  Dependabot bumps once upstream ships builds with the fixed Go; the alerts stay open until then.
+- **gRPC-Go, CVE-2026-84445**, in Grafana's bundled Prometheus datasource plugin: **fixed by Grafana
+  13.2.4**, which also fixes four of Grafana's own vulnerabilities (CVE-2026-15577, CVE-2026-33374,
+  CVE-2026-93294, CVE-2026-95502). Argus' image keeps removing the bundled plugins it doesn't use, which
+  also leaves out the Tempo plugin and its two findings.
+- **argus-agent**: Alloy's Go findings above; none in its Ubuntu base, whose security updates the image
+  applies at build time.
 
 ## Licenses
 
