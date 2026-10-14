@@ -563,6 +563,8 @@ groups:
     annotations:
       summary: A disk in {{ $labels.host }} reports a problem (health/status code {{ humanize $values.A.Value }}).
     isPaused: false
+  # Only Degraded (11) and Crashed (12). Synology's codes above 12 are routine work (13 = data
+  # scrubbing, cache mount/unmount, conversions) or 21 = unknown; those read 0, so they never page.
   - uid: argus-nas-pool-degraded
     title: NAS storage pool degraded
     condition: C
@@ -574,7 +576,7 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: max by (host, raidName) (raidStatus)
+        expr: max by (host, raidName) ((raidStatus == 11 or raidStatus == 12) or raidStatus * 0)
         instant: true
         range: false
         intervalMs: 15000
