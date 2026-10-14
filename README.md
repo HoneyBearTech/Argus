@@ -12,10 +12,10 @@
 [![Grafana](https://img.shields.io/badge/grafana-13.2.3-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
 [![License](https://img.shields.io/github/license/HoneyBearTech/Argus)](LICENSE)
 
-Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts, the Plex/arr media stack, reverse proxy traffic, DNS, network, storage, power and the smart home — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
+Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts and their logs, the Plex/arr media stack, reverse proxy traffic, DNS, the network and internet connection, NAS storage, UPS power, the smart home, GitLab CI and the Proxmox VE cluster — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
 
 ## How it works
-Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP and the media apps run on one server from [`docker-compose.yml`](docker-compose.yml); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
+Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP, the media apps, GitLab CI and Proxmox run on one server from [`docker-compose.yml`](docker-compose.yml) (the optional ones behind Compose profiles, and Loki on another host if you prefer); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
 
 ```
 dashboards/          dashboard JSON, one folder per Grafana folder
@@ -47,7 +47,7 @@ docs/                user, security and project documentation
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
 | GitLab CI | ci | Are pipelines healthy, is the runner keeping up, and is GitLab itself healthy? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile); GitLab Runner's metrics endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through `/federate` |
-| ESXi / vCenter | vsphere | Are the ESXi hosts overcommitted, and how are datastores filling? | [Telegraf](https://github.com/influxdata/telegraf)'s vSphere input with a read-only vCenter account (`vsphere` profile) |
+| Proxmox VE | proxmox | Are the Proxmox nodes overcommitted, are the guests that should run running, and how is storage filling? | [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) with a read-only API token (`proxmox` profile) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Alerts
@@ -55,8 +55,8 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 
 | Group | Rules |
 |---|---|
-| Availability | host stopped reporting (its agent went silent), service down (only services that were up for at least an hour in the last 7 days), DNS server not answering, monitoring target down |
-| Capacity | local disk > 90 % (network shares are covered by the NAS pool rule), NAS storage pool > 90 %, certificate < 14 days |
+| Availability | host stopped reporting (its agent went silent), service down (only services that were up for at least an hour in the last 7 days), DNS server not answering, monitoring target down, Proxmox node without cluster quorum, Proxmox QDevice disconnected for 5 minutes |
+| Capacity | local disk > 90 % (network shares are covered by the NAS pool rule), NAS storage pool > 90 %, certificate < 14 days, Proxmox node memory > 90 % used, Proxmox node memory overcommitted (running guests allocated > 100 %) |
 | Power and hardware | UPS on battery, UPS battery < 50 %, NAS disk unhealthy, NAS pool degraded, NAS disk > 55 °C, network device > 85 °C |
 | Network | internet on backup WAN, internet dropped, internet much slower than usual (latest speed test under half its 14-day median), no speed test in 8 days, Pi-hole blocklists out of sync |
 | Containers | container restarted more than 3 times in an hour |
@@ -80,24 +80,24 @@ docker compose up -d
 ```
 Then run the agent on each host you want to watch (next section). Grafana is on port 3000; the home page is the Homelab Overview. Edits to `targets/*.json` are picked up by Prometheus without a restart.
 
-Host Health, Docker Containers and Logs work with just the agents. Every other dashboard lights up as you connect the service it reads:
+Host Health, Docker Containers and Logs work with just the agents. Every other dashboard lights up as you connect the service it reads. `COMPOSE_PROFILES` starts as `loki`: add profiles to that list (`loki,snmp`) rather than replacing it, or Loki stops (unless it runs on another host, with `LOKI_URL` set):
 
-| To see | Add to `targets/` | Credentials in `secrets/` | Enable in `.env` |
+| To see | Add to `targets/` | Credentials in `secrets/` | Add to `COMPOSE_PROFILES` in `.env` |
 |---|---|---|---|
 | Service up/down, certificates (Overview) | `blackbox_http.json` (URLs), `blackbox_dns.json` (DNS servers) | — | — |
 | Uptime Kuma monitors (Overview) | `uptime_kuma.json` | `uptime_kuma_api_key` | — |
 | DNS / Pi-hole | `blackbox_dns.json` | `pihole-exporter.env` | — |
-| Network / UniFi, Internet / ISP | — | `unpoller.env` (read-only local account) | — |
-| NAS / Storage | `snmp.json` | `snmp-auth.yml` (SNMPv3) | `COMPOSE_PROFILES=snmp` |
+| Network / UniFi, Internet / ISP | — | `unpoller.env` (console URL + read-only local account), `unifi_password` | — |
+| NAS / Storage | `snmp.json` | `snmp-auth.yml` (SNMPv3) | `snmp` |
 | Smart Home | `homeassistant.json` | `home_assistant_token` | — |
 | UPS / Power | `peanut.json` | `peanut_username`, `peanut_password` (PeaNUT 6's login; PeaNUT 5 ignores them) | — |
-| Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL, API key) | the app's profile, e.g. `radarr,sonarr` |
-| Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `COMPOSE_PROFILES=plex` on that agent |
+| Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL), `<app>_api_key` (qBittorrent: `qbittorrent.env` with URL + user, `qbittorrent_password`) | the app's profile, e.g. `radarr,sonarr` |
+| Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `plex`, in that host's agent `.env` |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
-| GitLab CI (pipelines) | `gitlab.json` | `gitlab.env` (`read_api` token), `gitlab.yml` (GitLab's URL) | `COMPOSE_PROFILES=gitlab` |
+| GitLab CI (pipelines) | `gitlab.json` | `gitlab.yml` (GitLab's URL and a `read_api` token) | `gitlab` |
 | GitLab CI (runner) | `gitlab_runner.json` (`<runner>:9252`); set `listen_address = ":9252"` in the runner's `config.toml` | — | — |
 | GitLab CI (GitLab's health) | `gitlab_server.json` (`<gitlab>:9090`); set `prometheus['listen_address'] = '0.0.0.0:9090'` in `gitlab.rb` and run `gitlab-ctl reconfigure` (restarts Puma and Sidekiq: a minute or two of 502s) | — | — |
-| ESXi / vCenter | `vsphere.json` (`telegraf-vsphere:9273` and `:9274`) | `vsphere.env` (vCenter URL + a read-only account), `vsphere-ca.pem` (vCenter's CA, from `https://<vcenter>/certs/download.zip`) | `COMPOSE_PROFILES=vsphere` |
+| Proxmox VE | `pve.json`: each node's API address (port 8006 by default), which the node's certificate must name; in a cluster, label every node but one `"cluster": "0"` | `pve.yml` (an API token with the `PVEAuditor` role; the commands are in the template), `pve-ca.pem` (the cluster's CA, `/etc/pve/pve-root-ca.pem` on any node) | `proxmox` |
 
 To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release; see [docs/upgrading.md](docs/upgrading.md). New to Argus? The [quick start](docs/quick-start.md) runs it on one machine in about ten minutes.
 

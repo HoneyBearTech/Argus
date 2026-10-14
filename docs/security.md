@@ -18,8 +18,11 @@ Loki must not be reachable from outside it.
    access to the server or a new image.
 2. **No credentials in the repository or the images.** Credentials for the watched services, the Grafana
    admin password and the Discord webhook come from the server's `secrets/` and `.env`, which are
-   gitignored, mounted read-only and never baked into an image. Prometheus reads tokens from files. GitHub
-   secret scanning with push protection guards the repository.
+   gitignored, mounted read-only and never baked into an image. Prometheus, Grafana and the exporters read
+   passwords, API keys and tokens from files, so they don't show in `docker inspect` or Portainer's
+   container view; the exceptions are the Pi-hole exporter (it takes its passwords only from the
+   environment), the Grafana admin password and the Discord webhook. GitHub secret scanning with push
+   protection guards the repository.
 3. **No network details in the repository.** Addresses, host names and domains live only in the server's
    `targets/` and `.env`; CI rejects private IP addresses and a private list of internal names in every
    committed file.
@@ -50,8 +53,11 @@ Loki must not be reachable from outside it.
   firewall it to the agents' addresses if your network isn't fully trusted.
 - **Logs can contain secrets.** Whatever your containers print (tokens, personal data) is stored in Loki
   for 30 days and readable through Grafana by every Grafana user and through Loki by anyone who can reach
-  it. CI job containers started by GitLab Runner (the label it marks them with as managed) are never read:
-  Docker keeps their output without the secret masking GitLab applies to job logs.
+  it. The agent blanks the values of credential-looking URL parameters (`apikey`, `api_key`, `access_token`,
+  `token`, `X-Plex-Token`, `key`, `signature`, `password`, `passwd`, `secret`) in container and Nginx Proxy
+  Manager logs before shipping them, but secrets printed any other way are stored as they are. CI job
+  containers started by GitLab Runner (the label it marks them with as managed) are never read: Docker
+  keeps their output without the secret masking GitLab applies to job logs.
 - **The agent is root on its host.** It runs privileged, in the host's PID and network namespaces, with
   read access to the host's filesystem and the Docker and containerd sockets (which are equivalent to root). A compromised
   agent image or Argus release is a compromised host; that's why releases are signed.

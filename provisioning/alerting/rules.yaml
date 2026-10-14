@@ -58,7 +58,7 @@ groups:
       model:
         refId: A
         expr: max_over_time(probe_success{job="blackbox_http"}[5m]) and on (instance) (sum_over_time(probe_success{job="blackbox_http"}[7d])
-          > 240)
+          > 60)
         instant: true
         range: false
         intervalMs: 15000
@@ -162,6 +162,84 @@ groups:
       summary: Prometheus can't scrape {{ $labels.job }} at {{ $labels.instance }} — the dashboards relying on it are missing
         data.
     isPaused: false
+  - uid: argus-pve-quorum-lost
+    title: Proxmox cluster without quorum
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (instance) (pve_up{job="pve_quorum", id=~"cluster/.+"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: The Proxmox node at {{ $labels.instance }} has no cluster quorum — guests on it can't be started, migrated
+        or changed until enough nodes (or the QDevice) are back.
+    isPaused: false
+  - uid: argus-pve-qdevice-down
+    title: Proxmox QDevice disconnected
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (instance) (pve_qdevice_up{job="pve_quorum"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: The Proxmox node at {{ $labels.instance }} has lost the cluster's QDevice — one more node going down would
+        cost the cluster its quorum.
+    isPaused: false
 - orgId: 1
   name: Capacity
   folder: Argus
@@ -217,7 +295,9 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: 100 * (1 - raidFreeSize / raidTotalSize)
+        # Volumes only: a storage pool's free space is what isn't allocated to a volume yet,
+        # so a pool given entirely to its volumes reads 100 % full; SSD caches are always full.
+        expr: 100 * (1 - raidFreeSize{raidName=~"Volume .*"} / raidTotalSize{raidName=~"Volume .*"})
         instant: true
         range: false
         intervalMs: 15000
@@ -282,6 +362,87 @@ groups:
       severity: warning
     annotations:
       summary: The certificate for {{ $labels.service }} expires in {{ humanize $values.A.Value }} days.
+    isPaused: false
+  - uid: argus-pve-memory-high
+    title: Proxmox node memory almost full
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 100 * max by (node) (label_replace(pve_memory_usage_bytes{id=~"node/.+"} / pve_memory_size_bytes{id=~"node/.+"},
+          "node", "$1", "id", "node/(.+)"))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 90
+    noDataState: OK
+    execErrState: Error
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: Proxmox node {{ $labels.node }} is using {{ printf "%.1f" $values.A.Value }}% of its memory — move a guest
+        to another node or shrink one.
+    isPaused: false
+  - uid: argus-pve-memory-overcommitted
+    title: Proxmox node memory overcommitted
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 100 * sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~"(qemu|lxc)/.+"} * on (instance,
+          id) group_left (node) pve_guest_info{template!="1"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~"node/.+"},
+          "node", "$1", "id", "node/(.+)"))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 100
+    noDataState: OK
+    execErrState: Error
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: The guests running on Proxmox node {{ $labels.node }} are allocated {{ printf "%.0f" $values.A.Value }}% of
+        its memory — if they all use it, the node runs out.
     isPaused: false
 - orgId: 1
   name: Power and hardware

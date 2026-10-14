@@ -171,6 +171,14 @@ loki.process "containers" {
 		older_than          = "1h"
 		drop_counter_reason = "too_old"
 	}
+
+	// Credentials in URLs (?apikey=, ?X-Plex-Token=, ?access_token=, …) would be
+	// stored in Loki for 30 days, readable by every Grafana user: keep the
+	// parameter, replace its value.
+	stage.replace {
+		expression = "(?i)[?&;](?:access_token|api_?key|x-plex-token|token|signature|password|passwd|secret|key)=([^&\\s\"';]+)"
+		replace    = "REDACTED"
+	}
 	forward_to = [loki.write.argus.receiver]
 }
 
@@ -192,6 +200,14 @@ loki.process "npm" {
 	// Argus' own uptime probes would otherwise dominate the traffic.
 	stage.drop {
 		expression = ".*Blackbox-Exporter.*"
+	}
+
+	// Credentials in URLs (?apikey=, ?X-Plex-Token=, ?access_token=, …) would be
+	// stored in Loki for 30 days, readable by every Grafana user: keep the
+	// parameter, replace its value.
+	stage.replace {
+		expression = "(?i)[?&;](?:access_token|api_?key|x-plex-token|token|signature|password|passwd|secret|key)=([^&\\s\"';]+)"
+		replace    = "REDACTED"
 	}
 
 	// [04/Oct/2026:18:07:35 +0000] - 302 302 - GET https site.example "/" [Client 1.2.3.4] [Length 29] ...

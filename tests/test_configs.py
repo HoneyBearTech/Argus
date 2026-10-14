@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -185,3 +187,146 @@ def test_agent_sends_the_prometheus_password() -> None:
     )
     environment = load("agent/compose.yml")["services"]["agent"]["environment"]
     assert environment["ARGUS_PROMETHEUS_PASSWORD"] == "${ARGUS_PROMETHEUS_PASSWORD:-}"  # noqa: S105 - compose reference
+
+
+def redaction_patterns() -> list[str]:
+    """The agent's stage.replace expressions, unescaped from Alloy strings."""
+    config = (ROOT / "agent" / "config.alloy").read_text()
+    return [json.loads(m) for m in re.findall(r'stage\.replace \{\s*expression = ("(?:[^"\\]|\\.)*")', config)]
+
+
+def test_agent_redacts_credentials_in_urls_of_every_log_pipeline() -> None:
+    """Both log pipelines (containers, NPM) carry the same redaction (secrets reached Loki, 2026-10-11)."""
+    patterns = redaction_patterns()
+    assert len(patterns) == 2
+    assert patterns[0] == patterns[1]
+
+
+@pytest.mark.parametrize(
+    ("line", "redacted"),
+    [
+        (
+            'GET "/api/v3/queue?page=1&apikey=0123abcd&sortKey=time" [Client',
+            'GET "/api/v3/queue?page=1&apikey=REDACTED&sortKey=time" [Client',
+        ),
+        (
+            '"/signalr/messages/negotiate?access_token=f2d9&negotiateVersion=1"',
+            '"/signalr/messages/negotiate?access_token=REDACTED&negotiateVersion=1"',
+        ),
+        (
+            "/library/sections?X-Plex-Token=AbCd&X-Plex-Product=Plexamp",
+            "/library/sections?X-Plex-Token=REDACTED&X-Plex-Product=Plexamp",
+        ),
+        (
+            "http://sab:8080/api?mode=queue&api_key=dead output",
+            "http://sab:8080/api?mode=queue&api_key=REDACTED output",
+        ),
+        ("/s3/obj?X-Amz-Date=1&Signature=abc%2Fdef", "/s3/obj?X-Amz-Date=1&Signature=REDACTED"),
+        ("/login?token=t1;password=p2", "/login?token=REDACTED;password=REDACTED"),
+        ('/search?q=hello&page=2 "curl"', '/search?q=hello&page=2 "curl"'),  # nothing secret: unchanged
+        ("/keys?monkey=1&keyboard=2", "/keys?monkey=1&keyboard=2"),  # only whole parameter names
+    ],
+)
+def test_redaction_replaces_only_the_secret_values(line: str, redacted: str) -> None:
+    pattern = re.compile(redaction_patterns()[0])
+
+    def replace(match: re.Match[str]) -> str:
+        start, end = match.span(1)
+        return match.group(0)[: start - match.start()] + "REDACTED" + match.group(0)[end - match.start() :]
+
+    assert pattern.sub(replace, line) == redacted
+
+
+EXPORTARR_APPS = ["radarr", "radarr4k", "sonarr", "sonarr4k", "lidarr", "bazarr", "prowlarr", "sabnzbd"]
+
+
+def test_exporter_credentials_are_mounted_files_not_environment() -> None:
+    """Credentials reach exporters as files under /run/secrets, so `docker inspect` doesn't show them."""
+    compose = load("docker-compose.yml")
+    services = compose["services"]
+    for app in EXPORTARR_APPS:
+        assert services[f"exportarr-{app}"]["secrets"] == [{"source": f"{app}_api_key", "target": "api_key"}]
+        assert services[f"exportarr-{app}"]["environment"]["API_KEY_FILE"] == "/run/secrets/api_key"
+    assert services["unpoller"]["secrets"] == ["unifi_password"]
+    assert services["unpoller"]["environment"]["UP_UNIFI_DEFAULT_PASS"] == "file:///run/secrets/unifi_password"  # noqa: S105 - a path
+    assert services["qbittorrent-exporter"]["secrets"] == ["qbittorrent_password"]
+    qbittorrent = services["qbittorrent-exporter"]["environment"]
+    assert qbittorrent["QBITTORRENT_PASSWORD_FILE"] == "/run/secrets/qbittorrent_password"  # noqa: S105 - a path
+    assert "env_file" not in services["gitlab-ci-pipelines-exporter"]  # its token is in the mounted config file
+    assert services["pve-exporter"]["secrets"] == ["pve.yml"]
+    assert services["pve-exporter"]["command"] == ["--config.file=/run/secrets/pve.yml"]
+    assert "environment" not in services["pve-exporter"]
+    assert "env_file" not in services["pve-exporter"]
+
+
+def test_every_secret_is_a_file_in_secrets_with_a_template() -> None:
+    for name, secret in load("docker-compose.yml")["secrets"].items():
+        assert secret == {"file": f"./secrets/{name}"}
+        assert (ROOT / "secrets.example" / name).is_file(), f"secrets.example/{name} is missing"
+
+
+def test_example_env_files_hold_no_credentials() -> None:
+    """Passwords, API keys and tokens moved to their own files; the env files keep URLs and user names."""
+    for env in sorted((ROOT / "secrets.example").glob("*.env")):
+        if env.name == "pihole-exporter.env":  # pihole-exporter reads its passwords only from the environment
+            continue
+        keys = re.findall(r"^([A-Z0-9_]+)=", env.read_text(), re.MULTILINE)
+        assert not [k for k in keys if re.search(r"PASS|API_KEY|TOKEN|SECRET", k)], env.name
+
+
+def test_pve_exporter_verifies_tls_against_the_cluster_ca() -> None:
+    """The template points verify_ssl at the mounted CA certificate instead of turning verification off."""
+    module = load("secrets.example/pve.yml")["default"]
+    assert module["verify_ssl"] == "/etc/pve-exporter/pve-ca.pem"
+    volumes = load("docker-compose.yml")["services"]["pve-exporter"]["volumes"]
+    assert {"source": "./secrets/pve-ca.pem", "target": "/etc/pve-exporter/pve-ca.pem"}.items() <= volumes[0].items()
+
+
+def test_pve_job_asks_the_exporter_about_each_target() -> None:
+    """Multi-target exporter: the node's address goes in ?target=, the scrape goes to pve-exporter."""
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "pve")
+    assert job["metrics_path"] == "/pve"
+    assert job["params"] == {"module": ["default"], "cluster": ["1"], "node": ["1"]}
+    rules = job["relabel_configs"]
+    assert {"source_labels": ["__address__"], "target_label": "__param_target"} in rules
+    assert {"target_label": "__address__", "replacement": "pve-exporter:9221"} in rules
+    # A target labelled cluster: "0" skips the cluster-wide collectors (one node per cluster reports guests).
+    assert {"source_labels": ["cluster"], "regex": "(.+)", "target_label": "__param_cluster"} in rules
+
+
+def test_pve_quorum_job_asks_every_node_for_its_own_view() -> None:
+    """The quorum alerts can't depend on the one node the pve job reads the cluster from."""
+    jobs = {j["job_name"]: j for j in load("prometheus/prometheus.yml")["scrape_configs"]}
+    job = jobs["pve_quorum"]
+    assert job["file_sd_configs"] == jobs["pve"]["file_sd_configs"]
+    assert job["params"] == {"module": ["default"], "cluster": ["1"], "node": ["0"]}
+    # Every target asks for the cluster view: the targets' cluster label is dropped, not passed on.
+    assert not [r for r in job["relabel_configs"] if r.get("target_label") == "__param_cluster"]
+    assert {"regex": "cluster", "action": "labeldrop"} in job["relabel_configs"]
+    assert job["metric_relabel_configs"] == [
+        {"source_labels": ["__name__", "id"], "regex": "pve_up;cluster/.+|pve_qdevice_up;.*", "action": "keep"}
+    ]
+    # Regression test: the pve job kept its own copy of the cluster's pve_up, and the dashboard's joins
+    # on (instance, id) failed with "found duplicate series for the match group".
+    drop = {"source_labels": ["__name__", "id"], "regex": "pve_up;cluster/.+|pve_qdevice_.+;.*", "action": "drop"}
+    assert drop in jobs["pve"]["metric_relabel_configs"]
+
+
+def test_secrets_mounts_never_create_the_host_path() -> None:
+    """Regression test: a missing secrets/ file must stop the service, not become an empty root-owned directory.
+
+    With the short syntax, Docker creates a bind mount's missing source as a directory; that happened to
+    secrets/pve-ca.pem on a server, and the exporter ran without its CA certificate.
+    """
+    services = load("docker-compose.yml")["services"]
+    mounts = 0
+    for name, service in services.items():
+        for volume in service.get("volumes", []):
+            if isinstance(volume, str):
+                assert not volume.startswith("./secrets"), f"{name}: use the long syntax for {volume}"
+            elif volume["source"].startswith("./secrets"):
+                mounts += 1
+                assert volume["type"] == "bind"
+                assert volume["read_only"] is True, f"{name}: {volume['source']} must be read-only"
+                assert volume["bind"] == {"create_host_path": False}, f"{name}: {volume['source']}"
+    assert mounts == 5  # Prometheus' directory, Grafana's password, 3 exporter files

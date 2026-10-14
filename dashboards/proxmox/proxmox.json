@@ -1,11 +1,11 @@
 {
   "id": null,
-  "uid": "argus-vsphere",
-  "title": "ESXi / vCenter",
-  "description": "Are the ESXi hosts overcommitted, and how are datastores filling?",
+  "uid": "argus-proxmox",
+  "title": "Proxmox VE",
+  "description": "Are the Proxmox nodes overcommitted, are the guests that should run running, and how is storage filling?",
   "tags": [
     "argus",
-    "vsphere"
+    "proxmox"
   ],
   "editable": true,
   "graphTooltip": 1,
@@ -17,20 +17,37 @@
   "timezone": "browser",
   "schemaVersion": 41,
   "version": 1,
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Argus dashboards",
+      "type": "dashboards",
+      "tags": [
+        "argus"
+      ],
+      "asDropdown": true,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
   "templating": {
     "list": [
       {
-        "name": "esxhost",
-        "label": "ESXi host",
+        "name": "node",
+        "label": "Node",
         "type": "query",
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(vsphere_host_sys_uptime_latest, esxhostname)",
+        "definition": "label_values(pve_node_info, name)",
         "query": {
-          "query": "label_values(vsphere_host_sys_uptime_latest, esxhostname)",
-          "refId": "esxhost"
+          "query": "label_values(pve_node_info, name)",
+          "refId": "node"
         },
         "refresh": 2,
         "sort": 1,
@@ -50,29 +67,12 @@
       }
     ]
   },
-  "annotations": {
-    "list": []
-  },
-  "links": [
-    {
-      "title": "Argus dashboards",
-      "type": "dashboards",
-      "tags": [
-        "argus"
-      ],
-      "asDropdown": true,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false,
-      "icon": "external link"
-    }
-  ],
   "panels": [
     {
       "id": 1,
       "type": "stat",
-      "title": "Hosts",
-      "description": "ESXi hosts reporting through vCenter.",
+      "title": "Nodes online",
+      "description": "Proxmox VE nodes the API reports as online. A node that's down still counts in the total of the Nodes table, with CPU and memory empty.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -80,7 +80,7 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -89,7 +89,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(vsphere_host_sys_uptime_latest{esxhostname=~\"$esxhost\"})",
+          "expr": "sum(pve_up{id=~\"node/($node)\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -103,6 +103,170 @@
             "mode": "fixed",
             "fixedColor": "text"
           }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Quorum",
+      "description": "Whether the cluster has quorum: more than half of its votes (one per node, plus the QDevice's) present. Without it, the cluster's configuration is read-only: guests can't be started, migrated or changed. In a two-node cluster, one node going down loses quorum unless a QDevice casts the deciding vote. Each node is asked for its own view, and the worst one counts. Empty when the nodes aren't in a cluster.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 3,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "min(pve_up{job=\"pve_quorum\", id=~\"cluster/.+\"})",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "Not clustered",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Quorate",
+                  "index": 0
+                },
+                "0": {
+                  "text": "No quorum",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "QDevice",
+      "description": "Whether the cluster's QDevice (an external tie-breaker vote, corosync-qnetd) is connected; each node is asked, and the worst view counts. Empty when no QDevice is configured.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "min(pve_qdevice_up{job=\"pve_quorum\"})",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "None configured",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Connected",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Disconnected",
+                  "index": 1
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -125,16 +289,16 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Running VMs",
-      "description": "Powered-on VMs (vCenter has no realtime data for powered-off ones).",
+      "title": "Running guests",
+      "description": "Running VMs and containers (templates don't count).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 4,
+        "x": 9,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -143,7 +307,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(vsphere_vm_sys_uptime_latest{esxhostname=~\"$esxhost\"})",
+          "expr": "count(pve_up * on (instance, id) group_left pve_guest_info{node=~\"$node\", template!=\"1\"} == 1)",
           "refId": "A",
           "instant": true,
           "range": false
@@ -156,7 +320,8 @@
           "color": {
             "mode": "fixed",
             "fixedColor": "text"
-          }
+          },
+          "noValue": "0"
         },
         "overrides": []
       },
@@ -179,16 +344,16 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Memory granted",
-      "description": "Memory granted to the VMs on the busiest host, as a share of its physical memory. Over 100 % the host is overcommitted and relies on ballooning, compression or swapping; orange from 90 %.",
+      "title": "Down, start at boot",
+      "description": "VMs and containers set to start at boot that aren't running. Usually a guest that failed to start, or was stopped by hand and not started again.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 8,
+        "x": 12,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -197,7 +362,73 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(sum by (esxhostname) (vsphere_vm_mem_granted_average{esxhostname=~\"$esxhost\"}) / 1024 / on (esxhostname) max by (esxhostname) (vsphere_host_mem_totalCapacity_average{esxhostname=~\"$esxhost\"}))",
+          "expr": "count((pve_up == 0) * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"} and on (node, id) pve_onboot_status == 1) or vector(0)",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Memory committed",
+      "description": "Memory allocated to running guests as a share of the node's memory, on the most committed node. Orange from 90 %, red from 100 %: guests could then use more than the node has.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -247,18 +478,18 @@
       "interval": "1m"
     },
     {
-      "id": 4,
+      "id": 5,
       "type": "stat",
       "title": "vCPU : CPU",
-      "description": "vCPUs of the running VMs per logical CPU on the busiest host. Up to about 3:1 is usually fine for light workloads; watch CPU ready when it climbs. Orange from 3, red from 5.",
+      "description": "vCPUs of running guests per logical CPU, on the most overcommitted node. Above 1 is normal for light guests; above 3 or so, busy guests wait for CPU time.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
+        "x": 18,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -267,7 +498,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(count by (esxhostname) (vsphere_vm_cpu_ready_summation{cpu!=\"instance-total\", esxhostname=~\"$esxhost\"}) / on (esxhostname) count by (esxhostname) (vsphere_host_cpu_usage_average{cpu!=\"instance-total\", esxhostname=~\"$esxhost\"}))",
+          "expr": "max(sum by (node) (pve_cpu_usage_limit * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_cpu_usage_limit{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -289,81 +520,11 @@
               },
               {
                 "color": "orange",
+                "value": 2
+              },
+              {
+                "color": "red",
                 "value": 3
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "textMode": "auto",
-        "orientation": "auto"
-      },
-      "interval": "1m"
-    },
-    {
-      "id": 5,
-      "type": "stat",
-      "title": "Worst CPU ready",
-      "description": "The highest CPU ready time per vCPU across VMs: the share of time a vCPU was ready to run but waited for a physical CPU. Above 5 % per vCPU (orange) VMs feel slow; 10 % is red.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "max(max by (esxhostname, vmname) (vsphere_vm_cpu_ready_summation{cpu=\"instance-total\", esxhostname=~\"$esxhost\"}) / on (esxhostname, vmname) count by (esxhostname, vmname) (vsphere_vm_cpu_ready_summation{cpu!=\"instance-total\", esxhostname=~\"$esxhost\"}) / 20000)",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "decimals": 1,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0.05
-              },
-              {
-                "color": "red",
-                "value": 0.1
               }
             ]
           }
@@ -389,16 +550,16 @@
     {
       "id": 6,
       "type": "stat",
-      "title": "Fullest datastore",
-      "description": "Space used on the fullest datastore. Orange from 80 %, red from 90 %.",
+      "title": "Fullest storage",
+      "description": "Space used on the fullest storage of the selected nodes (shared storage, such as a NAS, included). Orange from 80 %, red from 90 %.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 20,
+        "x": 21,
         "y": 0,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -407,7 +568,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(max by (dsname) (vsphere_datastore_disk_used_latest) / max by (dsname) (vsphere_datastore_disk_capacity_latest))",
+          "expr": "max(pve_disk_usage_bytes{id=~\"storage/($node)/.+\"} / (pve_disk_size_bytes{id=~\"storage/($node)/.+\"} > 0))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -459,8 +620,8 @@
     {
       "id": 7,
       "type": "table",
-      "title": "Hosts",
-      "description": "Each ESXi host: load, capacity, and how much of it the running VMs claim.",
+      "title": "Nodes",
+      "description": "Each Proxmox VE node; one that is offline keeps its row with CPU and memory empty. Memory committed: memory allocated to running guests over the node's memory. vCPU : CPU: vCPUs of running guests per logical CPU.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -477,7 +638,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (esxhostname, clustername) (vsphere_host_cpu_usage_average{cpu=\"instance-total\", esxhostname=~\"$esxhost\"})",
+          "expr": "100 * max by (node) (label_replace(pve_cpu_usage_ratio{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -489,7 +650,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (esxhostname) (vsphere_host_cpu_totalCapacity_average{esxhostname=~\"$esxhost\"}) * 1e6",
+          "expr": "max by (node) (label_replace(pve_cpu_usage_limit{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "B",
           "instant": true,
           "range": false,
@@ -501,7 +662,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (esxhostname) (vsphere_host_mem_usage_average{esxhostname=~\"$esxhost\"})",
+          "expr": "100 * max by (node) (label_replace(pve_memory_usage_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")) / max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "C",
           "instant": true,
           "range": false,
@@ -513,7 +674,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (esxhostname) (vsphere_host_mem_totalCapacity_average{esxhostname=~\"$esxhost\"}) * 1048576",
+          "expr": "max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "D",
           "instant": true,
           "range": false,
@@ -525,7 +686,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (esxhostname) (vsphere_vm_mem_granted_average{esxhostname=~\"$esxhost\"}) / 1024 / on (esxhostname) max by (esxhostname) (vsphere_host_mem_totalCapacity_average{esxhostname=~\"$esxhost\"})",
+          "expr": "sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "E",
           "instant": true,
           "range": false,
@@ -537,7 +698,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count by (esxhostname) (vsphere_vm_cpu_ready_summation{cpu!=\"instance-total\", esxhostname=~\"$esxhost\"}) / on (esxhostname) count by (esxhostname) (vsphere_host_cpu_usage_average{cpu!=\"instance-total\", esxhostname=~\"$esxhost\"})",
+          "expr": "sum by (node) (pve_cpu_usage_limit * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_cpu_usage_limit{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "F",
           "instant": true,
           "range": false,
@@ -549,7 +710,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count by (esxhostname) (vsphere_vm_sys_uptime_latest{esxhostname=~\"$esxhost\"})",
+          "expr": "count by (node) (pve_up * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"} == 1)",
           "refId": "G",
           "instant": true,
           "range": false,
@@ -561,8 +722,20 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (esxhostname) (vsphere_host_sys_uptime_latest{esxhostname=~\"$esxhost\"})",
+          "expr": "max by (node) (label_replace(pve_uptime_seconds{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "H",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (node) (label_replace(pve_up{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "refId": "I",
           "instant": true,
           "range": false,
           "legendFormat": "__auto",
@@ -576,9 +749,43 @@
               "type": "auto"
             }
           },
-          "noValue": "No hosts reporting"
+          "noValue": "No nodes reporting"
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Online"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Yes",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "No",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -636,16 +843,12 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "CPU capacity"
+              "options": "CPUs"
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "hertz"
-              },
-              {
                 "id": "decimals",
-                "value": 1
+                "value": 0
               }
             ]
           },
@@ -722,7 +925,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory granted"
+              "options": "Memory committed"
             },
             "properties": [
               {
@@ -774,6 +977,10 @@
             },
             "properties": [
               {
+                "id": "unit",
+                "value": "none"
+              },
+              {
                 "id": "decimals",
                 "value": 2
               },
@@ -788,11 +995,11 @@
                     },
                     {
                       "color": "orange",
-                      "value": 3
+                      "value": 2
                     },
                     {
                       "color": "red",
-                      "value": 5
+                      "value": 3
                     }
                   ]
                 }
@@ -814,7 +1021,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "VMs"
+              "options": "Running guests"
             },
             "properties": [
               {
@@ -849,7 +1056,7 @@
         {
           "id": "joinByField",
           "options": {
-            "byField": "esxhostname",
+            "byField": "node",
             "mode": "outer"
           }
         },
@@ -865,11 +1072,12 @@
               "Time 5": true,
               "Time 6": true,
               "Time 7": true,
-              "Time 8": true
+              "Time 8": true,
+              "Time 9": true
             },
             "indexByName": {
-              "esxhostname": 0,
-              "clustername": 1,
+              "node": 0,
+              "Value #I": 1,
               "Value #A": 2,
               "Value #B": 3,
               "Value #C": 4,
@@ -880,15 +1088,15 @@
               "Value #H": 9
             },
             "renameByName": {
-              "esxhostname": "Host",
-              "clustername": "Cluster",
+              "node": "Node",
+              "Value #I": "Online",
               "Value #A": "CPU",
-              "Value #B": "CPU capacity",
+              "Value #B": "CPUs",
               "Value #C": "Memory used",
               "Value #D": "Memory",
-              "Value #E": "Memory granted",
+              "Value #E": "Memory committed",
               "Value #F": "vCPU : CPU",
-              "Value #G": "VMs",
+              "Value #G": "Running guests",
               "Value #H": "Up"
             }
           }
@@ -899,8 +1107,8 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Host CPU",
-      "description": "CPU use of each ESXi host.",
+      "title": "Node CPU",
+      "description": "CPU use of each node.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -917,9 +1125,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (esxhostname) (vsphere_host_cpu_usage_average{cpu=\"instance-total\", esxhostname=~\"$esxhost\"})",
+          "expr": "100 * max by (node) (label_replace(pve_cpu_usage_ratio{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "A",
-          "legendFormat": "{{esxhostname}}"
+          "range": true,
+          "legendFormat": "{{node}}"
         }
       ],
       "fieldConfig": {
@@ -958,8 +1167,8 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "Host memory",
-      "description": "Memory each host uses (solid) and the memory granted to its VMs (dashed), as shares of its physical memory.",
+      "title": "Node memory",
+      "description": "Memory used on each node, and memory allocated to its running guests (committed) \u2014 both as a share of the node's memory.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -976,18 +1185,20 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (esxhostname) (vsphere_host_mem_usage_average{esxhostname=~\"$esxhost\"})",
+          "expr": "100 * max by (node) (label_replace(pve_memory_usage_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")) / max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
           "refId": "A",
-          "legendFormat": "{{esxhostname}} used"
+          "range": true,
+          "legendFormat": "{{node}} used"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * (sum by (esxhostname) (vsphere_vm_mem_granted_average{esxhostname=~\"$esxhost\"}) / 1024 / on (esxhostname) max by (esxhostname) (vsphere_host_mem_totalCapacity_average{esxhostname=~\"$esxhost\"}))",
+          "expr": "100 * (sum by (node) (pve_memory_size_bytes * on (instance, id) pve_up{id=~\"(qemu|lxc)/.+\"} * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}) / on (node) max by (node) (label_replace(pve_memory_size_bytes{id=~\"node/($node)\"}, \"node\", \"$1\", \"id\", \"node/(.+)\")))",
           "refId": "B",
-          "legendFormat": "{{esxhostname}} granted to VMs"
+          "range": true,
+          "legendFormat": "{{node}} committed"
         }
       ],
       "fieldConfig": {
@@ -1003,30 +1214,7 @@
             "spanNulls": true
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".* granted to VMs"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    10,
-                    10
-                  ]
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
         "legend": {
@@ -1048,7 +1236,7 @@
     {
       "id": 10,
       "type": "row",
-      "title": "Datastores",
+      "title": "Storage",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -1061,8 +1249,8 @@
     {
       "id": 11,
       "type": "table",
-      "title": "Datastores",
-      "description": "Space on each datastore. Provisioned counts thin-provisioned disks at their full size, so over 100 % means the datastore can't hold every disk at full size. Full in: at the last week's growth rate.",
+      "title": "Storage",
+      "description": "Every storage of the selected nodes. Shared storage (NFS, for example) appears once per node. Full in: at the last week's growth rate.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1079,7 +1267,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (dsname) (vsphere_datastore_disk_capacity_latest) * 1024",
+          "expr": "max by (id, node, storage, plugintype, content) (pve_disk_size_bytes * on (instance, id) group_left (node, storage, plugintype, content) pve_storage_info{node=~\"$node\"})",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -1091,7 +1279,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (dsname) (vsphere_datastore_disk_used_latest) * 1024",
+          "expr": "max by (id) (pve_disk_usage_bytes{id=~\"storage/($node)/.+\"})",
           "refId": "B",
           "instant": true,
           "range": false,
@@ -1103,7 +1291,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * max by (dsname) (vsphere_datastore_disk_used_latest) / max by (dsname) (vsphere_datastore_disk_capacity_latest)",
+          "expr": "100 * max by (id) (pve_disk_usage_bytes{id=~\"storage/($node)/.+\"}) / max by (id) (pve_disk_size_bytes{id=~\"storage/($node)/.+\"} > 0)",
           "refId": "C",
           "instant": true,
           "range": false,
@@ -1115,7 +1303,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * max by (dsname) (vsphere_datastore_disk_provisioned_latest) / max by (dsname) (vsphere_datastore_disk_capacity_latest)",
+          "expr": "max by (id) ((pve_disk_size_bytes{id=~\"storage/($node)/.+\"} > 0) - pve_disk_usage_bytes{id=~\"storage/($node)/.+\"}) / clamp_min(max by (id) (deriv(pve_disk_usage_bytes{id=~\"storage/($node)/.+\"}[7d])), 0.001) / 86400",
           "refId": "D",
           "instant": true,
           "range": false,
@@ -1127,8 +1315,20 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "1024 * (max by (dsname) (vsphere_datastore_disk_capacity_latest) - max by (dsname) (vsphere_datastore_disk_used_latest)) / clamp_min(1024 * max by (dsname) (deriv(vsphere_datastore_disk_used_latest[7d])), 0.001) / 86400",
+          "expr": "max by (id) (pve_storage_shared{id=~\"storage/($node)/.+\"})",
           "refId": "E",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (id) (pve_up{id=~\"storage/($node)/.+\"})",
+          "refId": "F",
           "instant": true,
           "range": false,
           "legendFormat": "__auto",
@@ -1142,7 +1342,7 @@
               "type": "auto"
             }
           },
-          "noValue": "No datastores reporting"
+          "noValue": "No storage reporting"
         },
         "overrides": [
           {
@@ -1234,54 +1434,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Provisioned"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "orange",
-                      "value": 90
-                    },
-                    {
-                      "color": "red",
-                      "value": 100
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "Full in"
             },
             "properties": [
@@ -1343,24 +1495,86 @@
                 ]
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Shared"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Yes",
+                        "color": "text",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "No",
+                        "color": "text",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Available"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Yes",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "No",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
           }
         ]
       },
       "options": {
         "showHeader": true,
-        "cellHeight": "sm",
-        "sortBy": [
-          {
-            "displayName": "Used %",
-            "desc": true
-          }
-        ]
+        "cellHeight": "sm"
       },
       "transformations": [
         {
           "id": "joinByField",
           "options": {
-            "byField": "dsname",
+            "byField": "id",
             "mode": "outer"
           }
         },
@@ -1373,23 +1587,33 @@
               "Time 2": true,
               "Time 3": true,
               "Time 4": true,
-              "Time 5": true
+              "Time 5": true,
+              "Time 6": true,
+              "id": true
             },
             "indexByName": {
-              "dsname": 0,
-              "Value #A": 1,
-              "Value #B": 2,
-              "Value #C": 3,
-              "Value #D": 4,
-              "Value #E": 5
+              "storage": 0,
+              "node": 1,
+              "plugintype": 2,
+              "content": 3,
+              "Value #E": 4,
+              "Value #F": 5,
+              "Value #A": 6,
+              "Value #B": 7,
+              "Value #C": 8,
+              "Value #D": 9
             },
             "renameByName": {
-              "dsname": "Datastore",
+              "storage": "Storage",
+              "node": "Node",
+              "plugintype": "Type",
+              "content": "Content",
+              "Value #E": "Shared",
+              "Value #F": "Available",
               "Value #A": "Size",
               "Value #B": "Used",
               "Value #C": "Used %",
-              "Value #D": "Provisioned",
-              "Value #E": "Full in"
+              "Value #D": "Full in"
             }
           }
         }
@@ -1399,8 +1623,8 @@
     {
       "id": 12,
       "type": "timeseries",
-      "title": "Datastore use",
-      "description": "Space used on each datastore. vCenter updates datastore figures every 30 minutes.",
+      "title": "Storage use",
+      "description": "Space used on each storage.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1409,7 +1633,7 @@
         "x": 0,
         "y": 24,
         "w": 24,
-        "h": 7
+        "h": 8
       },
       "targets": [
         {
@@ -1417,9 +1641,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * max by (dsname) (vsphere_datastore_disk_used_latest) / max by (dsname) (vsphere_datastore_disk_capacity_latest)",
+          "expr": "100 * max by (node, storage) ((pve_disk_usage_bytes / (pve_disk_size_bytes > 0)) * on (instance, id) group_left (node, storage) pve_storage_info{node=~\"$node\"})",
           "refId": "A",
-          "legendFormat": "{{dsname}}"
+          "range": true,
+          "legendFormat": "{{storage}} ({{node}})"
         }
       ],
       "fieldConfig": {
@@ -1453,12 +1678,12 @@
           "sort": "desc"
         }
       },
-      "interval": "5m"
+      "interval": "1m"
     },
     {
       "id": 13,
       "type": "row",
-      "title": "VMs",
+      "title": "Guests",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -1471,8 +1696,8 @@
     {
       "id": 14,
       "type": "table",
-      "title": "VMs",
-      "description": "Each running VM. CPU ready is per vCPU: the share of time a vCPU waited for a physical CPU.",
+      "title": "Guests",
+      "description": "Every VM and container (not templates). CPU: share of the guest's own vCPUs. VM memory comes from the balloon driver or guest agent; without them Proxmox reports what the VM process holds. Disk: the size of the boot disk (containers: their root disk).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1489,7 +1714,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vmname, esxhostname, guesthostname, guest, memorySizeMB) (vsphere_vm_cpu_usage_average{cpu=\"instance-total\", esxhostname=~\"$esxhost\"})",
+          "expr": "max by (key, id, name, node, type) (label_join(pve_up * on (instance, id) group_left (name, node, type) pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -1501,7 +1726,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vmname) (count by (esxhostname, vmname) (vsphere_vm_cpu_ready_summation{cpu!=\"instance-total\", esxhostname=~\"$esxhost\"}))",
+          "expr": "max by (key) (label_join(pve_cpu_usage_limit * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
           "refId": "B",
           "instant": true,
           "range": false,
@@ -1513,7 +1738,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vmname) (max by (esxhostname, vmname) (vsphere_vm_cpu_ready_summation{cpu=\"instance-total\", esxhostname=~\"$esxhost\"}) / on (esxhostname, vmname) count by (esxhostname, vmname) (vsphere_vm_cpu_ready_summation{cpu!=\"instance-total\", esxhostname=~\"$esxhost\"}) / 20000)",
+          "expr": "100 * max by (key) (label_join(pve_cpu_usage_ratio * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
           "refId": "C",
           "instant": true,
           "range": false,
@@ -1525,7 +1750,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vmname) (vsphere_vm_mem_consumed_average{esxhostname=~\"$esxhost\"}) * 1024",
+          "expr": "max by (key) (label_join(pve_memory_usage_bytes * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
           "refId": "D",
           "instant": true,
           "range": false,
@@ -1537,7 +1762,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vmname) (vsphere_vm_mem_usage_average{esxhostname=~\"$esxhost\"})",
+          "expr": "max by (key) (label_join(pve_memory_size_bytes * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
           "refId": "E",
           "instant": true,
           "range": false,
@@ -1549,8 +1774,32 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (vmname) (vsphere_vm_sys_uptime_latest{esxhostname=~\"$esxhost\"})",
+          "expr": "max by (key) (label_join(pve_disk_size_bytes * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
           "refId": "F",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join((pve_uptime_seconds > 0) * on (instance, id) group_left (node) pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
+          "refId": "G",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(pve_onboot_status * on (node, id) group_left pve_guest_info{node=~\"$node\", template!=\"1\"}, \"key\", \"/\", \"node\", \"id\"))",
+          "refId": "H",
           "instant": true,
           "range": false,
           "legendFormat": "__auto",
@@ -1564,31 +1813,83 @@
               "type": "auto"
             }
           },
-          "noValue": "No running VMs"
+          "noValue": "No guests reporting"
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "vCPUs"
+              "options": "Running"
             },
             "properties": [
               {
-                "id": "decimals",
-                "value": 0
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Yes",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "No",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory"
+              "options": "Start at boot"
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "decmbytes"
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Yes",
+                        "color": "text",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "No",
+                        "color": "text",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
               },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vCPUs"
+            },
+            "properties": [
               {
                 "id": "decimals",
                 "value": 0
@@ -1652,55 +1953,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "CPU ready"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percentunit"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "orange",
-                      "value": 0.05
-                    },
-                    {
-                      "color": "red",
-                      "value": 0.1
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Memory consumed"
+              "options": "Memory used"
             },
             "properties": [
               {
@@ -1716,12 +1969,28 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory active"
+              "options": "Memory"
             },
             "properties": [
               {
                 "id": "unit",
-                "value": "percent"
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Disk"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
               },
               {
                 "id": "decimals",
@@ -1749,32 +2018,14 @@
       },
       "options": {
         "showHeader": true,
-        "cellHeight": "sm",
-        "sortBy": [
-          {
-            "displayName": "CPU",
-            "desc": true
-          }
-        ]
+        "cellHeight": "sm"
       },
       "transformations": [
         {
           "id": "joinByField",
           "options": {
-            "byField": "vmname",
+            "byField": "key",
             "mode": "outer"
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "targetField": "memorySizeMB",
-                "destinationType": "number"
-              }
-            ],
-            "fields": {}
           }
         },
         {
@@ -1787,33 +2038,38 @@
               "Time 3": true,
               "Time 4": true,
               "Time 5": true,
-              "Time 6": true
+              "Time 6": true,
+              "Time 7": true,
+              "Time 8": true,
+              "key": true
             },
             "indexByName": {
-              "vmname": 0,
-              "esxhostname": 1,
-              "guesthostname": 2,
-              "guest": 3,
-              "Value #B": 4,
-              "memorySizeMB": 5,
-              "Value #A": 6,
+              "name": 0,
+              "id": 1,
+              "type": 2,
+              "node": 3,
+              "Value #A": 4,
+              "Value #H": 5,
+              "Value #B": 6,
               "Value #C": 7,
               "Value #D": 8,
               "Value #E": 9,
-              "Value #F": 10
+              "Value #F": 10,
+              "Value #G": 11
             },
             "renameByName": {
-              "vmname": "VM",
-              "esxhostname": "Host",
-              "guesthostname": "Guest hostname",
-              "guest": "Guest OS",
+              "name": "Guest",
+              "id": "ID",
+              "type": "Type",
+              "node": "Node",
+              "Value #A": "Running",
+              "Value #H": "Start at boot",
               "Value #B": "vCPUs",
-              "memorySizeMB": "Memory",
-              "Value #A": "CPU",
-              "Value #C": "CPU ready",
-              "Value #D": "Memory consumed",
-              "Value #E": "Memory active",
-              "Value #F": "Up"
+              "Value #C": "CPU",
+              "Value #D": "Memory used",
+              "Value #E": "Memory",
+              "Value #F": "Disk",
+              "Value #G": "Up"
             }
           }
         }
@@ -1823,8 +2079,8 @@
     {
       "id": 15,
       "type": "timeseries",
-      "title": "VM CPU (top 10)",
-      "description": "CPU use of the ten busiest VMs.",
+      "title": "Guest CPU (top 10)",
+      "description": "CPU cores each guest is using (CPU share \u00d7 its vCPUs), so guests of different sizes compare.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1841,14 +2097,75 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, max by (vmname) (vsphere_vm_cpu_usage_average{cpu=\"instance-total\", esxhostname=~\"$esxhost\"}))",
+          "expr": "topk(10, max by (name) (pve_cpu_usage_ratio * on (instance, id) pve_cpu_usage_limit * on (instance, id) group_left (name) pve_guest_info{node=~\"$node\", template!=\"1\"}))",
           "refId": "A",
-          "legendFormat": "{{vmname}}"
+          "range": true,
+          "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Guest memory used (top 10)",
+      "description": "Memory each guest is using.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk(10, max by (name) (pve_memory_usage_bytes * on (instance, id) group_left (name) pve_guest_info{node=~\"$node\", template!=\"1\"}))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
           "min": 0,
           "custom": {
             "drawStyle": "line",
@@ -1879,17 +2196,17 @@
       "interval": "1m"
     },
     {
-      "id": 16,
+      "id": 17,
       "type": "timeseries",
-      "title": "VM memory consumed (top 10)",
-      "description": "Host memory backing each of the ten largest VMs.",
+      "title": "Guest network (top 10)",
+      "description": "Traffic in and out of each guest, combined.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
-        "y": 41,
+        "x": 0,
+        "y": 49,
         "w": 12,
         "h": 8
       },
@@ -1899,14 +2216,74 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, max by (vmname) (vsphere_vm_mem_consumed_average{esxhostname=~\"$esxhost\"}) * 1024)",
+          "expr": "topk(10, max by (name) ((rate(pve_network_receive_bytes_total[$__rate_interval]) + on (instance, id) rate(pve_network_transmit_bytes_total[$__rate_interval])) * on (instance, id) group_left (name) pve_guest_info{node=~\"$node\", template!=\"1\"}))",
           "refId": "A",
-          "legendFormat": "{{vmname}}"
+          "range": true,
+          "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes",
+          "unit": "Bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Guest disk I/O (top 10)",
+      "description": "Bytes each guest reads and writes on its disks, combined. Not every storage type reports this.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk(10, max by (name) ((rate(pve_disk_read_bytes_total[$__rate_interval]) + on (instance, id) rate(pve_disk_written_bytes_total[$__rate_interval])) * on (instance, id) group_left (name) pve_guest_info{node=~\"$node\", template!=\"1\"}))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
           "min": 0,
           "custom": {
             "drawStyle": "line",

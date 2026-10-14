@@ -6,11 +6,13 @@
 name: argus
 
 # Shared settings for the exportarr services below (one per *arr / SABnzbd app).
+# Each mounts its app's API key, secrets/<app>_api_key, as /run/secrets/api_key.
 x-exportarr: &exportarr
   image: ghcr.io/onedr0p/exportarr:v2.3.0
   restart: unless-stopped
   environment:
     PORT: "9707"
+    API_KEY_FILE: /run/secrets/api_key
     # Per-episode walks scale with library size; the dashboards don't need them.
     DISABLE_EPISODE_METRICS: "true"
 
@@ -31,7 +33,11 @@ services:
       # Scrape targets are host-specific and never committed (see targets.example/).
       - ./targets:/etc/prometheus/targets:ro
       # Credentials Prometheus scrapes with (e.g. API keys), never committed (see secrets.example/).
-      - ./secrets:/etc/prometheus/secrets:ro
+      - type: bind
+        source: ./secrets
+        target: /etc/prometheus/secrets
+        read_only: true
+        bind: { create_host_path: false }
       - prometheus_data:/prometheus
     ports:
       # Reachable from the monitored hosts, whose agents push metrics here.
@@ -54,8 +60,9 @@ services:
         required: false
 
   # UniFi Network stats (gateway, switches, APs, clients). The console URL and
-  # a read-only local account come from the gitignored secrets/unpoller.env
-  # (see secrets.example/); everything else is fixed here.
+  # a read-only local account come from the gitignored secrets/unpoller.env, its
+  # password from secrets/unifi_password (see secrets.example/); everything else
+  # is fixed here.
   unpoller:
     image: ghcr.io/unpoller/unpoller:v5.5.0
     restart: unless-stopped
@@ -69,9 +76,12 @@ services:
       # Verify the console's TLS certificate unless told not to (UNIFI_VERIFY_SSL=false
       # in .env, for a console that still has its self-signed certificate).
       UP_UNIFI_DEFAULT_VERIFY_SSL: ${UNIFI_VERIFY_SSL:-true}
+      # Read from the file, so the password isn't in the container's environment.
+      UP_UNIFI_DEFAULT_PASS: file:///run/secrets/unifi_password
     env_file:
       - path: ./secrets/unpoller.env
         required: false
+    secrets: [unifi_password]
 
   # SNMP polling (Synology NAS etc.) using the modules bundled in the image.
   # Credentials live in the gitignored secrets/snmp-auth.yml (see
@@ -85,11 +95,16 @@ services:
       - --config.file=/etc/snmp_exporter/snmp.yml
       - --config.file=/etc/snmp_exporter/auth.yml
     volumes:
-      - ./secrets/snmp-auth.yml:/etc/snmp_exporter/auth.yml:ro
+      - type: bind
+        source: ./secrets/snmp-auth.yml
+        target: /etc/snmp_exporter/auth.yml
+        read_only: true
+        bind: { create_host_path: false }
 
   # Media apps. Each exporter is behind its own compose profile and reads the
-  # app's URL and API key (or login) from secrets/<profile>.env, so enable one
-  # by adding that file and the profile name to COMPOSE_PROFILES in .env.
+  # app's URL from secrets/<profile>.env and its API key from
+  # secrets/<profile>_api_key, so enable one by adding those files and the
+  # profile name to COMPOSE_PROFILES in .env.
   exportarr-radarr:
     <<: *exportarr
     profiles: [radarr]
@@ -97,6 +112,7 @@ services:
     env_file:
       - path: ./secrets/radarr.env
         required: false
+    secrets: [{source: radarr_api_key, target: api_key}]
 
   exportarr-radarr4k:
     <<: *exportarr
@@ -105,6 +121,7 @@ services:
     env_file:
       - path: ./secrets/radarr4k.env
         required: false
+    secrets: [{source: radarr4k_api_key, target: api_key}]
 
   exportarr-sonarr:
     <<: *exportarr
@@ -113,6 +130,7 @@ services:
     env_file:
       - path: ./secrets/sonarr.env
         required: false
+    secrets: [{source: sonarr_api_key, target: api_key}]
 
   exportarr-sonarr4k:
     <<: *exportarr
@@ -121,6 +139,7 @@ services:
     env_file:
       - path: ./secrets/sonarr4k.env
         required: false
+    secrets: [{source: sonarr4k_api_key, target: api_key}]
 
   exportarr-lidarr:
     <<: *exportarr
@@ -129,6 +148,7 @@ services:
     env_file:
       - path: ./secrets/lidarr.env
         required: false
+    secrets: [{source: lidarr_api_key, target: api_key}]
 
   exportarr-bazarr:
     <<: *exportarr
@@ -137,6 +157,7 @@ services:
     env_file:
       - path: ./secrets/bazarr.env
         required: false
+    secrets: [{source: bazarr_api_key, target: api_key}]
 
   exportarr-prowlarr:
     <<: *exportarr
@@ -145,6 +166,7 @@ services:
     env_file:
       - path: ./secrets/prowlarr.env
         required: false
+    secrets: [{source: prowlarr_api_key, target: api_key}]
 
   exportarr-sabnzbd:
     <<: *exportarr
@@ -153,43 +175,50 @@ services:
     env_file:
       - path: ./secrets/sabnzbd.env
         required: false
+    secrets: [{source: sabnzbd_api_key, target: api_key}]
 
   qbittorrent-exporter:
     image: ghcr.io/martabal/qbittorrent-exporter:v2.0.3
     restart: unless-stopped
     profiles: [qbittorrent]
+    environment:
+      QBITTORRENT_PASSWORD_FILE: /run/secrets/qbittorrent_password
     env_file:
       - path: ./secrets/qbittorrent.env
         required: false
+    secrets: [qbittorrent_password]
 
   # GitLab CI pipelines and jobs, read through GitLab's API (`gitlab` profile).
-  # Which GitLab and projects come from secrets/gitlab.yml, the read_api token
-  # from secrets/gitlab.env (see secrets.example/).
+  # Which GitLab and projects, and the read_api token, come from
+  # secrets/gitlab.yml (see secrets.example/).
   gitlab-ci-pipelines-exporter:
     image: ghcr.io/mvisonneau/gitlab-ci-pipelines-exporter:v0.6.0
     restart: unless-stopped
     profiles: [gitlab]
     command: [run, --config, /etc/gitlab-ci-pipelines-exporter/config.yml]
-    env_file:
-      - path: ./secrets/gitlab.env
-        required: false
     volumes:
-      - ./secrets/gitlab.yml:/etc/gitlab-ci-pipelines-exporter/config.yml:ro
+      - type: bind
+        source: ./secrets/gitlab.yml
+        target: /etc/gitlab-ci-pipelines-exporter/config.yml
+        read_only: true
+        bind: { create_host_path: false }
 
-  # vCenter: ESXi host, VM and datastore metrics through Telegraf's vSphere input
-  # (`vsphere` profile). vCenter's URL and a read-only account come from
-  # secrets/vsphere.env, its CA certificate from secrets/vsphere-ca.pem (see
-  # secrets.example/); the collectors are configured in vsphere/telegraf.conf.
-  telegraf-vsphere:
-    image: telegraf:1.40.1
+  # Proxmox VE: node, guest and storage metrics through prometheus-pve-exporter
+  # (`proxmox` profile). A read-only API token comes from secrets/pve.yml, the
+  # cluster's CA certificate from secrets/pve-ca.pem (see secrets.example/);
+  # Prometheus names the node to ask in each scrape (targets/pve.json).
+  pve-exporter:
+    image: prompve/prometheus-pve-exporter:3.10.1
     restart: unless-stopped
-    profiles: [vsphere]
-    env_file:
-      - path: ./secrets/vsphere.env
-        required: false
+    profiles: [proxmox]
+    command: [--config.file=/run/secrets/pve.yml]
     volumes:
-      - ./vsphere/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - ./secrets/vsphere-ca.pem:/etc/telegraf/vsphere-ca.pem:ro
+      - type: bind
+        source: ./secrets/pve-ca.pem
+        target: /etc/pve-exporter/pve-ca.pem
+        read_only: true
+        bind: { create_host_path: false }
+    secrets: [pve.yml]
 
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
@@ -228,6 +257,26 @@ services:
         bind: { create_host_path: false }
     ports:
       - ${GRAFANA_BIND:-0.0.0.0:3000}:3000
+
+# Every bind mount from secrets/ sets create_host_path: false: if the file is
+# missing, compose refuses to start the service instead of Docker creating an
+# empty, root-owned directory in its place.
+#
+# Credentials the exporters read from files under /run/secrets/, so they don't
+# show up in `docker inspect` or Portainer's container view. Each file is
+# needed only by a service that runs; templates are in secrets.example/.
+secrets:
+  unifi_password: {file: ./secrets/unifi_password}
+  radarr_api_key: {file: ./secrets/radarr_api_key}
+  radarr4k_api_key: {file: ./secrets/radarr4k_api_key}
+  sonarr_api_key: {file: ./secrets/sonarr_api_key}
+  sonarr4k_api_key: {file: ./secrets/sonarr4k_api_key}
+  lidarr_api_key: {file: ./secrets/lidarr_api_key}
+  bazarr_api_key: {file: ./secrets/bazarr_api_key}
+  prowlarr_api_key: {file: ./secrets/prowlarr_api_key}
+  sabnzbd_api_key: {file: ./secrets/sabnzbd_api_key}
+  qbittorrent_password: {file: ./secrets/qbittorrent_password}
+  pve.yml: {file: ./secrets/pve.yml}
 
 volumes:
   prometheus_data:

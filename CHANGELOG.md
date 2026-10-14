@@ -8,6 +8,74 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- Proxmox VE dashboard: cluster quorum and QDevice status, which nodes are online, per-node CPU and memory, how much memory the running guests are allocated and how many
+  vCPUs they have per logical CPU (overcommit), guests that are set to start at boot but aren't running,
+  storage space with days until full, and a table of every VM and container. Data comes from the Proxmox API
+  through [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) 3.10.1, behind
+  the new `proxmox` compose profile: a read-only API token (`PVEAuditor`) in `secrets/pve.yml`, the cluster's CA
+  certificate in `secrets/pve-ca.pem` (the exporter verifies the node's certificate), and each node's address
+  in `targets/pve.json`.
+- Alerts: a Proxmox node using more than 90 % of its memory, a Proxmox node whose running guests are allocated more
+  than its memory (both warnings), a Proxmox node without cluster quorum (critical) and a Proxmox QDevice
+  disconnected for 5 minutes. A
+  new scrape job, `pve_quorum`, asks every node in `targets/pve.json` for its own view of quorum and of its
+  QDevice, so the alerts still work when the node the dashboard reads the cluster from is the one that's down;
+  the dashboard's Quorum and QDevice stats show the worst view.
+
+### Changed
+
+- README: the setup table now says to add a profile to `COMPOSE_PROFILES` (`loki,snmp`) instead of setting
+  `COMPOSE_PROFILES=snmp`, which would have replaced the default `loki` and stopped Loki; the summary and "How it
+  works" now name the GitLab CI, ESXi/vCenter, Proxmox and internet dashboards and their exporters. `.env.example`
+  no longer asks for a `secrets/gitlab.env` (the exporter has read only `secrets/gitlab.yml` since #61).
+- Web services are probed once a minute instead of every 15 seconds. Nothing between blackbox_exporter and the
+  DNS server caches, so every probe, and every redirect it follows, was a fresh A + AAAA lookup: with a few dozen
+  URLs that came to tens of thousands of queries an hour, and a busy DNS server log. The "Service down" alert
+  still pages after 5 minutes of failed probes; a service now counts as having been up once it has passed more
+  than an hour of probes in the last week (60 probes, was 240 at the old rate).
+
+### Fixed
+
+- A file from `secrets/` that a service mounts (`pve-ca.pem`, `vsphere-ca.pem`, `snmp-auth.yml`, `gitlab.yml`,
+  and Prometheus' `secrets/` directory) no longer turns into an empty, root-owned directory when it's missing at
+  start-up: compose now refuses to start that service (`bind source path does not exist`) until the file is there.
+
+### Upgrading
+
+- In `targets/blackbox_http.json`, list the URL each service ends on (its login page, for example) rather than
+  one that redirects there: each redirect is another DNS lookup and request per probe.
+- If one of those paths is already a directory (Docker created it while the file was missing), the service
+  keeps running without its file. Check with `ls -ld secrets/*.pem secrets/*.yml`, then replace the directory
+  with the file (`sudo rmdir secrets/<name>`, it's owned by root) and recreate the service.
+- Exporter credentials moved out of the env files into their own files in `secrets/` (templates in
+  `secrets.example/`): `<app>_api_key` for each exportarr instance, `qbittorrent_password`, `unifi_password`,
+  `vsphere_password` (written **without** a trailing newline, e.g. `printf '%s' '…' > secrets/vsphere_password`:
+  Telegraf keeps it as part of the password), and the GitLab token as `token:` under `gitlab:` in
+  `secrets/gitlab.yml` (`secrets/gitlab.env` is no longer read). Before upgrading, create the files for the
+  services you run from the values in your env files; the old variables can stay until you've upgraded and
+  are ignored or overridden afterwards. Then delete them from the env files and run
+  `docker compose up -d --force-recreate` for those services: compose doesn't recreate a container when only an
+  env file's contents change. A service whose file is missing doesn't start (`bind source path does not exist`).
+
+### Security
+
+- Exporter passwords, API keys and tokens no longer sit in the containers' environment, where `docker inspect`
+  and Portainer's container view show them: exportarr, qbittorrent-exporter, unpoller and Telegraf read them
+  from compose secrets (files under `/run/secrets/`, one per service), gitlab-ci-pipelines-exporter from its
+  config file. The Pi-hole exporter can't read a file and keeps its passwords in `pihole-exporter.env`.
+
+### Removed
+
+- The ESXi / vCenter dashboard and everything behind it: the `vsphere` compose profile and its Telegraf service
+  (`vsphere/telegraf.conf`), the `vsphere` scrape job, `targets.example/vsphere.json`, the `vsphere.env` and
+  `vsphere_password` templates, and their tests. The homelab moved from ESXi to Proxmox VE (2026-10-12), which the
+  Proxmox VE dashboard covers. On an install that still runs it: drop `vsphere` from `COMPOSE_PROFILES`, and delete
+  `targets/vsphere.json` and `secrets/vsphere*`.
+
+## [0.6.0] - 2026-10-11
+
 ### Upgrading
 
 - Before upgrading the server, copy `secrets.example/prometheus_password` and
@@ -15,9 +83,18 @@ Each release's notes on GitHub are its section here.
   [docs/security.md](docs/security.md#requiring-a-password-for-prometheus)). Without the password file
   `docker compose up` refuses to start Grafana, and without the web configuration Prometheus doesn't start.
   The example web configuration requires no password, so nothing else changes until you add one.
+- Agents: copy the new `agent/compose.yml` and set `ARGUS_AGENT_IMAGE` to `0.6.0`, then `docker compose up -d`.
+  The compose file passes the new optional `ARGUS_PROMETHEUS_PASSWORD` (see `agent/.env.example`); set it on
+  every agent before Prometheus starts requiring a password. Older agents keep working until then.
 
 ### Security
 
+- The agent no longer ships credentials found in URLs to Loki: in container and Nginx Proxy Manager logs it
+  replaces the values of `apikey`, `api_key`, `access_token`, `token`, `X-Plex-Token`, `key`, `signature`,
+  `password`, `passwd` and `secret` parameters with `REDACTED`. Before this, the *arr apps' API keys (which
+  they pass to each other as `?apikey=`), Radarr's and Sonarr's web UI keys (`access_token=`) and Plex tokens
+  were stored in Loki for 30 days and readable by every Grafana user. Lines already in Loki keep them until
+  they expire; rotate keys you consider exposed.
 - Prometheus can require a password: list its `argus` user's bcrypt hash in `secrets/prometheus-web.yml`
   (Prometheus' `--web.config.file`), and nobody can push to it or query it without the password in
   `secrets/prometheus_password`. Grafana's datasource reads that file, Prometheus' scrape of itself and
@@ -37,6 +114,13 @@ Each release's notes on GitHub are its section here.
 - `docker-compose.proxy.yml`: puts Grafana on a reverse proxy's Docker network (`ARGUS_PROXY_NETWORK`) as
   `argus-grafana`, for a proxy such as Nginx Proxy Manager running on the same host. With
   `GRAFANA_BIND=127.0.0.1:3000`, Grafana's plain-HTTP port is then no longer open to the network.
+
+### Fixed
+
+- "NAS storage pool almost full" and the NAS dashboard's used, free and "Full in" columns look at volumes only.
+  Synology lists storage pools and SSD caches in the same table, and a pool given entirely to its volumes reports
+  no free space, so adding a second storage pool raised a false alert at 100 %. Pools and caches still show their
+  status, and "NAS storage pool degraded" still covers them. The "Pool used" panel is now "Volume used".
 
 ## [0.5.1] - 2026-10-09
 
@@ -241,7 +325,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/HoneyBearTech/Argus/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/HoneyBearTech/Argus/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/HoneyBearTech/Argus/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/HoneyBearTech/Argus/compare/v0.4.0...v0.4.1

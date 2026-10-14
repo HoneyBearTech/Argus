@@ -1,0 +1,408 @@
+# Proxmox VE dashboard (prometheus-pve-exporter). Every series carries the scrape target as
+# `instance`; guests are matched to pve_guest_info by (instance, id), so the same VMID on two
+# separate nodes stays two guests. pve_up is 1 or 0; pve_cpu_usage_limit is a count of CPUs.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # Regression test: the cluster's pve_up from both jobs, as the pve job stored it before it dropped its
+      # copy. The overcommit queries join pve_up on (instance, id) and must only match guests.
+      - series: 'pve_up{job="pve", instance="pve1", id="cluster/c"}'
+        values: "1x10"
+      - series: 'pve_up{job="pve_quorum", instance="pve1", id="cluster/c"}'
+        values: "1x10"
+      # Node n1 (target pve1): 4 CPUs at 25 %, 1000 bytes of memory, 400 used.
+      - series: 'pve_node_info{instance="pve1", id="node/n1", name="n1"}'
+        values: "1x10"
+      - series: 'pve_up{instance="pve1", id="node/n1"}'
+        values: "1x10"
+      - series: 'pve_cpu_usage_ratio{instance="pve1", id="node/n1"}'
+        values: "0.25x10"
+      - series: 'pve_cpu_usage_limit{instance="pve1", id="node/n1"}'
+        values: "4x10"
+      - series: 'pve_memory_size_bytes{instance="pve1", id="node/n1"}'
+        values: "1000x10"
+      - series: 'pve_memory_usage_bytes{instance="pve1", id="node/n1"}'
+        values: "400x10"
+      # On n1: VM a (running, 2 vCPUs at 50 %, 500 bytes, starts at boot), container b (running,
+      # 4 vCPUs, 600 bytes, onboot not set), VM c (stopped, 8 vCPUs, 2000 bytes, starts at boot)
+      # and a template t (stopped, starts at boot), which never counts.
+      - series: 'pve_guest_info{instance="pve1", id="qemu/100", node="n1", name="a", type="qemu", template="0", tags=""}'
+        values: "1x10"
+      - series: 'pve_up{instance="pve1", id="qemu/100"}'
+        values: "1x10"
+      - series: 'pve_cpu_usage_ratio{instance="pve1", id="qemu/100"}'
+        values: "0.5x10"
+      - series: 'pve_cpu_usage_limit{instance="pve1", id="qemu/100"}'
+        values: "2x10"
+      - series: 'pve_memory_size_bytes{instance="pve1", id="qemu/100"}'
+        values: "500x10"
+      - series: 'pve_uptime_seconds{instance="pve1", id="qemu/100"}'
+        values: "3600+60x10"
+      - series: 'pve_onboot_status{instance="pve1", id="qemu/100", node="n1", type="qemu"}'
+        values: "1x10"
+      - series: 'pve_guest_info{instance="pve1", id="lxc/101", node="n1", name="b", type="lxc", template="0", tags=""}'
+        values: "1x10"
+      - series: 'pve_up{instance="pve1", id="lxc/101"}'
+        values: "1x10"
+      - series: 'pve_cpu_usage_ratio{instance="pve1", id="lxc/101"}'
+        values: "0.1x10"
+      - series: 'pve_cpu_usage_limit{instance="pve1", id="lxc/101"}'
+        values: "4x10"
+      - series: 'pve_memory_size_bytes{instance="pve1", id="lxc/101"}'
+        values: "600x10"
+      - series: 'pve_guest_info{instance="pve1", id="qemu/102", node="n1", name="c", type="qemu", template="0", tags=""}'
+        values: "1x10"
+      - series: 'pve_up{instance="pve1", id="qemu/102"}'
+        values: "0x10"
+      - series: 'pve_cpu_usage_ratio{instance="pve1", id="qemu/102"}'
+        values: "0x10"
+      - series: 'pve_cpu_usage_limit{instance="pve1", id="qemu/102"}'
+        values: "8x10"
+      - series: 'pve_uptime_seconds{instance="pve1", id="qemu/102"}'
+        values: "0x10"
+      - series: 'pve_memory_size_bytes{instance="pve1", id="qemu/102"}'
+        values: "2000x10"
+      # c's onboot setting comes from another scrape target, as from a node's own scrape in a cluster.
+      - series: 'pve_onboot_status{instance="pve1-node", id="qemu/102", node="n1", type="qemu"}'
+        values: "1x10"
+      - series: 'pve_guest_info{instance="pve1", id="qemu/9000", node="n1", name="t", type="qemu", template="1", tags=""}'
+        values: "1x10"
+      - series: 'pve_up{instance="pve1", id="qemu/9000"}'
+        values: "0x10"
+      - series: 'pve_onboot_status{instance="pve1", id="qemu/9000", node="n1", type="qemu"}'
+        values: "1x10"
+      # Storage on n1: local, 1000 bytes, 900 used and growing 1 byte a minute; an inactive NFS
+      # storage reports size 0 and must not count as full.
+      - series: 'pve_storage_info{instance="pve1", id="storage/n1/local", node="n1", storage="local", plugintype="dir", content="iso,vztmpl"}'
+        values: "1x10"
+      - series: 'pve_disk_size_bytes{instance="pve1", id="storage/n1/local"}'
+        values: "1000x10"
+      - series: 'pve_disk_usage_bytes{instance="pve1", id="storage/n1/local"}'
+        values: "900+1x10"
+      - series: 'pve_storage_info{instance="pve1", id="storage/n1/nas", node="n1", storage="nas", plugintype="nfs", content="backup"}'
+        values: "1x10"
+      - series: 'pve_disk_size_bytes{instance="pve1", id="storage/n1/nas"}'
+        values: "0x10"
+      - series: 'pve_disk_usage_bytes{instance="pve1", id="storage/n1/nas"}'
+        values: "0x10"
+      # Node n2 (target pve2, not in a cluster with n1): 2 CPUs, 1000 bytes. Its VM d has the same
+      # VMID as a on n1: running, 1 vCPU, 100 bytes.
+      - series: 'pve_node_info{instance="pve2", id="node/n2", name="n2"}'
+        values: "1x10"
+      - series: 'pve_up{instance="pve2", id="node/n2"}'
+        values: "1x10"
+      - series: 'pve_cpu_usage_limit{instance="pve2", id="node/n2"}'
+        values: "2x10"
+      - series: 'pve_memory_size_bytes{instance="pve2", id="node/n2"}'
+        values: "1000x10"
+      - series: 'pve_memory_usage_bytes{instance="pve2", id="node/n2"}'
+        values: "950x10"
+      - series: 'pve_guest_info{instance="pve2", id="qemu/100", node="n2", name="d", type="qemu", template="0", tags=""}'
+        values: "1x10"
+      - series: 'pve_up{instance="pve2", id="qemu/100"}'
+        values: "1x10"
+      - series: 'pve_cpu_usage_ratio{instance="pve2", id="qemu/100"}'
+        values: "0.2x10"
+      - series: 'pve_cpu_usage_limit{instance="pve2", id="qemu/100"}'
+        values: "1x10"
+      - series: 'pve_memory_size_bytes{instance="pve2", id="qemu/100"}'
+        values: "100x10"
+      # Traffic counters for a: 600 bytes a minute in, 1200 out.
+      - series: 'pve_network_receive_bytes_total{instance="pve1", id="qemu/100"}'
+        values: "0+600x10"
+      - series: 'pve_network_transmit_bytes_total{instance="pve1", id="qemu/100"}'
+        values: "0+1200x10"
+    promql_expr_test:
+      - dashboard: argus-proxmox
+        panel: Nodes online
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      # a, b and d run; c is stopped and t is a template.
+      - dashboard: argus-proxmox
+        panel: Running guests
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      - dashboard: argus-proxmox
+        panel: 7
+        ref_id: G
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 2
+          - labels: '{node="n2"}'
+            value: 1
+      # c: stopped and starts at boot. The template doesn't count, nor does b (onboot not set).
+      - dashboard: argus-proxmox
+        panel: Down, start at boot
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-proxmox
+        panel: Down, start at boot
+        vars: {node: "n2"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      # Up: a has run for an hour and ten minutes; stopped c (uptime 0) shows nothing.
+      - dashboard: argus-proxmox
+        panel: 14
+        ref_id: G
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="n1/qemu/100"}'
+            value: 4200
+      # Start at boot: a (same target) and c (another target); b has no onboot setting.
+      - dashboard: argus-proxmox
+        panel: 14
+        ref_id: H
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="n1/qemu/100"}'
+            value: 1
+          - labels: '{key="n1/qemu/102"}'
+            value: 1
+      # n1: running a + b = 1100 bytes of 1000 (c is stopped); n2: 100 of 1000.
+      - dashboard: argus-proxmox
+        panel: Memory committed
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 1.1
+      - dashboard: argus-proxmox
+        panel: 7
+        ref_id: E
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 1.1
+          - labels: '{node="n2"}'
+            value: 0.1
+      # n1: 2 + 4 vCPUs running on 4 CPUs; n2: 1 on 2.
+      - dashboard: argus-proxmox
+        panel: "vCPU : CPU"
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 1.5
+      - dashboard: argus-proxmox
+        panel: 7
+        ref_id: F
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 1.5
+          - labels: '{node="n2"}'
+            value: 0.5
+      - dashboard: argus-proxmox
+        panel: 7
+        ref_id: C
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 40
+          - labels: '{node="n2"}'
+            value: 95
+      # Alerts: n2 uses 95 % of its memory (n1 40 %); n1's running guests are allocated 110 % (n2 10 %).
+      - rule: argus-pve-memory-high
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n2"}'
+            value: 95
+      - rule: argus-pve-memory-overcommitted
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 110
+      - rule: argus-pve-memory-overcommitted
+        measurement: true
+        eval_time: 10m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 110
+          - labels: '{node="n2"}'
+            value: 10
+      # local: 910 of 1000; the inactive NFS storage (size 0) is left out.
+      - dashboard: argus-proxmox
+        panel: Fullest storage
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 0.91
+      # 90 bytes free at 1 byte a minute = 90 minutes = 0.0625 days. The size-0 storage gets no
+      # "Full in" (it would read 0 days).
+      - dashboard: argus-proxmox
+        panel: 11
+        ref_id: D
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{id="storage/n1/local"}'
+            value: 0.0625
+      # Guests table: a and d share VMID 100 on different nodes; the table joins its queries on
+      # `key` (node/VMID), which keeps them apart.
+      - dashboard: argus-proxmox
+        panel: 14
+        ref_id: A
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="n1/qemu/100", id="qemu/100", name="a", node="n1", type="qemu"}'
+            value: 1
+          - labels: '{key="n2/qemu/100", id="qemu/100", name="d", node="n2", type="qemu"}'
+            value: 1
+          - labels: '{key="n1/lxc/101", id="lxc/101", name="b", node="n1", type="lxc"}'
+            value: 1
+          - labels: '{key="n1/qemu/102", id="qemu/102", name="c", node="n1", type="qemu"}'
+            value: 0
+      - dashboard: argus-proxmox
+        panel: 14
+        ref_id: E
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="n1/qemu/100"}'
+            value: 500
+          - labels: '{key="n2/qemu/100"}'
+            value: 100
+          - labels: '{key="n1/lxc/101"}'
+            value: 600
+          - labels: '{key="n1/qemu/102"}'
+            value: 2000
+      # Cores in use: a 0.5 × 2, b 0.1 × 4, d 0.2 × 1; c 0.
+      - dashboard: argus-proxmox
+        panel: Guest CPU (top 10)
+        vars: {node: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{name="a"}'
+            value: 1
+          - labels: '{name="b"}'
+            value: 0.4
+          - labels: '{name="c"}'
+            value: 0
+          - labels: '{name="d"}'
+            value: 0.2
+      # a: (600 + 1200) bytes a minute = 30 bytes/s (less a rounding error).
+      - dashboard: argus-proxmox
+        panel: Guest network (top 10)
+        vars: {node: ".*", __rate_interval: 4m}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{name="a"}'
+            value: 29.999999999999993
+  # A two-node cluster, each node scraped by the pve_quorum job for its own view. Both are quorate
+  # for 5 minutes; then n2 (pve2) is cut off: n1 keeps quorum (it still has the QDevice's vote), n2
+  # loses it. The QDevice is configured at minute 3 (no series before). n1 loses it for one minute
+  # (a qnetd restart: too short to alert); n2 loses it for good at minute 5.
+  - interval: 1m
+    input_series:
+      - series: 'pve_up{job="pve_quorum", instance="pve1", id="cluster/c"}'
+        values: "1x15"
+      - series: 'pve_up{job="pve_quorum", instance="pve2", id="cluster/c"}'
+        values: "1x4 0x11"
+      - series: 'pve_qdevice_up{job="pve_quorum", instance="pve1", id="cluster/c"}'
+        values: "_ _ _ 1 1 1 0 1 1 1 1 1 1 1 1 1"
+      - series: 'pve_qdevice_up{job="pve_quorum", instance="pve2", id="cluster/c"}'
+        values: "_ _ _ 1 1 0 0 0 0 0 0 0 0 0 0 0"
+      # The pve job (one node's cluster view, here n1's): what Nodes online and the Nodes table use.
+      - series: 'pve_up{job="pve", instance="pve1", id="cluster/c"}'
+        values: "1x15"
+      - series: 'pve_up{job="pve", instance="pve1", id="node/n1"}'
+        values: "1x15"
+      - series: 'pve_up{job="pve", instance="pve1", id="node/n2"}'
+        values: "1x4 0x11"
+      - series: 'pve_cpu_usage_ratio{job="pve", instance="pve1", id="node/n1"}'
+        values: "0.5x15"
+    promql_expr_test:
+      - dashboard: argus-proxmox
+        panel: Quorum
+        eval_time: 2m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      # n1 still has quorum, but n2 doesn't: the worst view counts.
+      - dashboard: argus-proxmox
+        panel: Quorum
+        eval_time: 8m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      - rule: argus-pve-quorum-lost
+        eval_time: 8m
+        exp_samples:
+          - labels: '{instance="pve2"}'
+            value: 0
+      - rule: argus-pve-quorum-lost
+        eval_time: 3m
+        exp_samples: []
+      - dashboard: argus-proxmox
+        panel: Nodes online
+        vars: {node: ".*"}
+        eval_time: 8m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      # n2 is offline: its row keeps Online = 0 (its CPU and memory are simply missing).
+      - dashboard: argus-proxmox
+        panel: 7
+        ref_id: I
+        vars: {node: ".*"}
+        eval_time: 8m
+        exp_samples:
+          - labels: '{node="n1"}'
+            value: 1
+          - labels: '{node="n2"}'
+            value: 0
+      # No QDevice configured yet: no series, so the panel shows "None configured" and nothing alerts.
+      - dashboard: argus-proxmox
+        panel: QDevice
+        eval_time: 1m
+        exp_samples: []
+      - rule: argus-pve-qdevice-down
+        eval_time: 1m
+        exp_samples: []
+      - dashboard: argus-proxmox
+        panel: QDevice
+        eval_time: 4m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-proxmox
+        panel: QDevice
+        eval_time: 6m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      # Both nodes' views fall below 1 at minute 6 (the measurement the rule's `for: 5m` then waits on);
+      # by minute 10 only n2 is still disconnected.
+      - rule: argus-pve-qdevice-down
+        eval_time: 6m
+        exp_samples:
+          - labels: '{instance="pve1"}'
+            value: 0
+          - labels: '{instance="pve2"}'
+            value: 0
+      - rule: argus-pve-qdevice-down
+        eval_time: 10m
+        exp_samples:
+          - labels: '{instance="pve2"}'
+            value: 0

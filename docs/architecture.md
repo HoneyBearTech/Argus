@@ -28,7 +28,7 @@ that keep it correct.
 | **Argus agent** | `argus-agent` (Grafana Alloy + [`agent/config.alloy`](../agent/config.alloy)) | One container per monitored host. Embedded node_exporter and cAdvisor collect host and container metrics, which it **pushes** to Prometheus (remote write); it tails Docker container logs and, where configured, Nginx Proxy Manager access logs and pushes them to Loki. It only makes outbound connections. |
 | **Prometheus** | `argus-prometheus` ([`prometheus/prometheus.yml`](../prometheus/prometheus.yml)) | Stores metrics for 30 days or 8 GB. Accepts agent pushes, and **scrapes** the exporters and the probe results; which targets is read from `targets/*.json` on the server (file service discovery), so no addresses live in the repo. |
 | **blackbox_exporter** | `argus-blackbox` ([`blackbox/blackbox.yml`](../blackbox/blackbox.yml)) | Probes web services (HTTP status, TLS certificate) and DNS servers on Prometheus' behalf. Not published on the host. |
-| **Exporters** | upstream images, pinned in [`docker-compose.yml`](../docker-compose.yml) | Translate a service's API into metrics: pihole-exporter, unpoller (UniFi), snmp-exporter (NAS), exportarr and qbittorrent-exporter (media apps), gitlab-ci-pipelines-exporter (GitLab CI, through GitLab's API), Telegraf (vCenter: ESXi hosts, VMs, datastores), the Plex exporter (beside Plex, from `agent/compose.yml`). Home Assistant, PeaNUT and Uptime Kuma expose metrics themselves. Each reads its credentials from `secrets/`. |
+| **Exporters** | upstream images, pinned in [`docker-compose.yml`](../docker-compose.yml) | Translate a service's API into metrics: pihole-exporter, unpoller (UniFi), snmp-exporter (NAS), exportarr and qbittorrent-exporter (media apps), gitlab-ci-pipelines-exporter (GitLab CI, through GitLab's API), prometheus-pve-exporter (Proxmox VE nodes, guests, storage), the Plex exporter (beside Plex, from `agent/compose.yml`). Home Assistant, PeaNUT and Uptime Kuma expose metrics themselves. Each reads its credentials from `secrets/`. |
 | **Loki** | `argus-loki` ([`logs/loki.yaml`](../logs/loki.yaml)) | Stores logs for 30 days. Runs in the main stack (`loki` profile) or on a host with more disk ([`logs/compose.yml`](../logs/compose.yml)). |
 | **Grafana** | `argus-grafana` (dashboards, datasources and alerting baked in) | Dashboards, the alert rules and the Discord contact point, all provisioned from files; editing them in the UI is blocked, so the repository stays the source of truth. |
 
@@ -38,8 +38,9 @@ that keep it correct.
    labelled with the host's name (`host`). Prometheus scrapes everything else on its own schedule
    (15 s by default, 30–60 s for slower exporters), with targets and their labels from `targets/`.
 2. **Probes.** For each URL in `targets/blackbox_http.json` (and DNS server in `blackbox_dns.json`),
-   Prometheus asks blackbox_exporter to probe it and stores `probe_success`, timings and certificate
-   expiry.
+   Prometheus asks blackbox_exporter to probe it once a minute and stores `probe_success`, timings and
+   certificate expiry. Each probe, and each redirect it follows, looks the name up again, so list the URL
+   a service ends on (its login page, for example) rather than one that redirects there.
 3. **Logs.** The agent reads container logs through the Docker socket, labels them (`host`, `container`,
    `compose_project`), drops lines older than an hour (first-start backfill) and pushes them to Loki.
    GitLab Runner's CI job containers are skipped, for both logs and container metrics. NPM

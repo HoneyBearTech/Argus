@@ -133,20 +133,69 @@ scrape_configs:
       - regex: exported_job|exported_instance
         action: labeldrop
 
-  # ESXi hosts, VMs and datastores from vCenter via Telegraf (only runs with the
-  # `vsphere` compose profile): :9273 serves hosts and VMs, :9274 datastores.
-  # Only the vsphere_* series are kept, without vCenter's internal IDs.
-  - job_name: vsphere
+  # Proxmox VE through prometheus-pve-exporter (`proxmox` compose profile).
+  # Each target is a node's API address, which its certificate must name. In a
+  # cluster, give every node but one the label `cluster: "0"`, or each guest is
+  # reported once per node. The deprecated non-counter traffic gauges are dropped,
+  # and so are quorum and QDevice: the pve_quorum job below owns those.
+  - job_name: pve
     scrape_interval: 60s
     scrape_timeout: 30s
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ["1"]
+      node: ["1"]
     file_sd_configs:
-      - files: [/etc/prometheus/targets/vsphere.json]
+      - files: [/etc/prometheus/targets/pve.json]
+    relabel_configs:
+      - source_labels: [cluster]
+        regex: (.+)
+        target_label: __param_cluster
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+      - regex: cluster
+        action: labeldrop
     metric_relabel_configs:
       - source_labels: [__name__]
-        regex: vsphere_.+
-        action: keep
-      - regex: uuid|moid|rpname|dcname|vcenter|source
+        regex: pve_(network_transmit|network_receive|disk_write|disk_read)_bytes
+        action: drop
+      - source_labels: [__name__, id]
+        regex: pve_up;cluster/.+|pve_qdevice_.+;.*
+        action: drop
+
+  # Each Proxmox node's own view of quorum and of its QDevice, for the quorum
+  # alerts and the dashboard's Quorum and QDevice stats. The `pve` job reads the
+  # cluster from one node only, which may be the node that's down; here every
+  # node in targets/pve.json is asked (its `cluster` label is ignored) and only
+  # those two series are kept.
+  - job_name: pve_quorum
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ["1"]
+      node: ["0"]
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/pve.json]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+      - regex: cluster
         action: labeldrop
+    metric_relabel_configs:
+      - source_labels: [__name__, id]
+        regex: pve_up;cluster/.+|pve_qdevice_up;.*
+        action: keep
 
   # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
   # up as a down target like any other exporter.
@@ -179,7 +228,10 @@ scrape_configs:
 
   # Web services probed through blackbox_exporter. Each target is a URL with
   # `service` and `group` labels; the probe itself runs on the exporter.
+  # Once a minute: nothing between the exporter and the DNS server caches, so
+  # every probe (and every redirect it follows) is a fresh A + AAAA lookup.
   - job_name: blackbox_http
+    scrape_interval: 60s
     metrics_path: /probe
     params:
       module: [http_service]
