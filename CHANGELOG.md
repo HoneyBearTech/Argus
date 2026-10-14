@@ -61,6 +61,10 @@ Each release's notes on GitHub are its section here.
 
 ### Security
 
+- Grafana 13.2.3 → **13.2.4**: fixes CVE-2026-15577, CVE-2026-33374, CVE-2026-93294 and CVE-2026-95502 in
+  Grafana, and CVE-2026-84445 (gRPC-Go) in its bundled Prometheus datasource plugin. docs/dependencies.md's
+  current findings are updated: the Go standard library and `x/net` denial-of-service fixes (CVE-2026-78667,
+  -78669, -97031) wait for upstream builds, and aren't reachable from outside Argus' trusted network.
 - Exporter passwords, API keys and tokens no longer sit in the containers' environment, where `docker inspect`
   and Portainer's container view show them: exportarr, qbittorrent-exporter, unpoller and Telegraf read them
   from compose secrets (files under `/run/secrets/`, one per service), gitlab-ci-pipelines-exporter from its
