@@ -26,6 +26,10 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- README: the setup table now says to add a profile to `COMPOSE_PROFILES` (`loki,snmp`) instead of setting
+  `COMPOSE_PROFILES=snmp`, which would have replaced the default `loki` and stopped Loki; the summary and "How it
+  works" now name the GitLab CI, ESXi/vCenter, Proxmox and internet dashboards and their exporters. `.env.example`
+  no longer asks for a `secrets/gitlab.env` (the exporter has read only `secrets/gitlab.yml` since #61).
 - Web services are probed once a minute instead of every 15 seconds. Nothing between blackbox_exporter and the
   DNS server caches, so every probe, and every redirect it follows, was a fresh A + AAAA lookup: with a few dozen
   URLs that came to tens of thousands of queries an hour, and a busy DNS server log. The "Service down" alert
