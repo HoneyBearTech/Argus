@@ -66,6 +66,14 @@ Each release's notes on GitHub are its section here.
   from compose secrets (files under `/run/secrets/`, one per service), gitlab-ci-pipelines-exporter from its
   config file. The Pi-hole exporter can't read a file and keeps its passwords in `pihole-exporter.env`.
 
+### Removed
+
+- The ESXi / vCenter dashboard and everything behind it: the `vsphere` compose profile and its Telegraf service
+  (`vsphere/telegraf.conf`), the `vsphere` scrape job, `targets.example/vsphere.json`, the `vsphere.env` and
+  `vsphere_password` templates, and their tests. The homelab moved from ESXi to Proxmox VE (2026-10-12), which the
+  Proxmox VE dashboard covers. On an install that still runs it: drop `vsphere` from `COMPOSE_PROFILES`, and delete
+  `targets/vsphere.json` and `secrets/vsphere*`.
+
 ## [0.6.0] - 2026-10-11
 
 ### Upgrading

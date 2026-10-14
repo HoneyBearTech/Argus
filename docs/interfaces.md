@@ -48,13 +48,12 @@ format; placeholders in [`targets.example/`](../targets.example/)): a list of
 
 **Credentials** (`secrets/`, placeholders in [`secrets.example/`](../secrets.example/)), mounted
 read-only: env files with the exporters' URLs and user names (`pihole-exporter.env`, which also holds
-the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`, `vsphere.env`); the exporters'
-passwords and API keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`,
-`qbittorrent_password`, `vsphere_password`); `gitlab.yml` (GitLab, its token and what to watch);
-`pve.yml` (the Proxmox VE API token, mounted under `/run/secrets/`); the CA certificates of vCenter
-(`vsphere-ca.pem`) and Proxmox VE (`pve-ca.pem`); files Prometheus reads (`home_assistant_token`,
-`uptime_kuma_api_key`, `peanut_username` and `peanut_password`, `prometheus-web.yml`,
-`prometheus_password`); and `snmp-auth.yml`.
+the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`); the exporters' passwords and API
+keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, `qbittorrent_password`);
+`gitlab.yml` (GitLab, its token and what to watch); `pve.yml` (the Proxmox VE API token, mounted under
+`/run/secrets/`); the CA certificate of Proxmox VE (`pve-ca.pem`); files Prometheus reads
+(`home_assistant_token`, `uptime_kuma_api_key`, `peanut_username` and `peanut_password`,
+`prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
 
 ## Data contracts
 
