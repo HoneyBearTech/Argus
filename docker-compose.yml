@@ -252,6 +252,22 @@ services:
         bind: { create_host_path: false }
     secrets: [pve.yml]
 
+  # Tdarr: libraries, queues, errors, space saved and what each worker is doing,
+  # read through Tdarr's API (`tdarr` profile). Tdarr's URL comes from
+  # secrets/tdarr.env (see secrets.example/); so does its API key once Tdarr's
+  # own login is on, since the exporter reads the key only from its environment.
+  tdarr-exporter:
+    <<: *hardened
+    image: homeylab/tdarr-exporter:3.1.0
+    restart: unless-stopped
+    profiles: [tdarr]
+    environment:
+      # The `tdarr_instance` label on every series (default: the URL's host).
+      INSTANCE_NAME: tdarr
+    env_file:
+      - path: ./secrets/tdarr.env
+        required: false
+
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
   # at it either way.

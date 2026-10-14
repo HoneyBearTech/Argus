@@ -90,6 +90,15 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/plex.json]
 
+  # Tdarr via tdarr-exporter (only runs with the `tdarr` compose profile, so
+  # targets/tdarr.json lists it only where it's enabled). Each scrape asks
+  # Tdarr's API, so the workers' progress is as current as the interval.
+  - job_name: tdarr
+    scrape_interval: 30s
+    scrape_timeout: 20s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/tdarr.json]
+
   # GitLab CI pipelines and jobs via gitlab-ci-pipelines-exporter (only runs
   # with the `gitlab` compose profile, so targets/gitlab.json lists it only
   # where it's enabled). It polls GitLab's API every 30 s.

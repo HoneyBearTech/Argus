@@ -118,6 +118,7 @@ any of this, and CI's boot test starts Grafana and Prometheus with these setting
 | qbittorrent-exporter | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Only reads its password file |
 | gitlab-ci-pipelines-exporter | uid 65534 (image) | none | yes | nothing | |
 | pve-exporter | uid 101 (image) | none | yes | `/tmp` in memory | Python won't start without a writable temporary directory |
+| tdarr-exporter | uid 65532 (image) | none | yes | nothing | Needs no file |
 | agent | root | `DAC_OVERRIDE` | yes | its data volume | [The agent's exceptions](#the-agents-exceptions) |
 | plex-exporter (agent's `plex` profile) | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Needs no file |
 

@@ -323,6 +323,14 @@ def test_exporter_credentials_are_mounted_files_not_environment() -> None:
     assert "env_file" not in services["pve-exporter"]
 
 
+def test_tdarr_exporter_reads_its_settings_only_from_its_env_file() -> None:
+    """Its image reads the API key only from the environment, so the key stays in secrets/tdarr.env."""
+    tdarr = load("docker-compose.yml")["services"]["tdarr-exporter"]
+    assert tdarr["env_file"] == [{"path": "./secrets/tdarr.env", "required": False}]
+    assert tdarr["environment"] == {"INSTANCE_NAME": "tdarr"}
+    assert "secrets" not in tdarr
+
+
 def test_every_secret_is_a_file_in_secrets_with_a_template() -> None:
     for name, secret in load("docker-compose.yml")["secrets"].items():
         assert secret == {"file": f"./secrets/{name}"}
