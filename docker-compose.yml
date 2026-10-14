@@ -64,7 +64,7 @@ services:
   # password from secrets/unifi_password (see secrets.example/); everything else
   # is fixed here.
   unpoller:
-    image: ghcr.io/unpoller/unpoller:v5.5.0
+    image: ghcr.io/unpoller/unpoller:v5.5.1
     restart: unless-stopped
     environment:
       UP_INFLUXDB_DISABLE: "true"
