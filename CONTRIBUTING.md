@@ -21,9 +21,10 @@ the stack from your checkout so dashboard, alert and config edits apply without 
 
 ```sh
 git clone https://github.com/HoneyBearTech/Argus.git && cd Argus
-cp .env.example .env    # set GF_SECURITY_ADMIN_PASSWORD; use 127.0.0.1 binds for a local sandbox
+cp .env.example .env    # use 127.0.0.1 binds for a local sandbox
 echo 'COMPOSE_FILE=docker-compose.yml:docker-compose.source.yml' >> .env
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp secrets.example/* secrets/
+echo 'a-sandbox-password' > secrets/grafana_admin_password
 docker compose up -d --build
 
 # the check and test tools, pinned with hashes
@@ -84,7 +85,7 @@ docker run --rm -v /tmp/argus-promql:/tests:ro --entrypoint sh prom/prometheus:v
 docker run --rm -v "$PWD/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
   -v "$PWD/targets.example:/etc/prometheus/targets:ro" -v "$PWD/secrets.example:/etc/prometheus/secrets:ro" \
   --entrypoint promtool prom/prometheus:v3.15.0 check config /etc/prometheus/prometheus.yml
-GF_SECURITY_ADMIN_PASSWORD=x docker compose -f docker-compose.yml config --quiet
+docker compose -f docker-compose.yml config --quiet
 ```
 
 The workflow, Dockerfile and Alloy linters run in containers; the exact commands are in

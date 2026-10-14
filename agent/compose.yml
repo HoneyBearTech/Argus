@@ -9,11 +9,28 @@ services:
     image: ${ARGUS_AGENT_IMAGE:-ghcr.io/honeybeartech/argus-agent:latest}
     container_name: argus-agent
     restart: unless-stopped
-    # Host PID and network namespaces + read-only host mounts let the embedded
-    # node_exporter and cAdvisor see the host itself.
+    # What the agent still needs, and why, is in docs/security.md#hardening.
+    # Host network: node_exporter reads the network interfaces from /proc/net,
+    # which shows only the network namespace the agent itself runs in.
     network_mode: host
+    # Host PID: node_exporter finds the host's filesystems through the mount
+    # table of PID 1, and cAdvisor reads each container's network counters
+    # through the container's processes.
     pid: host
-    privileged: true
+    # Not privileged: it runs as root but with no capability except
+    # DAC_OVERRIDE, can't gain others, and its root filesystem is read-only.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      # Without capabilities root can only open files it owns. The agent's data
+      # directory belongs to the image's alloy user (uid 473), and the host
+      # files it reads (logs, mount points under private directories) can
+      # belong to anyone. Every host mount is read-only, so it can't write them.
+      - DAC_OVERRIDE
+    # It writes only its data volume.
+    read_only: true
     environment:
       ARGUS_HOST: ${ARGUS_HOST:?set ARGUS_HOST in .env}
       ARGUS_PROMETHEUS_URL: ${ARGUS_PROMETHEUS_URL:?set ARGUS_PROMETHEUS_URL in .env}
@@ -41,8 +58,16 @@ services:
     container_name: argus-plex-exporter
     restart: unless-stopped
     profiles: [plex]
+    # The image runs as root; it needs no file at all.
+    user: "65534:65534"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
     environment:
       PLEX_SERVER: ${PLEX_SERVER:-http://localhost:32400}
+      # The exporter reads its token only from the environment.
       PLEX_TOKEN: ${PLEX_TOKEN:-}
     ports:
       - 9594:9000

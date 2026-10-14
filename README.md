@@ -51,7 +51,7 @@ docs/                user, security and project documentation
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
 ## Alerts
-Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisioning/alerting/rules.yaml) (edit there — UI changes are blocked) and notify a Discord channel through the webhook in `DISCORD_WEBHOOK_URL` (production `.env` only; a sandbox gets a dummy URL so it can't post). Each rule is a raw PromQL measurement (`A`) plus a threshold (`C`), one alert per series:
+Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisioning/alerting/rules.yaml) (edit there — UI changes are blocked) and notify a Discord channel through the webhook in `secrets/discord_webhook_url` (its template points nowhere, so a sandbox can't post). Each rule is a raw PromQL measurement (`A`) plus a threshold (`C`), one alert per series:
 
 | Group | Rules |
 |---|---|
@@ -73,8 +73,9 @@ Argus ships as images for amd64 and arm64 on GHCR (`ghcr.io/honeybeartech/argus-
 **Server** (one host — Grafana, Prometheus, blackbox_exporter, Loki):
 ```sh
 git clone --depth 1 https://github.com/HoneyBearTech/Argus.git && cd Argus
-cp .env.example .env              # set GF_SECURITY_ADMIN_PASSWORD and GRAFANA_ROOT_URL
+cp .env.example .env              # set GRAFANA_ROOT_URL
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp secrets.example/* secrets/
+openssl rand -base64 24 > secrets/grafana_admin_password   # Grafana's admin password (user admin)
 # put your real addresses in targets/ and credentials in secrets/ — delete what you don't use
 docker compose up -d
 ```
@@ -112,15 +113,18 @@ Each monitored host runs one container, the **Argus agent** (`agent/`): Grafana 
 
 ```sh
 docker run -d --name argus-agent --restart unless-stopped \
-  --network host --pid host --privileged \
+  --network host --pid host --read-only \
+  --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt no-new-privileges:true \
   -e ARGUS_HOST=my-host \
   -e ARGUS_PROMETHEUS_URL=http://argus-server:9090 \
   -e ARGUS_LOKI_URL=http://argus-server:3101 \
   -v /:/rootfs:ro,rslave -v /sys:/sys:ro -v /run/udev:/run/udev:ro -v /dev/disk:/dev/disk:ro \
   -v /var/lib/docker:/var/lib/docker:ro -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -v /run/containerd:/run/containerd:ro \
+  -v /run/containerd:/run/containerd:ro -v argus-agent-data:/var/lib/alloy/data \
   ghcr.io/honeybeartech/argus-agent:latest
 ```
+
+It runs as root in the host's network and PID namespaces with the host mounted read-only, but not privileged: its only capability is `DAC_OVERRIDE` (to read files that belong to other users), and its own filesystem is read-only, so it writes only its data volume. Why it needs each of these is in [docs/security.md](docs/security.md#hardening).
 
 Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and run `docker compose up -d`; pin `ARGUS_AGENT_IMAGE` to a release tag for predictable upgrades. The compose file also covers two extras:
 - **Nginx Proxy Manager access logs** (Reverse Proxy Traffic dashboard): on the host running NPM, set `NPM_LOG_DIR` to its `data/logs` directory.

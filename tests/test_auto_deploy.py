@@ -63,6 +63,7 @@ class Server:
 
         monkeypatch.setattr(deploy, "ROOT", self.root)
         monkeypatch.setattr(deploy, "BAD_COMMITS", self.root / ".git" / "argus-deploy-bad-commits")
+        monkeypatch.setattr(deploy, "DISCORD_WEBHOOK", self.root / "secrets" / "discord_webhook_url")
         monkeypatch.setattr(deploy, "run", run)
         monkeypatch.setattr(deploy, "repo_slug", lambda _url: "acme/argus")
         monkeypatch.setattr(deploy, "check_runs", lambda _slug, _sha: self.checks)
@@ -257,6 +258,25 @@ def test_read_env(tmp_path: Path) -> None:
     env.write_text("# comment\nA=1\nB = 'two'\nC=\"x=y\"\nnot a setting\n")
     assert deploy.read_env(env) == {"A": "1", "B": "two", "C": "x=y"}
     assert deploy.read_env(tmp_path / "missing") == {}
+
+
+def test_discord_webhook_prefers_grafanas_file(server: Server) -> None:
+    """Deploy notices go where Grafana's alerts go; .env's DISCORD_WEBHOOK_URL is the fallback for older installs."""
+    assert deploy.discord_webhook() == ""
+    (server.root / ".env").write_text("DISCORD_WEBHOOK_URL=https://discord.invalid/from-env\n")
+    assert deploy.discord_webhook() == "https://discord.invalid/from-env"
+    (server.root / "secrets").mkdir()
+    webhook = server.root / "secrets" / "discord_webhook_url"
+    webhook.write_text("\n")  # empty: still the fallback
+    assert deploy.discord_webhook() == "https://discord.invalid/from-env"
+    webhook.write_text("https://discord.invalid/from-file\n")
+    assert deploy.discord_webhook() == "https://discord.invalid/from-file"
+
+
+def test_discord_webhook_survives_an_unreadable_file(server: Server) -> None:
+    (server.root / "secrets" / "discord_webhook_url").mkdir(parents=True)  # a directory can't be read as a file
+    (server.root / ".env").write_text("DISCORD_WEBHOOK_URL=https://discord.invalid/from-env\n")
+    assert deploy.discord_webhook() == "https://discord.invalid/from-env"
 
 
 def test_changed_services_only_restarts_running_ones() -> None:

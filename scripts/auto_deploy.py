@@ -12,8 +12,9 @@ Run by the systemd timer in deploy/systemd/ (see docs/auto-deploy.md). Each run:
 4. checks that Grafana and Prometheus answer. If they don't, it goes back to the previous commit,
    redeploys that, and remembers the bad commit so the next run doesn't try it again.
 
-Deploys and rollbacks are posted to Discord when DISCORD_WEBHOOK_URL is set in .env. Only the standard
-library is used, so the script runs with the server's own python3.
+Deploys and rollbacks are posted to the Discord webhook in secrets/discord_webhook_url (the one Grafana's
+alerts use) or, failing that, DISCORD_WEBHOOK_URL in .env. Only the standard library is used, so the script
+runs with the server's own python3.
 """
 
 from __future__ import annotations
@@ -49,6 +50,7 @@ RESTART_ON = {
 # Prometheus' password (secrets/prometheus-web.yml).
 HEALTH_CHECKS = (("grafana", 3000, "/api/health", False), ("prometheus", 9090, "/-/ready", True))
 PROMETHEUS_PASSWORD = ROOT / "secrets" / "prometheus_password"
+DISCORD_WEBHOOK = ROOT / "secrets" / "discord_webhook_url"
 HEALTH_TIMEOUT = 300
 USER_AGENT = "argus-deploy"
 
@@ -113,6 +115,15 @@ def read_env(path: Path) -> dict[str, str]:
             if sep and not key.lstrip().startswith("#"):
                 env[key.strip()] = value.strip().strip("'\"")
     return env
+
+
+def discord_webhook() -> str:
+    """Return where deploy notices go: Grafana's webhook (secrets/discord_webhook_url), else .env's."""
+    try:
+        webhook = DISCORD_WEBHOOK.read_text().strip()
+    except OSError:
+        webhook = ""
+    return webhook or read_env(ROOT / ".env").get("DISCORD_WEBHOOK_URL", "")
 
 
 def notify(webhook: str, message: str) -> None:
@@ -228,7 +239,7 @@ def next_commit() -> tuple[str, str] | None:
 
 def ship(old: str, new: str, subject: str) -> int:
     """Deploy `new`; roll back to `old` if it fails. Return the exit status."""
-    webhook = read_env(ROOT / ".env").get("DISCORD_WEBHOOK_URL", "")
+    webhook = discord_webhook()
     changed = run("git", "diff", "--name-only", old, new).splitlines()
     log(f"deploying {old[:7]} -> {new[:7]}: {subject}")
     try:

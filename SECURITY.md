@@ -55,8 +55,8 @@ Grafana Alloy and the exporters) are found by a weekly image scan and handled as
 ## Scope
 
 Argus is monitoring for a home lab or small network. It is designed to run on a **trusted network**:
-Prometheus and Loki accept pushes from the agents without authentication, and the agent runs privileged on
-every monitored host. Treat the server as a sensitive system: it holds read-only credentials for the
+Prometheus and Loki accept pushes from the agents without authentication, and the agent runs as root, with
+the Docker socket, on every monitored host. Treat the server as a sensitive system: it holds read-only credentials for the
 services it watches and sees the logs of every container.
 
 What Argus does and doesn't protect against is described in [docs/security.md](docs/security.md) (its

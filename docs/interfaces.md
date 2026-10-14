@@ -23,22 +23,26 @@ Outbound connections:
 | Prometheus | everything in `targets/*.json` | scrapes (HTTP, or HTTPS where a target uses it) |
 | blackbox_exporter | URLs in `targets/blackbox_http.json`, DNS servers in `targets/blackbox_dns.json` | HTTP(S) probes with certificate verification; DNS queries (UDP) |
 | Exporters | the service each one watches (from `secrets/<name>.env` and the credential files) | the service's API (Pi-hole, UniFi, SNMPv3, *arr, qBittorrent, Plex) |
-| Grafana | Prometheus, Loki (`LOKI_URL`), `DISCORD_WEBHOOK_URL` | queries; alert notifications (HTTPS). It downloads no plugins: `GF_PLUGINS_PREINSTALL_DISABLED=true` |
-| Auto-deploy (optional, [auto-deploy.md](auto-deploy.md)) | GitHub (`git fetch`, the public API), `DISCORD_WEBHOOK_URL` | the new commit and its check result (HTTPS, no token); deploy and rollback notices |
+| Grafana | Prometheus, Loki (`LOKI_URL`), the Discord webhook (`secrets/discord_webhook_url`) | queries; alert notifications (HTTPS). It downloads no plugins: `GF_PLUGINS_PREINSTALL_DISABLED=true` |
+| Auto-deploy (optional, [auto-deploy.md](auto-deploy.md)) | GitHub (`git fetch`, the public API), the Discord webhook (`secrets/discord_webhook_url`, else `DISCORD_WEBHOOK_URL` in `.env`) | the new commit and its check result (HTTPS, no token); deploy and rollback notices |
 
 ## Configuration
 
 **Server `.env`** (template: [`.env.example`](../.env.example)): `GF_SECURITY_ADMIN_USER`,
-`GF_SECURITY_ADMIN_PASSWORD` (required), `GRAFANA_ROOT_URL`, `ARGUS_VERSION`, `ARGUS_REGISTRY`,
+`GRAFANA_ROOT_URL`, `ARGUS_VERSION`, `ARGUS_REGISTRY`,
 `COMPOSE_FILE` (source mode, proxy network), `ARGUS_PROXY_NETWORK`, `GRAFANA_BIND`, `PROMETHEUS_BIND`, `LOKI_BIND`,
 `PROMETHEUS_RETENTION_TIME`, `PROMETHEUS_RETENTION_SIZE`, `COMPOSE_PROFILES` (`loki`, `snmp`, one per
-media app), `DISCORD_WEBHOOK_URL`, `UNIFI_VERIFY_SSL`, `LOKI_URL`.
+media app), `UNIFI_VERIFY_SSL`, `LOKI_URL`. Grafana's admin password and the Discord webhook are files in
+`secrets/` (below); `GF_SECURITY_ADMIN_PASSWORD` and `DISCORD_WEBHOOK_URL` in `.env` are no longer passed to
+Grafana (auto-deploy still falls back to `DISCORD_WEBHOOK_URL`).
 
 **Agent** (environment, or `agent/.env` from [`agent/.env.example`](../agent/.env.example)):
 `ARGUS_HOST` (the `host` label), `ARGUS_PROMETHEUS_URL`, `ARGUS_LOKI_URL` (all required);
 `ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`; `ARGUS_AGENT_IMAGE`. Host
 mounts (all read-only): `/` as `/rootfs`, `/sys`, `/run/udev`, `/dev/disk`, `/var/lib/docker`, the Docker
-socket, and `NPM_LOG_DIR`. It needs the host's PID and network namespaces and `--privileged`.
+socket, the containerd socket, and `NPM_LOG_DIR`; its own data is in a volume at `/var/lib/alloy/data`. It needs
+the host's PID and network namespaces and the `DAC_OVERRIDE` capability, not `--privileged`
+([security.md](security.md#hardening)).
 
 **Targets** (`targets/<job>.json`, Prometheus
 [file service discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config)
@@ -47,7 +51,9 @@ format; placeholders in [`targets.example/`](../targets.example/)): a list of
 `host`, `module` and `auth` (SNMP), `app` (media). Prometheus reloads these files without a restart.
 
 **Credentials** (`secrets/`, placeholders in [`secrets.example/`](../secrets.example/)), mounted
-read-only: env files with the exporters' URLs and user names (`pihole-exporter.env`, which also holds
+read-only, so the containers' users must be able to read them (mode 644; the env files, which only the compose
+command reads, can stay 600): Grafana's admin password (`grafana_admin_password`, required) and the Discord
+webhook (`discord_webhook_url`), both mounted under `/run/secrets/`; env files with the exporters' URLs and user names (`pihole-exporter.env`, which also holds
 the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`); the exporters' passwords and API
 keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, `qbittorrent_password`);
 `gitlab.yml` (GitLab, its token and what to watch); `pve.yml` (the Proxmox VE API token, mounted under

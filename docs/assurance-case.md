@@ -23,8 +23,8 @@ configured, packaged and delivered.
 
 ## 1. Threat model
 
-**Assets**, most valuable first: the monitored hosts (the agent runs privileged on each); the
-credentials in the server's `secrets/` and `.env` (API keys and tokens for Pi-hole, UniFi, Home
+**Assets**, most valuable first: the monitored hosts (the agent runs as root on each, with the Docker
+socket); the credentials in the server's `secrets/` (API keys and tokens for Pi-hole, UniFi, Home
 Assistant, the media apps and SNMP, the Grafana admin password, the Discord webhook); the collected logs
 and metrics (which describe the network and may contain sensitive data); the integrity of alerting (no
 false silence, no false alarms); the integrity of the published images and release files; and the
@@ -51,11 +51,11 @@ Loki endpoints from inside the trusted network; vulnerabilities in the upstream 
 
 | # | Boundary | What crosses it | How it is mediated |
 | --- | --- | --- | --- |
-| B1 | Browser → Grafana | HTTP requests, logins | Grafana authentication on every request; sign-up and anonymous access off ([`images/grafana/Dockerfile`](../images/grafana/Dockerfile)); the admin password is required (`docker-compose.yml` refuses to start without it); TLS from the operator's reverse proxy. Provisioned dashboards, datasources and alerting are read-only ([`provisioning/`](../provisioning/); tested in [`tests/test_configs.py`](../tests/test_configs.py)). |
+| B1 | Browser → Grafana | HTTP requests, logins | Grafana authentication on every request; sign-up and anonymous access off ([`images/grafana/Dockerfile`](../images/grafana/Dockerfile)); the admin password is required (the image refuses to start while `secrets/grafana_admin_password` is missing, empty or unreadable; tested); TLS from the operator's reverse proxy. Provisioned dashboards, datasources and alerting are read-only ([`provisioning/`](../provisioning/); tested in [`tests/test_configs.py`](../tests/test_configs.py)). |
 | B2 | Agent → Prometheus / Loki | Metrics and logs | Prometheus can require a password (basic auth, bcrypt hash in `secrets/prometheus-web.yml`; CI checks that it refuses requests without it); Loki, and Prometheus until a password is set, accept pushes without authentication on the trusted network (documented). The agent drops log lines older than an hour; Loki rejects samples older than a week and limits ingestion rate ([`logs/loki.yaml`](../logs/loki.yaml)); Prometheus retention is bounded by time and size. |
 | B3 | Prometheus → exporters, blackbox → probed URLs, exporters → watched services | Scrapes, probes, API calls with credentials | Exporters sit on the compose network with no published port; credentials come from read-only mounted files in `secrets/`; TLS certificates are verified (probes: no `insecure_skip_verify`, tested; UniFi: `UNIFI_VERIFY_SSL` defaults to `true`, tested); a probe counts only explicit success codes, not 403 (tested, #3); scrape timeouts and per-job drop rules bound what a target can send. |
-| B4 | Agent → host | Host metrics, container metrics, container logs | The agent is privileged by necessity; it mounts the host read-only and only connects out. Its image is signed and pinned per host by the operator. Alloy's UI listens on loopback only. |
-| B5 | Grafana → Discord | Alert notifications | HTTPS with certificate verification; the webhook comes from the environment and a sandbox defaults to an invalid URL, so a test install can't post to a real channel. |
+| B4 | Agent → host | Host metrics, container metrics, container logs | The agent needs the host's PID and network namespaces and the Docker socket, but not `--privileged`: no capability except `DAC_OVERRIDE`, `no-new-privileges`, a read-only root filesystem ([security.md](security.md#the-agents-exceptions); tested). It mounts the host read-only and only connects out. Its image is signed and pinned per host by the operator. Alloy's UI listens on loopback only. |
+| B5 | Grafana → Discord | Alert notifications | HTTPS with certificate verification; the webhook comes from a file in `secrets/` (not the environment), whose template is an invalid URL, so a test install can't post to a real channel. |
 | B6 | Contributor → repository | Pull requests | `main` accepts changes only through pull requests that pass the required CI check, enforced for administrators; CI rejects private addresses and internal names (`scripts/check_dashboards.py`); secret scanning with push protection; DCO sign-off; workflows from forks get read-only tokens and no secrets; CodeQL analyses the workflows. |
 | B7 | Upstream → build → registries → user | Base images, Actions, tools, published images | Base images pinned by version and digest, Actions by commit SHA, Python tools by hash; the release workflow signs each image keylessly (identity: the workflow on the tag), attaches SBOM and provenance, and signs the release checksums; users verify with cosign ([verifying-releases.md](verifying-releases.md)). |
 
@@ -76,7 +76,7 @@ The full list of ports, files and variables is in [interfaces.md](interfaces.md)
 | Principle | How Argus applies it |
 | --- | --- |
 | Economy of mechanism | No server code: standard components with small, readable configuration files. One agent container per host instead of several. |
-| Fail-safe defaults | TLS verification on; sign-up and anonymous access off; the stack won't start without an admin password; a sandbox's Discord URL is invalid by default; a probe is up only on an explicit success code; exporters without credentials start but scrape nothing. |
+| Fail-safe defaults | TLS verification on; sign-up and anonymous access off; Grafana won't start without an admin password; containers start with no capabilities and read-only root filesystems; a sandbox's Discord URL is invalid by default; a probe is up only on an explicit success code; exporters without credentials start but scrape nothing. |
 | Complete mediation | Every Grafana request is authenticated; provisioned resources are read-only on every path (UI and API). |
 | Open design | Everything is public and documented; security rests on the operator's credentials and network, not on secrecy of the configuration. |
 | Separation of privilege | Publishing a release needs both a tag pushed by the maintainer and the release workflow's identity; changes to `main` need a pull request and a passing check. |

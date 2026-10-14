@@ -125,28 +125,46 @@ jobs:
       # Grafana refuses to start on an invalid provisioned alert rule, so start the image and
       # check that every dashboard, alert rule, datasource and the contact point loaded. Prometheus
       # requires a password here (tests/fixtures/prometheus-auth/), which Grafana and Prometheus'
-      # own scrape must send.
+      # own scrape must send. Both run hardened as in docker-compose.yml (no capabilities, read-only
+      # root, Grafana's /tmp in memory), and Grafana reads its admin password and webhook from files.
       - name: Grafana starts with everything provisioned
         run: |
+          hardened=(--cap-drop ALL --security-opt no-new-privileges:true --read-only)
+          printf ci > "$RUNNER_TEMP/grafana_admin_password"
+          chmod 644 "$RUNNER_TEMP/grafana_admin_password"
+          : > "$RUNNER_TEMP/empty_password"
+          chmod 644 "$RUNNER_TEMP/empty_password"
+          # Without a password the image refuses to start (Grafana would fall back to admin/admin).
+          if docker run --rm "${hardened[@]}" --tmpfs /tmp \
+              -v "$RUNNER_TEMP/empty_password:/run/secrets/grafana_admin_password:ro" \
+              -e GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password \
+              argus-grafana:ci 2> "$RUNNER_TEMP/refused.log"; then
+            echo "::error::Grafana started with an empty admin password file"; exit 1
+          fi
+          grep -q "no Grafana admin password" "$RUNNER_TEMP/refused.log"
           docker network create argus-ci
-          docker run -d --name prometheus --network argus-ci -p 127.0.0.1:9090:9090 \
+          docker run -d --name prometheus --network argus-ci -p 127.0.0.1:9090:9090 "${hardened[@]}" \
             -v "$PWD/tests/fixtures/prometheus-auth:/etc/prometheus/secrets:ro" \
             argus-prometheus:ci \
             --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus \
             --web.config.file=/etc/prometheus/secrets/prometheus-web.yml
-          docker run -d --name grafana --network argus-ci -p 127.0.0.1:3000:3000 \
+          # /var/lib/grafana is a volume in docker-compose.yml.
+          docker run -d --name grafana --network argus-ci -p 127.0.0.1:3000:3000 "${hardened[@]}" \
+            --tmpfs /tmp --tmpfs /var/lib/grafana \
             -v "$PWD/tests/fixtures/prometheus-auth/prometheus_password:/etc/grafana/secrets/prometheus_password:ro" \
-            -e GF_SECURITY_ADMIN_PASSWORD=ci \
+            -v "$RUNNER_TEMP/grafana_admin_password:/run/secrets/grafana_admin_password:ro" \
+            -v "$PWD/secrets.example/discord_webhook_url:/run/secrets/discord_webhook_url:ro" \
+            -e GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password \
             -e LOKI_URL=http://loki:3100 \
-            -e DISCORD_WEBHOOK_URL=https://discord.invalid/argus-ci \
             argus-grafana:ci
           api() { curl -fsS -u admin:ci "http://127.0.0.1:3000$1"; }
+          # /api/org needs the admin login, which Grafana creates a moment after /api/health answers.
           for _ in $(seq 60); do
-            api /api/health > /dev/null 2>&1 && break
+            api /api/org > /dev/null 2>&1 && break
             sleep 2
           done
           fail() { echo "::error::$1"; docker logs grafana; docker logs prometheus; exit 1; }
-          api /api/health > /dev/null || fail "Grafana did not start"
+          api /api/org > /dev/null || fail "Grafana did not start, or refused the admin password from its file"
           dashboards=$(api '/api/search?type=dash-db&limit=5000' | jq length)
           want_dashboards=$(find dashboards -name '*.json' | wc -l)
           rules=$(api /api/v1/provisioning/alert-rules | jq length)
@@ -158,6 +176,8 @@ jobs:
           [ "$rules" -eq "$want_rules" ] || fail "only $rules of $want_rules alert rules loaded"
           [ "$datasources" = "loki,prometheus" ] || fail "unexpected datasources: $datasources"
           [ "$contact_points" = "Discord" ] || fail "unexpected contact points: $contact_points"
+          webhook=$(api '/api/v1/provisioning/contact-points/export?decrypt=true&format=json' | jq -r '.contactPoints[0].receivers[0].settings.url')
+          [ "$webhook" = "$(cat secrets.example/discord_webhook_url)" ] || fail "the contact point didn't read the webhook file: $webhook"
           # The image removes the other bundled plugins; these two must survive it.
           for plugin in prometheus loki; do
             api "/api/plugins/$plugin/settings" > /dev/null || fail "datasource plugin $plugin is missing"
@@ -177,8 +197,8 @@ jobs:
 
       - name: Compose files
         run: |
-          GF_SECURITY_ADMIN_PASSWORD=ci docker compose config --quiet
-          GF_SECURITY_ADMIN_PASSWORD=ci docker compose -f docker-compose.yml -f docker-compose.source.yml config --quiet
-          GF_SECURITY_ADMIN_PASSWORD=ci ARGUS_PROXY_NETWORK=ci docker compose -f docker-compose.yml -f docker-compose.source.yml -f docker-compose.proxy.yml config --quiet
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.source.yml config --quiet
+          ARGUS_PROXY_NETWORK=ci docker compose -f docker-compose.yml -f docker-compose.source.yml -f docker-compose.proxy.yml config --quiet
           ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex config --quiet
           docker compose -f logs/compose.yml config --quiet

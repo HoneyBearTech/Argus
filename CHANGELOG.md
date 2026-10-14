@@ -35,6 +35,14 @@ Each release's notes on GitHub are its section here.
   URLs that came to tens of thousands of queries an hour, and a busy DNS server log. The "Service down" alert
   still pages after 5 minutes of failed probes; a service now counts as having been up once it has passed more
   than an hour of probes in the last week (60 probes, was 240 at the old rate).
+- Grafana's admin password now comes from `secrets/grafana_admin_password` and the alerting webhook from
+  `secrets/discord_webhook_url` (compose secrets) instead of `GF_SECURITY_ADMIN_PASSWORD` and
+  `DISCORD_WEBHOOK_URL` in `.env`. Grafana refuses to start while the password file is missing, empty or
+  unreadable (it would otherwise fall back to `admin`/`admin`). Auto-deploy posts its notices to the same
+  webhook file, falling back to `DISCORD_WEBHOOK_URL` in `.env`.
+- The agent's `docker run` command (README, quick start) changed: no `--privileged`, but
+  `--read-only --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt no-new-privileges:true` and a data volume
+  (`-v argus-agent-data:/var/lib/alloy/data`).
 
 ### Fixed
 
@@ -42,7 +50,47 @@ Each release's notes on GitHub are its section here.
   and Prometheus' `secrets/` directory) no longer turns into an empty, root-owned directory when it's missing at
   start-up: compose now refuses to start that service (`bind source path does not exist`) until the file is there.
 
+### Security
+
+- Every container drops all Linux capabilities, can't gain privileges (`no-new-privileges`) and has a
+  read-only root filesystem, writing only its volume and, for Grafana and the Proxmox exporter, `/tmp` in
+  memory; the exporters whose images default to root (Pi-hole, UniFi, SNMP, qBittorrent, Plex) run as uid
+  65534. This covers `docker-compose.yml`, `logs/compose.yml` and `agent/compose.yml`; `tests/test_configs.py`
+  fails if a service loses it or adds a capability outside Docker's default set, and CI starts Grafana and
+  Prometheus hardened. What each service runs with is in
+  [docs/security.md](docs/security.md#hardening).
+- The agent no longer runs privileged. It keeps the host's network and PID namespaces, the read-only host
+  mounts and the Docker socket, which it needs to report on the host, and gets one capability,
+  `DAC_OVERRIDE`. Host and container metrics and logs are unchanged; only cAdvisor's `machine_*` metrics
+  (unused by Argus) are gone.
+- Grafana's admin password and the Discord webhook no longer show in `docker inspect` or Portainer's
+  container view. The Pi-hole and Plex exporters' credentials still do: those images read them only from the
+  environment.
+
 ### Upgrading
+
+- **Before upgrading the server**, create two files in `secrets/` (compose refuses to start Grafana without
+  them), readable by the containers (mode 644):
+
+  ```sh
+  grep '^GF_SECURITY_ADMIN_PASSWORD=' .env | cut -d= -f2- | tr -d '\n' > secrets/grafana_admin_password
+  grep '^DISCORD_WEBHOOK_URL=' .env | cut -d= -f2- | tr -d '\n' > secrets/discord_webhook_url
+  chmod 644 secrets/grafana_admin_password secrets/discord_webhook_url
+  ```
+
+  If a value is quoted in `.env`, remove the quotes from the file. Without a Discord webhook, copy
+  `secrets.example/discord_webhook_url` instead (with an empty file Grafana rejects the contact point and
+  doesn't start). The password matters only when Grafana creates its database, so an existing
+  install keeps its current admin password whatever the file says; to change it, update the file and run
+  `docker compose exec -T grafana grafana cli admin reset-admin-password --password-from-stdin < secrets/grafana_admin_password`.
+  Once upgraded, delete both lines from `.env` (auto-deploy reads the webhook file first).
+- Every file in `secrets/` that a container mounts must be readable by the container's user, mode 644 (no
+  container keeps the capability that let root read other users' files). Check with
+  `ls -l secrets/` and `chmod 644` any credential file that isn't (`unifi_password` and `qbittorrent_password`
+  were read by root until now); the `*.env` files can stay 600.
+- Agents: copy the new `agent/compose.yml` and run `docker compose up -d`, or re-run the README's
+  `docker run` command (it now needs `-v argus-agent-data:/var/lib/alloy/data`). The agent's existing data
+  volume is kept as it is.
 
 - In `targets/blackbox_http.json`, list the URL each service ends on (its login page, for example) rather than
   one that redirects there: each redirect is another DNS lookup and request per probe.
