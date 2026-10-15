@@ -75,5 +75,33 @@ services:
     ports:
       - 9594:9000
 
+  # NVIDIA GPU load (GPU, video encoder and decoder), memory, temperature and
+  # power, read through nvidia-smi — only on a host with an NVIDIA GPU and the
+  # NVIDIA Container Toolkit (COMPOSE_PROFILES=gpu). Prometheus scrapes it
+  # (job `gpu`).
+  gpu-exporter:
+    image: utkuozdemir/nvidia_gpu_exporter:1.15.1
+    container_name: argus-gpu-exporter
+    restart: unless-stopped
+    profiles: [gpu]
+    # The image runs as nobody (65534); the GPU's device files are open to all.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    environment:
+      # The NVIDIA runtime adds nvidia-smi and the driver's libraries.
+      NVIDIA_DRIVER_CAPABILITIES: utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - 9835:9835
+
 volumes:
   agent_data:

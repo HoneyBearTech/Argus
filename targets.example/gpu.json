@@ -1,0 +1,6 @@
+[
+  {
+    "targets": ["gpu-host.example:9835"],
+    "labels": {"host": "gpu-host"}
+  }
+]

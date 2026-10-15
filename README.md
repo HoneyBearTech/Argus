@@ -38,6 +38,7 @@ docs/                user, security and project documentation
 | Homelab Overview (home page) | overview | Is everything up right now, and if not, what? | [Uptime Kuma](https://github.com/louislam/uptime-kuma) `/metrics`, blackbox_exporter HTTP + DNS probes |
 | DNS / Pi-hole | dns | Is DNS healthy and consistent, and what's being blocked? | [pihole-exporter](https://github.com/eko/pihole-exporter) (Pi-hole v6 API), blackbox DNS probes |
 | Host Health | hosts | Is any machine running out of disk, memory or CPU? | Argus agent on each host (embedded node_exporter) |
+| GPUs | hosts | Are the GPUs doing the transcoding, and are they healthy? | [nvidia_gpu_exporter](https://github.com/utkuozdemir/nvidia_gpu_exporter) (nvidia-smi) beside the agent on a GPU host (`agent/compose.yml`, `gpu` profile) |
 | Docker Containers | hosts | Which containers are restarting, stopped, or eating resources? | Argus agent on each host (embedded cAdvisor) |
 | Network / UniFi | network | How's the internet connection, and what's on the network? | [unpoller](https://github.com/unpoller/unpoller) with a read-only UniFi account |
 | Internet / ISP | network | Is the ISP delivering the speed we pay for, and how often does the connection drop? | unpoller: the UniFi gateway's own speed tests and the plan speeds set in UniFi |
@@ -57,9 +58,9 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 
 | Group | Rules |
 |---|---|
-| Availability | host stopped reporting (its agent went silent), service down (only services that were up for at least an hour in the last 7 days), DNS server not answering, monitoring target down, Proxmox node without cluster quorum, Proxmox QDevice disconnected for 5 minutes |
+| Availability | host stopped reporting (its agent went silent), service down (only services that were up for at least an hour in the last 7 days), DNS server not answering, monitoring target down, Proxmox node without cluster quorum, Proxmox QDevice disconnected for 5 minutes, GPU exporter reporting no GPU (driver not loaded) |
 | Capacity | local disk > 90 % (network shares are covered by the NAS pool rule), NAS storage pool > 90 %, certificate < 14 days, Proxmox node memory > 90 % used, Proxmox node memory overcommitted (running guests allocated > 100 %) |
-| Power and hardware | UPS on battery, UPS battery < 50 %, NAS disk unhealthy, NAS pool degraded, NAS disk > 55 °C, network device > 85 °C |
+| Power and hardware | UPS on battery, UPS battery < 50 %, NAS disk unhealthy, NAS pool degraded, NAS disk > 55 °C, network device > 85 °C, GPU > 85 °C |
 | Network | internet on backup WAN, internet dropped, internet much slower than usual (latest speed test under half its 14-day median), no speed test in 8 days, Pi-hole blocklists out of sync |
 | Containers | container restarted more than 3 times in an hour |
 | Logs | a site returning > 20 server errors (5xx) in 10 minutes, log pipeline stalled (Loki receiving almost nothing for 15 minutes) |
@@ -98,6 +99,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | UPS / Power | `peanut.json` | `peanut_username`, `peanut_password` (PeaNUT 6's login; PeaNUT 5 ignores them) | — |
 | Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL), `<app>_api_key` (qBittorrent: `qbittorrent.env` with URL + user, `qbittorrent_password`) | the app's profile, e.g. `radarr,sonarr` |
 | Tdarr | `tdarr.json` (`tdarr-exporter:9090`) | `tdarr.env` (Tdarr's URL; and `TDARR_API_KEY` once Tdarr's own login is on, which the exporter reads only from its environment) | `tdarr` |
+| GPUs | `gpu.json` (`<gpu host>:9835`, with a `host` label) | — | `gpu`, in that host's agent `.env` (needs the NVIDIA Container Toolkit) |
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `plex`, in that host's agent `.env` |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
 | GitLab CI (pipelines) | `gitlab.json` | `gitlab.yml` (GitLab's URL and a `read_api` token) | `gitlab` |
@@ -131,9 +133,10 @@ docker run -d --name argus-agent --restart unless-stopped \
 
 It runs as root in the host's network and PID namespaces with the host mounted read-only, but not privileged: its only capability is `DAC_OVERRIDE` (to read files that belong to other users), and its own filesystem is read-only, so it writes only its data volume. Why it needs each of these is in [docs/security.md](docs/security.md#hardening).
 
-Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and run `docker compose up -d`; pin `ARGUS_AGENT_IMAGE` to a release tag for predictable upgrades. The compose file also covers three extras:
+Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and run `docker compose up -d`; pin `ARGUS_AGENT_IMAGE` to a release tag for predictable upgrades. The compose file also covers four extras:
 - **Nginx Proxy Manager access logs** (Reverse Proxy Traffic dashboard): on the host running NPM, set `NPM_LOG_DIR` to its `data/logs` directory.
 - **homelab-pull deploys** (Deploys dashboard): on a host whose Docker Compose stack homelab-pull (0.4.0 or later) deploys, set `HOMELAB_PULL_DIR` to its state directory (`~/.local/state/homelab-pull` of the user it runs as). The agent reads its metrics files (`metrics/*.prom`, node_exporter's textfile collector) and each stack's `deploys.log`.
+- **NVIDIA GPUs** (GPUs dashboard): on a host with an NVIDIA GPU and the NVIDIA Container Toolkit, add the `gpu` profile, and list that host in the server's `targets/gpu.json`.
 - **Plex** (Media Stack): on the Plex host (amd64), add the `plex` profile with `PLEX_SERVER` and `PLEX_TOKEN`, and list that host in the server's `targets/plex.json`.
 
 The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable from the host; those are the defaults. If Prometheus requires a password, add `-e ARGUS_PROMETHEUS_PASSWORD=...` (or set it in the agent's `.env`).

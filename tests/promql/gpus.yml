@@ -1,0 +1,89 @@
+# GPUs dashboard and the GPU alerts. Per-GPU series carry uuid (and host from targets/gpu.json); the model
+# and index come from nvidia_smi_gpu_info. h1: a GPU at 60 °C, encoding. h2: the exporter answers but
+# nvidia-smi fails, so it lists no GPU (the driver was removed). h3: a GPU at 90 °C.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="gpu", host="h1", instance="h1:9835"}'
+        values: "1x15"
+      - series: 'up{job="gpu", host="h2", instance="h2:9835"}'
+        values: "1x15"
+      - series: 'up{job="gpu", host="h3", instance="h3:9835"}'
+        values: "1x15"
+      - series: 'nvidia_smi_gpu_info{job="gpu", host="h1", instance="h1:9835", uuid="u1", name="Quadro P1000", index="0", driver_version="580.178.04"}'
+        values: "1x15"
+      - series: 'nvidia_smi_gpu_info{job="gpu", host="h3", instance="h3:9835", uuid="u3", name="Quadro P1000", index="0", driver_version="580.178.04"}'
+        values: "1x15"
+      - series: 'nvidia_smi_temperature_gpu{job="gpu", host="h1", instance="h1:9835", uuid="u1"}'
+        values: "60x15"
+      - series: 'nvidia_smi_temperature_gpu{job="gpu", host="h3", instance="h3:9835", uuid="u3"}'
+        values: "90x15"
+      - series: 'nvidia_smi_utilization_encoder_ratio{job="gpu", host="h1", instance="h1:9835", uuid="u1"}'
+        values: "0.4x15"
+      - series: 'nvidia_smi_utilization_encoder_ratio{job="gpu", host="h3", instance="h3:9835", uuid="u3"}'
+        values: "0x15"
+      - series: 'nvidia_smi_memory_used_bytes{job="gpu", host="h1", instance="h1:9835", uuid="u1"}'
+        values: "1000x15"
+      - series: 'nvidia_smi_memory_total_bytes{job="gpu", host="h1", instance="h1:9835", uuid="u1"}'
+        values: "4000x15"
+    promql_expr_test:
+      - rule: argus-gpu-not-reporting
+        eval_time: 10m
+        exp_samples:
+          - labels: '{host="h2"}'
+            value: 1
+      # Every GPU host keeps a series, so the summary always has a value.
+      - rule: argus-gpu-not-reporting
+        measurement: true
+        eval_time: 10m
+        exp_samples:
+          - labels: '{host="h1"}'
+            value: 0
+          - labels: '{host="h2"}'
+            value: 1
+          - labels: '{host="h3"}'
+            value: 0
+      - rule: argus-gpu-hot
+        eval_time: 10m
+        exp_samples:
+          - labels: '{host="h3", uuid="u3", name="Quadro P1000"}'
+            value: 90
+      - dashboard: argus-gpus
+        panel: 1
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-gpus
+        panel: Hottest GPU
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 90
+      - dashboard: argus-gpus
+        panel: Encoder busy
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 40
+      # The table's Memory used, keyed host/uuid.
+      - dashboard: argus-gpus
+        panel: 7
+        ref_id: F
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="h1/u1"}'
+            value: 25
+      # The charts name each GPU by host and index.
+      - dashboard: argus-gpus
+        panel: Video encoder and decoder
+        vars: {host: "h1"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{job="gpu", host="h1", instance="h1:9835", uuid="u1", name="Quadro P1000", index="0"}'
+            value: 40

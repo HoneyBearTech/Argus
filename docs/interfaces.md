@@ -13,6 +13,7 @@ what it accepts, and how it's configured. The trust placed in each is described 
 | Loki | server (`loki` profile, `LOKI_BIND`, default `0.0.0.0:3101`) or `logs/compose.yml` (`:3101`) | HTTP, **no authentication**: push (`/loki/api/v1/push`) and query APIs | agents (push), Grafana |
 | blackbox_exporter, the exporters | server, compose network only (not published) | HTTP `/metrics` or `/probe` | Prometheus |
 | Plex exporter | the Plex host, `:9594` (`plex` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/plex.json`) |
+| GPU exporter | a host with an NVIDIA GPU, `:9835` (`gpu` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/gpu.json`) |
 | Agent | each host; Alloy's own UI on `127.0.0.1:12345` only | — (the agent accepts no connections from other machines) | — |
 
 Outbound connections:
@@ -38,7 +39,7 @@ Grafana (auto-deploy still falls back to `DISCORD_WEBHOOK_URL`).
 
 **Agent** (environment, or `agent/.env` from [`agent/.env.example`](../agent/.env.example)):
 `ARGUS_HOST` (the `host` label), `ARGUS_PROMETHEUS_URL`, `ARGUS_LOKI_URL` (all required);
-`ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `HOMELAB_PULL_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`; `ARGUS_AGENT_IMAGE`. Host
+`ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `HOMELAB_PULL_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`, and/or `gpu`; `ARGUS_AGENT_IMAGE`. Host
 mounts (all read-only): `/` as `/rootfs`, `/sys`, `/run/udev`, `/dev/disk`, `/var/lib/docker`, the Docker
 socket, the containerd socket, `NPM_LOG_DIR` and `HOMELAB_PULL_DIR`; its own data is in a volume at `/var/lib/alloy/data`. It needs
 the host's PID and network namespaces and the `DAC_OVERRIDE` capability, not `--privileged`

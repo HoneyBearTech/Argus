@@ -20,16 +20,18 @@ Loki must not be reachable from outside it.
    admin password and the Discord webhook come from the server's `secrets/`, which is gitignored,
    mounted read-only and never baked into an image. Prometheus, Grafana and the exporters read
    passwords, API keys, tokens and the webhook from files, so they don't show in `docker inspect` or
-   Portainer's container view; the exceptions are the Pi-hole exporter and the Plex exporter, which take
-   their passwords and token only from the environment. GitHub secret scanning with push protection
+   Portainer's container view; the exceptions are the Pi-hole exporter, the Plex exporter and
+   tdarr-exporter (only once Tdarr's own login is on), which take their passwords, token and API key only
+   from the environment. GitHub secret scanning with push protection
    guards the repository.
 3. **No network details in the repository.** Addresses, host names and domains live only in the server's
    `targets/` and `.env`; CI rejects private IP addresses and a private list of internal names in every
    committed file.
 4. **Grafana requires a login.** Sign-up and anonymous access are off, and Grafana refuses to start
    without an admin password (`secrets/grafana_admin_password` missing, empty or unreadable).
-5. **Only three services listen on the network**: Grafana, Prometheus and Loki (plus the Plex exporter on
-   a Plex host, if enabled). blackbox_exporter and the exporters are reachable only from the compose
+5. **Only three services listen on the network**: Grafana, Prometheus and Loki (plus, where enabled, the
+   Plex exporter on a Plex host and the GPU exporter on a GPU host; both serve metrics only, without a
+   login). blackbox_exporter and the exporters are reachable only from the compose
    network, and the agent accepts no connections from other machines.
 6. **TLS is verified by default** on every outgoing connection that uses it: web probes (an invalid or
    expired certificate fails the probe), the UniFi console (unless `UNIFI_VERIFY_SSL=false`), the Discord
@@ -121,6 +123,7 @@ any of this, and CI's boot test starts Grafana and Prometheus with these setting
 | tdarr-exporter | uid 65532 (image) | none | yes | nothing | Needs no file |
 | agent | root | `DAC_OVERRIDE` | yes | its data volume | [The agent's exceptions](#the-agents-exceptions) |
 | plex-exporter (agent's `plex` profile) | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Needs no file |
+| gpu-exporter (agent's `gpu` profile) | uid 65534 (image) | none | yes | nothing | Runs `nvidia-smi`, which the NVIDIA runtime mounts in; the GPU's device files are open to every user |
 
 Since no server container holds a capability, none can read another user's private file: everything in
 `secrets/` that a container mounts must be readable by its user, which means mode 644 (as the templates and

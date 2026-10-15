@@ -240,6 +240,47 @@ groups:
       summary: The Proxmox node at {{ $labels.instance }} has lost the cluster's QDevice — one more node going down would
         cost the cluster its quorum.
     isPaused: false
+  # The GPU exporter answers but lists no GPU: nvidia-smi fails (the driver was removed or didn't load
+  # after an update). An exporter that doesn't start at all is "Monitoring target down".
+  - uid: argus-gpu-not-reporting
+    title: GPU not reporting
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (max by (host) (up{job="gpu"}) unless on (host) max by (host) (nvidia_smi_gpu_info{job="gpu"}))
+          or on (host) max by (host) (nvidia_smi_gpu_info{job="gpu"}) * 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'The GPU exporter on {{ $labels.host }} reports no GPU (nvidia-smi fails; is the NVIDIA driver loaded?), so GPU transcoding there won''t work.'
+    isPaused: false
 - orgId: 1
   name: Capacity
   folder: Argus
@@ -678,6 +719,46 @@ groups:
       severity: warning
     annotations:
       summary: '{{ $labels.name }} is at {{ humanize $values.A.Value }} °C.'
+    isPaused: false
+  # Consumer and workstation GPUs slow themselves down in the high 80s to 90s °C.
+  - uid: argus-gpu-hot
+    title: GPU hot
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, uuid, name) (nvidia_smi_temperature_gpu{job="gpu"} * on (host, uuid) group_left (name)
+          nvidia_smi_gpu_info{job="gpu"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 85
+    noDataState: OK
+    execErrState: Error
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }} {{ $labels.name }} is at {{ with $values.A }}{{ humanize .Value }}{{ end }} °C.'
     isPaused: false
 - orgId: 1
   name: Network

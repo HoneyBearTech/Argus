@@ -90,6 +90,18 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/plex.json]
 
+  # NVIDIA GPUs from the GPU exporter that runs beside the agent on a GPU host
+  # (agent/compose.yml, `gpu` profile; targets/gpu.json with a `host` label).
+  # It reports ~150 series per GPU; keep what the dashboard and alerts use.
+  - job_name: gpu
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/gpu.json]
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: nvidia_smi_(gpu_info|utilization_(gpu|memory|encoder|decoder)_ratio|memory_(used|total)_bytes|temperature_gpu|power_draw_watts|enforced_power_limit_watts|fan_speed_ratio|encoder_stats_(session_count|average_fps)|failed_scrapes_total)
+        action: keep
+
   # Tdarr via tdarr-exporter (only runs with the `tdarr` compose profile, so
   # targets/tdarr.json lists it only where it's enabled). Each scrape asks
   # Tdarr's API, so the workers' progress is as current as the interval.
