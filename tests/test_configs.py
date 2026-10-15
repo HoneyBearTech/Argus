@@ -424,16 +424,27 @@ def test_tdarr_exporter_reads_its_settings_only_from_its_env_file() -> None:
     assert "secrets" not in tdarr
 
 
-def test_varken_reads_tautullis_key_from_a_secret_file_and_only_runs_tautulli() -> None:
+def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr() -> None:
     varken = load("docker-compose.yml")["services"]["varken"]
     env = varken["environment"]
-    assert varken["secrets"] == ["tautulli_api_key"]
+    assert varken["secrets"] == [
+        "tautulli_api_key",
+        "sonarr_api_key",
+        "sonarr4k_api_key",
+        "radarr_api_key",
+        "radarr4k_api_key",
+    ]
     assert env["VRKN_TAUTULLI_1_APIKEY_FILE"] == "/run/secrets/tautulli_api_key"
+    # Server 1 is the app, 2 its 4K instance; the keys are exportarr's secrets.
+    for app in ("sonarr", "radarr"):
+        assert env[f"VRKN_GLOBAL_{app.upper()}_SERVER_IDS"] == "1,2"
+        assert env[f"VRKN_{app.upper()}_1_APIKEY_FILE"] == f"/run/secrets/{app}_api_key"
+        assert env[f"VRKN_{app.upper()}_2_APIKEY_FILE"] == f"/run/secrets/{app}4k_api_key"
     assert varken["env_file"] == [{"path": "./secrets/varken.env", "required": False}]
     # The URL comes from secrets/varken.env; no key or password in the compose file or the template.
     assert not any(name.endswith(("_APIKEY", "_PASSWORD")) for name in env)
     assert env["VRKN_GLOBAL_TAUTULLI_SERVER_IDS"] == "1"
-    others = ("SONARR", "RADARR", "LIDARR", "OMBI", "SICKCHILL", "UNIFI")
+    others = ("LIDARR", "OMBI", "SICKCHILL", "UNIFI")
     assert all(env[f"VRKN_GLOBAL_{app}_SERVER_IDS"] == "false" for app in others)
     assert env["LOG_TO_FILE"] == "false"
     # The homelab standard: data in CONFIG_ROOT/<service>/config, never a named volume.
