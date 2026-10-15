@@ -10,6 +10,9 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Varken also reads Sonarr, Sonarr 4K, Radarr and Radarr 4K (servers 1 and 2 of each), with exportarr's API-key
+  secrets, for the Varken dashboard's queue, upcoming and missing panels. Their addresses go in
+  `secrets/varken.env` (see `secrets.example/varken.env`).
 - Varken 2.1.0, with `stream_details` on: Prometheus now holds who watches what, on which player and (with
   GeoIP on) from which city, for the Varken dashboard. Restrict who can query Prometheus and open the Media
   dashboards accordingly.
