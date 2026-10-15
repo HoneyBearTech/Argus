@@ -30,6 +30,18 @@ Each release's notes on GitHub are its section here.
   filter narrows it. Data comes from Tdarr's API through
   [tdarr-exporter](https://github.com/homeylab/tdarr-exporter) 3.1.0, behind the new `tdarr` compose profile:
   Tdarr's URL in `secrets/tdarr.env`, the exporter in `targets/tdarr.json` (scrape job `tdarr`).
+- Deploys dashboard: for hosts deployed by homelab-pull (a pull-based deploy agent that deploys one Docker
+  Compose stack from its git branch; 0.4.0 or later), whether every stack runs what its branch points at,
+  failing and paused deploys, agents that stopped running, deploys and failed attempts per day, each stack's
+  deploy duration, and the deploy log. Deploy markers (successful and failed) on Host Health and Docker
+  Containers line up a restart or a CPU jump with the merge that caused it. The Argus agent reads
+  homelab-pull's state directory, set as `HOMELAB_PULL_DIR` in its `.env` and mounted read-only: the metrics
+  files through its node_exporter's textfile collector (`homelab_pull_*`, labels `host` and `stack`), and each
+  stack's `deploys.log` into Loki (`job="homelab-pull"`, labels `stack` and `result`; on its first start the
+  last 6 days of history).
+- Alerts (new group "Deploys", warnings): a deploy agent that hasn't finished a run for 50 minutes, a deploy
+  failing for 15 minutes (with the commit and how it failed), every run of an agent failing for 15 minutes
+  (the fetch or its settings), and deploys paused for 2 hours.
 - Alerts: Tdarr reported new transcode or health-check errors in the last hour, and Tdarr has files queued but
   finished no transcode or health check in a day (both warnings).
 
@@ -106,7 +118,8 @@ Each release's notes on GitHub are its section here.
   were read by root until now); the `*.env` files can stay 600.
 - Agents: copy the new `agent/compose.yml` and run `docker compose up -d`, or re-run the README's
   `docker run` command (it now needs `-v argus-agent-data:/var/lib/alloy/data`). The agent's existing data
-  volume is kept as it is.
+  volume is kept as it is. On a host that homelab-pull deploys, also set `HOMELAB_PULL_DIR` in the agent's
+  `.env` (its state directory, e.g. `/home/<user>/.local/state/homelab-pull`); elsewhere leave it unset.
 
 - In `targets/blackbox_http.json`, list the URL each service ends on (its login page, for example) rather than
   one that redirects there: each redirect is another DNS lookup and request per probe.

@@ -47,6 +47,7 @@ docs/                user, security and project documentation
 | Smart Home | home | What's the house doing — temperatures, HVAC, energy? | Home Assistant's Prometheus integration (long-lived token) |
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
+| Deploys | ci | Did every merge reach its host, and is every host's deploy agent alive? | [homelab-pull](docs/interfaces.md#data-contracts)'s metrics and deploy log (a pull-based deploy agent: one stack per host, deployed from its git branch), read by the Argus agent (`HOMELAB_PULL_DIR`); deploy markers on Host Health and Docker Containers |
 | GitLab CI | ci | Are pipelines healthy, is the runner keeping up, and is GitLab itself healthy? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile); GitLab Runner's metrics endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through `/federate` |
 | Proxmox VE | proxmox | Are the Proxmox nodes overcommitted, are the guests that should run running, and how is storage filling? | [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) with a read-only API token (`proxmox` profile) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
@@ -63,6 +64,7 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 | Containers | container restarted more than 3 times in an hour |
 | Logs | a site returning > 20 server errors (5xx) in 10 minutes, log pipeline stalled (Loki receiving almost nothing for 15 minutes) |
 | Tdarr | new transcode or health-check errors in the last hour, files queued but no transcode or health check finished in a day |
+| Deploys | a deploy agent that hasn't finished a run for 50 minutes, a deploy failing for 15 minutes, every run of an agent failing for 15 minutes (fetch or settings), deploys paused for 2 hours (the checkout isn't on its branch) |
 | GitLab | a GitLab component (Puma, Sidekiq, Gitaly, PostgreSQL, …) down for 5 minutes, the latest pipeline on a watched branch failed |
 
 Alerts are grouped per rule and repeat every 12 hours while firing.
@@ -129,8 +131,9 @@ docker run -d --name argus-agent --restart unless-stopped \
 
 It runs as root in the host's network and PID namespaces with the host mounted read-only, but not privileged: its only capability is `DAC_OVERRIDE` (to read files that belong to other users), and its own filesystem is read-only, so it writes only its data volume. Why it needs each of these is in [docs/security.md](docs/security.md#hardening).
 
-Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and run `docker compose up -d`; pin `ARGUS_AGENT_IMAGE` to a release tag for predictable upgrades. The compose file also covers two extras:
+Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and run `docker compose up -d`; pin `ARGUS_AGENT_IMAGE` to a release tag for predictable upgrades. The compose file also covers three extras:
 - **Nginx Proxy Manager access logs** (Reverse Proxy Traffic dashboard): on the host running NPM, set `NPM_LOG_DIR` to its `data/logs` directory.
+- **homelab-pull deploys** (Deploys dashboard): on a host whose Docker Compose stack homelab-pull (0.4.0 or later) deploys, set `HOMELAB_PULL_DIR` to its state directory (`~/.local/state/homelab-pull` of the user it runs as). The agent reads its metrics files (`metrics/*.prom`, node_exporter's textfile collector) and each stack's `deploys.log`.
 - **Plex** (Media Stack): on the Plex host (amd64), add the `plex` profile with `PLEX_SERVER` and `PLEX_TOKEN`, and list that host in the server's `targets/plex.json`.
 
 The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable from the host; those are the defaults. If Prometheus requires a password, add `-e ARGUS_PROMETHEUS_PASSWORD=...` (or set it in the agent's `.env`).

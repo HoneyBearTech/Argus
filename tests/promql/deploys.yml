@@ -1,0 +1,159 @@
+# Deploys dashboard and alerts. homelab-pull's metrics reach Prometheus through each host's Argus agent
+# (node_exporter's textfile collector), so they carry job="node", host, and the file's stack label.
+# a (on h1): healthy, deployed main. b (on h2): its last run ended at 0, and from 30m a deploy of abc
+# fails at `up`. c (on h3): paused, and from 40m every run fails before deploying.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'homelab_pull_info{job="node", host="h1", stack="a", version="0.4.0"}'
+        values: "1x60"
+      - series: 'homelab_pull_info{job="node", host="h2", stack="b", version="0.4.0"}'
+        values: "1x60"
+      - series: 'homelab_pull_info{job="node", host="h3", stack="c", version="0.4.0"}'
+        values: "1x60"
+      # The time of each run: a and c every minute, b stopped at 0.
+      - series: 'homelab_pull_last_run_timestamp_seconds{job="node", host="h1", stack="a"}'
+        values: "0+60x60"
+      - series: 'homelab_pull_last_run_timestamp_seconds{job="node", host="h2", stack="b"}'
+        values: "0x60"
+      - series: 'homelab_pull_last_run_timestamp_seconds{job="node", host="h3", stack="c"}'
+        values: "0+60x60"
+      - series: 'homelab_pull_last_run_success{job="node", host="h1", stack="a"}'
+        values: "1x60"
+      # b's failing deploy is retried every 15 minutes; the runs between wait out the delay and succeed.
+      - series: 'homelab_pull_last_run_success{job="node", host="h2", stack="b"}'
+        values: "1x30 0 1x14 0 1x14"
+      - series: 'homelab_pull_last_run_success{job="node", host="h3", stack="c"}'
+        values: "1x40 0x20"
+      - series: 'homelab_pull_deploy_failing{job="node", host="h1", stack="a"}'
+        values: "0x60"
+      - series: 'homelab_pull_deploy_failing{job="node", host="h2", stack="b"}'
+        values: "0x30 1x30"
+      - series: 'homelab_pull_deploy_failing{job="node", host="h3", stack="c"}'
+        values: "0x60"
+      - series: 'homelab_pull_deploy_failure_info{job="node", host="h2", stack="b", commit="abcdef012345", kind="up"}'
+        values: "_x30 1x30"
+      - series: 'homelab_pull_paused{job="node", host="h1", stack="a"}'
+        values: "0x60"
+      - series: 'homelab_pull_paused{job="node", host="h2", stack="b"}'
+        values: "0x60"
+      - series: 'homelab_pull_paused{job="node", host="h3", stack="c"}'
+        values: "1x60"
+      - series: 'homelab_pull_up_to_date{job="node", host="h1", stack="a"}'
+        values: "1x60"
+      - series: 'homelab_pull_up_to_date{job="node", host="h2", stack="b"}'
+        values: "1x30 0x30"
+    promql_expr_test:
+      # b hasn't finished a run for an hour; a and c ran a minute ago.
+      - rule: argus-deploy-agent-silent
+        eval_time: 60m
+        exp_samples:
+          - labels: '{host="h2", stack="b"}'
+            value: 3600
+      # Under 50 minutes: a long deploy may still be running.
+      - rule: argus-deploy-agent-silent
+        eval_time: 45m
+        exp_samples: []
+      - rule: argus-deploy-failing
+        eval_time: 60m
+        exp_samples:
+          - labels: '{host="h2", stack="b", commit="abcdef012345", kind="up"}'
+            value: 1
+      # Every stack keeps a series, so the summary always has a value.
+      - rule: argus-deploy-failing
+        measurement: true
+        eval_time: 60m
+        exp_samples:
+          - labels: '{host="h1", stack="a"}'
+            value: 0
+          - labels: '{host="h2", stack="b", commit="abcdef012345", kind="up"}'
+            value: 1
+          - labels: '{host="h3", stack="c"}'
+            value: 0
+      # c's runs all failed for 15 minutes; b's failing retries don't count, its other runs succeed.
+      - rule: argus-deploy-agent-erroring
+        eval_time: 60m
+        exp_samples:
+          - labels: '{host="h3", stack="c"}'
+            value: 0
+      - rule: argus-deploy-agent-erroring
+        eval_time: 50m
+        exp_samples: []
+      - rule: argus-deploy-paused
+        eval_time: 60m
+        exp_samples:
+          - labels: '{host="h3", stack="c"}'
+            value: 1
+      - dashboard: argus-deploys
+        panel: 1
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      - dashboard: argus-deploys
+        panel: Behind main
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-deploys
+        panel: Failing
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-deploys
+        panel: Paused
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-deploys
+        panel: Agents silent
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      # Nothing wrong yet at 20m: the stats read 0, not "No data".
+      - dashboard: argus-deploys
+        panel: Failing
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      # The table's State: 0 OK, 1 paused, 2 failing.
+      - dashboard: argus-deploys
+        panel: 8
+        ref_id: D
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: '{key="h1/a"}'
+            value: 0
+          - labels: '{key="h2/b"}'
+            value: 2
+          - labels: '{key="h3/c"}'
+            value: 1
+      - dashboard: argus-deploys
+        panel: 8
+        ref_id: E
+        vars: {host: ".*", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: '{key="h2/b", kind="up"}'
+            value: 1
+      # The Host and Stack variables narrow it.
+      - dashboard: argus-deploys
+        panel: 1
+        vars: {host: "h1", stack: ".*"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 1

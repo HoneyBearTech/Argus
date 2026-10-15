@@ -260,10 +260,10 @@ def redaction_patterns() -> list[str]:
 
 
 def test_agent_redacts_credentials_in_urls_of_every_log_pipeline() -> None:
-    """Both log pipelines (containers, NPM) carry the same redaction (secrets reached Loki, 2026-10-11)."""
+    """Every log pipeline (containers, NPM, deploys) carries the same redaction (secrets reached Loki, 2026-10-11)."""
     patterns = redaction_patterns()
-    assert len(patterns) == 2
-    assert patterns[0] == patterns[1]
+    assert len(patterns) == 3
+    assert len(set(patterns)) == 1
 
 
 @pytest.mark.parametrize(
@@ -321,6 +321,42 @@ def test_exporter_credentials_are_mounted_files_not_environment() -> None:
     assert services["pve-exporter"]["command"] == ["--config.file=/run/secrets/pve.yml"]
     assert "environment" not in services["pve-exporter"]
     assert "env_file" not in services["pve-exporter"]
+
+
+def deploy_line_pattern() -> re.Pattern[str]:
+    """The deploys.log pipeline's stage.regex expression, unescaped from its Alloy string."""
+    config = (ROOT / "agent" / "config.alloy").read_text()
+    block = config[config.index('loki.process "homelab_pull"') :]
+    expression = re.search(r'stage\.regex \{\s*expression = ("(?:[^"\\]|\\.)*")', block)
+    assert expression
+    return re.compile(json.loads(expression[1]))
+
+
+def test_agent_reads_homelab_pull_state_read_only() -> None:
+    """Its metrics (textfile collector) and deploys.log come from one read-only mount."""
+    config = (ROOT / "agent" / "config.alloy").read_text()
+    assert (
+        "${HOMELAB_PULL_DIR:-./no-homelab-pull}:/var/lib/homelab-pull:ro"
+        in service("agent/compose.yml", "agent")["volumes"]
+    )
+    assert 'directory = "/var/lib/homelab-pull/metrics"' in config
+    assert '"__path__" = "/var/lib/homelab-pull/*/deploys.log"' in config
+
+
+@pytest.mark.parametrize(
+    ("line", "labels"),
+    [
+        ("2026-10-14T13:56:52-0500 media ok 0123456789ab -> 89abcdef0123 Bump x (#2)", ("media", "ok")),
+        (
+            "2026-10-14T18:56:52+0000 home-2 failed:recreate 0123456789ab -> 89abcdef0123 Kometa [recreated: k]",
+            ("home-2", "failed:recreate"),
+        ),
+        ("2026-10-14T13:56:52-0500 media maybe 0123 -> 89ab x", None),  # an unknown result gets no labels
+    ],
+)
+def test_deploy_lines_get_stack_and_result_labels(line: str, labels: tuple[str, str] | None) -> None:
+    match = deploy_line_pattern().match(line)
+    assert (match["stack"], match["result"]) == labels if labels else match is None
 
 
 def test_tdarr_exporter_reads_its_settings_only_from_its_env_file() -> None:
