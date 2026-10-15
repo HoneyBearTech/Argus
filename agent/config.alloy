@@ -44,10 +44,11 @@ prometheus.exporter.unix "host" {
 	procfs_path = "/proc"
 	sysfs_path  = "/sys"
 
-	// homelab-pull writes one metrics file per stack here after every run (only
-	// if its state directory is mounted; otherwise the directory is empty).
+	// homelab-pull writes one metrics file per stack here after every run. Its
+	// own mount, so the directory exists (empty) on hosts without homelab-pull:
+	// a missing one is an error on every scrape.
 	textfile {
-		directory = "/var/lib/homelab-pull/metrics"
+		directory = "/var/lib/homelab-pull-metrics"
 	}
 }
 

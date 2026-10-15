@@ -8,6 +8,19 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Agents on hosts without homelab-pull logged `failed to read textfile collector directory` on every scrape
+  (and reported `node_textfile_scrape_error 1`): 0.7.0 pointed node_exporter's textfile collector at
+  `metrics/` inside `HOMELAB_PULL_DIR`, which doesn't exist in the empty fallback directory. The metrics
+  directory now has its own mount, `${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics`, which Docker creates
+  empty where homelab-pull isn't installed.
+
+### Upgrading
+
+- Agents: copy the new `agent/compose.yml` with the new agent image. On a 0.7.0 agent without homelab-pull,
+  `sudo mkdir -p no-homelab-pull/metrics` in the agent's directory stops the errors until then.
+
 ## [0.7.0] - 2026-10-15
 
 ### Added

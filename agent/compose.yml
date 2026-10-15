@@ -48,9 +48,12 @@ services:
       - /run/containerd:/run/containerd:ro
       # Nginx Proxy Manager access logs, only on the host that runs it.
       - ${NPM_LOG_DIR:-./no-npm-logs}:/var/log/npm:ro
-      # homelab-pull's state (its metrics files and deploys.log), only on the
-      # hosts it deploys.
+      # homelab-pull's state (its deploys.log files, and its metrics files in
+      # metrics/), only on the hosts it deploys. Docker creates the empty
+      # ./no-homelab-pull/metrics elsewhere, so the textfile collector finds a
+      # directory either way.
       - ${HOMELAB_PULL_DIR:-./no-homelab-pull}:/var/lib/homelab-pull:ro
+      - ${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics:/var/lib/homelab-pull-metrics:ro
       - agent_data:/var/lib/alloy/data
 
   # Plex playback, transcode, library and host metrics — only on a Plex host

@@ -333,13 +333,13 @@ def deploy_line_pattern() -> re.Pattern[str]:
 
 
 def test_agent_reads_homelab_pull_state_read_only() -> None:
-    """Its metrics (textfile collector) and deploys.log come from one read-only mount."""
+    """deploys.log and the metrics (textfile collector) come from read-only mounts of its state directory; the
+    metrics directory has its own, so it exists (empty) without homelab-pull: a missing one errors every scrape."""
     config = (ROOT / "agent" / "config.alloy").read_text()
-    assert (
-        "${HOMELAB_PULL_DIR:-./no-homelab-pull}:/var/lib/homelab-pull:ro"
-        in service("agent/compose.yml", "agent")["volumes"]
-    )
-    assert 'directory = "/var/lib/homelab-pull/metrics"' in config
+    volumes = service("agent/compose.yml", "agent")["volumes"]
+    assert "${HOMELAB_PULL_DIR:-./no-homelab-pull}:/var/lib/homelab-pull:ro" in volumes
+    assert "${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics:/var/lib/homelab-pull-metrics:ro" in volumes
+    assert 'directory = "/var/lib/homelab-pull-metrics"' in config
     assert '"__path__" = "/var/lib/homelab-pull/*/deploys.log"' in config
 
 
