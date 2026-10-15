@@ -8,13 +8,7 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
-### Fixed
-
-- Agents on hosts without homelab-pull logged `failed to read textfile collector directory` on every scrape
-  (and reported `node_textfile_scrape_error 1`): 0.7.0 pointed node_exporter's textfile collector at
-  `metrics/` inside `HOMELAB_PULL_DIR`, which doesn't exist in the empty fallback directory. The metrics
-  directory now has its own mount, `${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics`, which Docker creates
-  empty where homelab-pull isn't installed.
+## [0.7.1] - 2026-10-15
 
 ### Changed
 
@@ -23,9 +17,18 @@ Each release's notes on GitHub are its section here.
   lines a day per host that runs autoheal. Every other request it logs, refused ones (403) included, still
   reaches Loki.
 
+### Fixed
+
+- Agents on hosts without homelab-pull logged `failed to read textfile collector directory` on every scrape
+  (and reported `node_textfile_scrape_error 1`): 0.7.0 pointed node_exporter's textfile collector at
+  `metrics/` inside `HOMELAB_PULL_DIR`, which doesn't exist in the empty fallback directory. The metrics
+  directory now has its own mount, `${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics`, which Docker creates
+  empty where homelab-pull isn't installed.
+
 ### Upgrading
 
-- Agents: copy the new `agent/compose.yml` with the new agent image. On a 0.7.0 agent without homelab-pull,
+- Agents: copy the new `agent/compose.yml` (it mounts homelab-pull's `metrics/` on its own), set
+  `ARGUS_AGENT_IMAGE` to `0.7.1` and run `docker compose up -d`. On a 0.7.0 agent without homelab-pull,
   `sudo mkdir -p no-homelab-pull/metrics` in the agent's directory stops the errors until then.
 
 ## [0.7.0] - 2026-10-15
@@ -438,7 +441,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/HoneyBearTech/Argus/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/HoneyBearTech/Argus/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/HoneyBearTech/Argus/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/HoneyBearTech/Argus/compare/v0.5.0...v0.5.1
