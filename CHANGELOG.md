@@ -8,6 +8,12 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- Varken keeps its data in `CONFIG_ROOT/varken/config` (new `.env` setting `CONFIG_ROOT`, default `/srv/config`;
+  the directory must belong to uid 1000) instead of a named Docker volume, which `docker volume prune` would
+  delete while the container is stopped.
+
 ### Added
 
 - Tautulli dashboard (Media folder): what's playing on Plex now and how it's delivered (streams, transcodes vs

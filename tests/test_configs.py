@@ -436,6 +436,8 @@ def test_varken_reads_tautullis_key_from_a_secret_file_and_only_runs_tautulli() 
     others = ("SONARR", "RADARR", "LIDARR", "OMBI", "SICKCHILL", "UNIFI")
     assert all(env[f"VRKN_GLOBAL_{app}_SERVER_IDS"] == "false" for app in others)
     assert env["LOG_TO_FILE"] == "false"
+    # The homelab standard: data in CONFIG_ROOT/<service>/config, never a named volume.
+    assert varken["volumes"] == ["${CONFIG_ROOT:?set CONFIG_ROOT in .env}/varken/config:/config"]
 
 
 def test_every_secret_is_a_file_in_secrets_with_a_template() -> None:
