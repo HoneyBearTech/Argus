@@ -30,6 +30,14 @@ Each release's notes on GitHub are its section here.
   filter narrows it. Data comes from Tdarr's API through
   [tdarr-exporter](https://github.com/homeylab/tdarr-exporter) 3.1.0, behind the new `tdarr` compose profile:
   Tdarr's URL in `secrets/tdarr.env`, the exporter in `targets/tdarr.json` (scrape job `tdarr`).
+- GPUs dashboard: for hosts with an NVIDIA GPU, how busy each GPU's video encoder and decoder (the engines
+  hardware transcodes use), compute engines and memory are, open encoding sessions, memory used,
+  temperature and power, per GPU and over time. Data comes from
+  [nvidia_gpu_exporter](https://github.com/utkuozdemir/nvidia_gpu_exporter) 1.15.1 (nvidia-smi), the new
+  `gpu` profile of `agent/compose.yml` (needs the NVIDIA Container Toolkit), which Prometheus scrapes from
+  `targets/gpu.json` (job `gpu`, keeping the ~10 metric families the dashboard and alerts use).
+- Alerts: GPU exporter reporting no GPU (nvidia-smi failing, e.g. the driver not loaded after an update) and
+  GPU above 85 °C for 10 minutes (both warnings).
 - Deploys dashboard: for hosts deployed by homelab-pull (a pull-based deploy agent that deploys one Docker
   Compose stack from its git branch; 0.4.0 or later), whether every stack runs what its branch points at,
   failing and paused deploys, agents that stopped running, deploys and failed attempts per day, each stack's

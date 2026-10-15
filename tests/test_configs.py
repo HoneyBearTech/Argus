@@ -359,6 +359,17 @@ def test_deploy_lines_get_stack_and_result_labels(line: str, labels: tuple[str, 
     assert (match["stack"], match["result"]) == labels if labels else match is None
 
 
+def test_gpu_job_keeps_every_metric_the_dashboard_and_alerts_use() -> None:
+    """The gpu job keeps ~10 of the exporter's ~150 series per GPU; a query on a dropped one would read nothing."""
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "gpu")
+    keep = re.compile(job["metric_relabel_configs"][0]["regex"])
+    used = set()
+    for path in ["dashboards/hosts/gpus.json", "provisioning/alerting/rules.yaml"]:
+        used |= set(re.findall(r"nvidia_smi_[a-z_]+", (ROOT / path).read_text()))
+    assert used
+    assert not [name for name in sorted(used) if not keep.fullmatch(name)]
+
+
 def test_tdarr_exporter_reads_its_settings_only_from_its_env_file() -> None:
     """Its image reads the API key only from the environment, so the key stays in secrets/tdarr.env."""
     tdarr = load("docker-compose.yml")["services"]["tdarr-exporter"]
