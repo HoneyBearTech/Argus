@@ -428,7 +428,12 @@ def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr
     varken = load("docker-compose.yml")["services"]["varken"]
     env = varken["environment"]
     assert varken["secrets"] == [
-        "tautulli_api_key", "sonarr_api_key", "sonarr4k_api_key", "radarr_api_key", "radarr4k_api_key"]
+        "tautulli_api_key",
+        "sonarr_api_key",
+        "sonarr4k_api_key",
+        "radarr_api_key",
+        "radarr4k_api_key",
+    ]
     assert env["VRKN_TAUTULLI_1_APIKEY_FILE"] == "/run/secrets/tautulli_api_key"
     # Server 1 is the app, 2 its 4K instance; the keys are exportarr's secrets.
     for app in ("sonarr", "radarr"):
