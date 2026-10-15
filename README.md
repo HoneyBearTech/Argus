@@ -100,7 +100,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Smart Home | `homeassistant.json` | `home_assistant_token` | — |
 | UPS / Power | `peanut.json` | `peanut_username`, `peanut_password` (PeaNUT 6's login; PeaNUT 5 ignores them) | — |
 | Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL), `<app>_api_key` (qBittorrent: `qbittorrent.env` with URL + user, `qbittorrent_password`) | the app's profile, e.g. `radarr,sonarr` |
-| Tautulli | `varken.json` (`varken:9180`) | `varken.env` (Tautulli's address, SSL settings), `tautulli_api_key` | `varken` |
+| Tautulli | `varken.json` (`varken:9180`) | `varken.env` (Tautulli's address, SSL settings), `tautulli_api_key`; and `CONFIG_ROOT/varken/config` owned by uid 1000 | `varken` |
 | Tdarr | `tdarr.json` (`tdarr-exporter:9090`) | `tdarr.env` (Tdarr's URL; and `TDARR_API_KEY` once Tdarr's own login is on, which the exporter reads only from its environment) | `tdarr` |
 | GPUs | `gpu.json` (`<gpu host>:9835`, with a `host` label) | — | `gpu`, in that host's agent `.env` (needs the NVIDIA Container Toolkit) |
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `plex`, in that host's agent `.env` |

@@ -275,8 +275,11 @@ services:
   # (`varken` profile; HoneyBearTech/Varken, Prometheus-only from 2.0.0). Only
   # its Tautulli module is on, with GeoIP off. Tautulli's URL comes from
   # secrets/varken.env, the API key from secrets/tautulli_api_key (a compose
-  # secret Varken reads through its *_FILE variable). /config holds the
-  # varken.ini Varken writes on first start.
+  # secret Varken reads through its *_FILE variable). Its data follows the
+  # homelab standard: CONFIG_ROOT/varken/config at /config (the varken.ini it
+  # writes on first start), never a named volume, which `docker volume prune`
+  # would delete while the container is stopped. The directory must belong to
+  # uid 1000, the image's user.
   varken:
     <<: *hardened
     image: ghcr.io/honeybeartech/varken:2.0.0
@@ -298,7 +301,7 @@ services:
         required: false
     secrets: [tautulli_api_key]
     volumes:
-      - varken_data:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/varken/config:/config
 
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
@@ -376,4 +379,3 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
-  varken_data:

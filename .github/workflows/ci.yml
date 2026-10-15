@@ -204,6 +204,8 @@ jobs:
           echo "Prometheus requires its password; Grafana and Prometheus' own scrape send it"
 
       - name: Compose files
+        env:
+          CONFIG_ROOT: /srv/config # required by the compose file, as in .env.example
         run: |
           docker compose config --quiet
           docker compose -f docker-compose.yml -f docker-compose.source.yml config --quiet

@@ -121,7 +121,7 @@ any of this, and CI's boot test starts Grafana and Prometheus with these setting
 | gitlab-ci-pipelines-exporter | uid 65534 (image) | none | yes | nothing | |
 | pve-exporter | uid 101 (image) | none | yes | `/tmp` in memory | Python won't start without a writable temporary directory |
 | tdarr-exporter | uid 65532 (image) | none | yes | nothing | Needs no file |
-| varken | uid 1000 (image) | none | yes | its volume (`/config`) | Writes the `varken.ini` it creates on first start; needs no `/tmp` |
+| varken | uid 1000 (image) | none | yes | `CONFIG_ROOT/varken/config` (`/config`) | Writes the `varken.ini` it creates on first start; needs no `/tmp` |
 | agent | root | `DAC_OVERRIDE` | yes | its data volume | [The agent's exceptions](#the-agents-exceptions) |
 | plex-exporter (agent's `plex` profile) | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Needs no file |
 | gpu-exporter (agent's `gpu` profile) | uid 65534 (image) | none | yes | nothing | Runs `nvidia-smi`, which the NVIDIA runtime mounts in; the GPU's device files are open to every user |
