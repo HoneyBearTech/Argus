@@ -370,6 +370,39 @@ def test_gpu_job_keeps_every_metric_the_dashboard_and_alerts_use() -> None:
     assert not [name for name in sorted(used) if not keep.fullmatch(name)]
 
 
+def autoheal_poll_pattern() -> re.Pattern[str]:
+    """The container pipeline's stage.drop expression for autoheal's polling, unescaped from its Alloy string."""
+    config = (ROOT / "agent" / "config.alloy").read_text()
+    drop = re.search(r'expression\s*= ("(?:[^"\\]|\\.)*")\s*drop_counter_reason = "autoheal_poll"', config)
+    assert drop
+    return re.compile(json.loads(drop[1]))
+
+
+PROXY = (
+    "::ffff:172.27.0.3:49160 [14/Oct/2026:20:23:01.425] proxy docker/socket 0/0/0/2/2 {status} 190 - - ---- "
+    "1/1/0/0/0 0/0 "
+)
+AUTOHEAL_POLL = (
+    '"GET /containers/json?filters={#22health#22:[#22unhealthy#22],#22label#22:[#22autoheal=true#22]} HTTP/1.1"'
+)
+
+
+@pytest.mark.parametrize(
+    ("request_line", "status", "dropped"),
+    [
+        (AUTOHEAL_POLL, 200, True),
+        ('"GET /_ping HTTP/1.1"', 200, True),
+        (AUTOHEAL_POLL, 403, False),  # refused: kept
+        ('"POST /containers/abc/restart HTTP/1.1"', 204, False),  # autoheal restarting something: kept
+        ('"GET /containers/abc/json HTTP/1.1"', 200, False),
+    ],
+)
+def test_agent_drops_only_autoheals_answered_polls(request_line: str, status: int, *, dropped: bool) -> None:
+    """Real socket-proxy (HAProxy) lines: ~8.5k a day per host were autoheal's health checks."""
+    line = PROXY.format(status=status) + request_line
+    assert bool(autoheal_poll_pattern().search(line)) == dropped
+
+
 def test_tdarr_exporter_reads_its_settings_only_from_its_env_file() -> None:
     """Its image reads the API key only from the environment, so the key stays in secrets/tdarr.env."""
     tdarr = load("docker-compose.yml")["services"]["tdarr-exporter"]

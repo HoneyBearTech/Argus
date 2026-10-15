@@ -180,6 +180,15 @@ loki.process "containers" {
 		drop_counter_reason = "too_old"
 	}
 
+	// autoheal asks its Docker socket proxy (HAProxy) every few seconds which
+	// containers are unhealthy, and the proxy logs every request: ~8.5k lines a
+	// day per host. Drop only the answered health checks and pings; anything
+	// else, and every refused request (403), stays.
+	stage.drop {
+		expression          = " 200 \\d+ .*\"GET (?:/containers/json\\?filters=\\{#22health#22:\\[#22unhealthy#22\\]|/_ping )"
+		drop_counter_reason = "autoheal_poll"
+	}
+
 	// Credentials in URLs (?apikey=, ?X-Plex-Token=, ?access_token=, …) would be
 	// stored in Loki for 30 days, readable by every Grafana user: keep the
 	// parameter, replace its value.
