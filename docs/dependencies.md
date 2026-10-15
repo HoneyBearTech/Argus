@@ -32,6 +32,7 @@ always gets the same bytes:
 | Upstream base images (Grafana, Prometheus, blackbox_exporter, Loki, Alloy) | [`images/*/Dockerfile`](../images/), [`agent/Dockerfile`](../agent/Dockerfile) | version tag and multi-arch digest | Docker / BuildKit |
 | Exporter images (pihole-exporter, unpoller, snmp-exporter, exportarr, qbittorrent-exporter, gitlab-ci-pipelines-exporter, prometheus-pve-exporter, tdarr-exporter, Varken, Plex exporter, NVIDIA GPU exporter) | [`docker-compose.yml`](../docker-compose.yml), [`agent/compose.yml`](../agent/compose.yml) | version tag (the Plex exporter by digest) | Docker Compose |
 | Images used only by CI (promtool, linters, Trivy) | [`.github/workflows/`](../.github/workflows/) | version tag, and digest for most | Docker |
+| Images of the GitLab copy's pipeline (Python, Docker CLI, git, promtool, Alloy, blackbox_exporter, hadolint, actionlint) | [`.gitlab-ci.yml`](../.gitlab-ci.yml) | version tag and digest | GitLab Runner (Docker executor) |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
 | Python check and test tools (pytest, coverage, ruff, yamllint, PyYAML) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes (`pip-compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
 
@@ -45,8 +46,8 @@ Released Argus images carry an SBOM listing every package in them ([verifying-re
 - Pull requests are **merged by hand**, not automatically: an upstream bump can change how provisioning or
   a config behaves, so it's loaded in a sandbox first, and the matching version in `ci.yml` (and for
   Grafana, the README badge) moves with it.
-- CI images in workflow `run:` steps aren't seen by Dependabot; they're bumped together with the image
-  they check (for example promtool with the Prometheus base image).
+- CI images in workflow `run:` steps and the images in `.gitlab-ci.yml` aren't seen by Dependabot; they're
+  bumped together with the image they check (for example promtool with the Prometheus base image).
 
 ## Policy for vulnerabilities in dependencies
 

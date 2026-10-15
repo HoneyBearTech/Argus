@@ -47,7 +47,8 @@ Who can change the code, releases and project settings, as of the date of this f
 | Publishing images to Docker Hub | the release workflow, on a version tag; the maintainer | the `DOCKERHUB_TOKEN` repository secret (an access token limited to pushing); the maintainer's Docker Hub account |
 | Signing images and release files | the release workflow, on a version tag | Sigstore keyless signing with the job's GitHub identity; no stored key |
 | Signing version tags | the maintainer | personal SSH key (public half in [`.github/allowed_signers`](.github/allowed_signers)) |
-| The list of internal names CI rejects | the maintainer; CI | the `ARGUS_FORBIDDEN_PATTERNS` repository secret |
+| The list of internal names CI rejects | the maintainer; CI | the `ARGUS_FORBIDDEN_PATTERNS` repository secret (and a CI/CD variable of the same name on the maintainer's self-hosted GitLab) |
+| Mirroring the repository into the maintainer's self-hosted GitLab | the scheduled mirror job in [`.gitlab-ci.yml`](.gitlab-ci.yml) | a GitLab project access token (Maintainer role, `write_repository` only, with an expiry) in a masked, protected CI/CD variable on that GitLab; the maintainer creates and rotates it |
 | The OpenSSF Best Practices badge entry | the maintainer | GitHub sign-in |
 | Security advisories and private vulnerability reports | the maintainer | GitHub |
 | Automated changes | Dependabot (pull requests only; it can't merge, and the required check must pass) | GitHub |
