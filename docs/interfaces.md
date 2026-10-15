@@ -38,9 +38,9 @@ Grafana (auto-deploy still falls back to `DISCORD_WEBHOOK_URL`).
 
 **Agent** (environment, or `agent/.env` from [`agent/.env.example`](../agent/.env.example)):
 `ARGUS_HOST` (the `host` label), `ARGUS_PROMETHEUS_URL`, `ARGUS_LOKI_URL` (all required);
-`ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`; `ARGUS_AGENT_IMAGE`. Host
+`ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `HOMELAB_PULL_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`; `ARGUS_AGENT_IMAGE`. Host
 mounts (all read-only): `/` as `/rootfs`, `/sys`, `/run/udev`, `/dev/disk`, `/var/lib/docker`, the Docker
-socket, the containerd socket, and `NPM_LOG_DIR`; its own data is in a volume at `/var/lib/alloy/data`. It needs
+socket, the containerd socket, `NPM_LOG_DIR` and `HOMELAB_PULL_DIR`; its own data is in a volume at `/var/lib/alloy/data`. It needs
 the host's PID and network namespaces and the `DAC_OVERRIDE` capability, not `--privileged`
 ([security.md](security.md#hardening)).
 
@@ -67,8 +67,16 @@ keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, 
 - **Datasource uids** `prometheus` and `loki` ([`provisioning/datasources/argus.yaml`](../provisioning/datasources/argus.yaml))
   and **dashboard uids** (`argus-*`) are stable: links and bookmarks to them survive upgrades.
 - **Labels**: host series carry `host` (= `ARGUS_HOST`) and `instance`; container series `host`, `name`;
-  logs `host`, `container`, `compose_project`, `job` (`docker` or `npm`), and for NPM `site`, `status`,
-  `method`.
+  logs `host`, `container`, `compose_project`, `job` (`docker`, `npm` or `homelab-pull`), for NPM `site`,
+  `status`, `method`, and for deploys `stack`, `result`.
+- **Deploys** (what the Deploys dashboard reads from `HOMELAB_PULL_DIR`; homelab-pull 0.4.0 writes it, and any
+  deploy tool can): `metrics/<stack>.prom`, Prometheus text format, rewritten after every run, with the
+  gauges `homelab_pull_info{stack, version}`, `homelab_pull_last_run_timestamp_seconds`,
+  `homelab_pull_last_run_success` (1/0), `homelab_pull_paused` (1/0), `homelab_pull_deploy_failing` (1/0),
+  `homelab_pull_deploy_failure_info{commit, kind}` (only while failing), `homelab_pull_deployed_info{commit}`,
+  `homelab_pull_up_to_date` (1/0), `homelab_pull_last_deploy_timestamp_seconds` and
+  `homelab_pull_last_deploy_duration_seconds`, each labelled `stack`; and `<stack>/deploys.log`, one line per
+  attempt: `<time, 2006-01-02T15:04:05-0700> <stack> <ok|failed:<kind>> <old> -> <new> <subject>`.
 - **Alert notifications** are Grafana's Discord message format; each rule has a stable `uid`
   (`argus-*`), a `severity` label and a one-line summary.
 

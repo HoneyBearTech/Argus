@@ -52,7 +52,46 @@
     ]
   },
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "name": "Deploys",
+        "enable": true,
+        "hide": false,
+        "iconColor": "green",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "expr": "{job=\"homelab-pull\", host=~\"$host\", result=\"ok\"}",
+        "target": {
+          "refId": "Anno",
+          "expr": "{job=\"homelab-pull\", host=~\"$host\", result=\"ok\"}",
+          "queryType": "range"
+        },
+        "titleFormat": "{{stack}}: {{result}}",
+        "tagKeys": "stack,result",
+        "instant": false
+      },
+      {
+        "name": "Failed deploys",
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "expr": "{job=\"homelab-pull\", host=~\"$host\", result=~\"failed:.+\"}",
+        "target": {
+          "refId": "Anno",
+          "expr": "{job=\"homelab-pull\", host=~\"$host\", result=~\"failed:.+\"}",
+          "queryType": "range"
+        },
+        "titleFormat": "{{stack}}: {{result}}",
+        "tagKeys": "stack,result",
+        "instant": false
+      }
+    ]
   },
   "links": [
     {

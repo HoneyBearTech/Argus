@@ -9,7 +9,8 @@
 //   ARGUS_PROMETHEUS_PASSWORD  password of Prometheus' `argus` user, if it
 //                         requires one (optional)
 // Optional: mount Nginx Proxy Manager's data/logs directory at /var/log/npm to
-// also ship its access logs.
+// also ship its access logs, and the state directory of homelab-pull (a
+// pull-based deploy agent) at /var/lib/homelab-pull to report its deploys.
 
 // ── Where everything goes ───────────────────────────────────────────────
 prometheus.remote_write "argus" {
@@ -42,6 +43,12 @@ prometheus.exporter.unix "host" {
 	rootfs_path = "/rootfs"
 	procfs_path = "/proc"
 	sysfs_path  = "/sys"
+
+	// homelab-pull writes one metrics file per stack here after every run (only
+	// if its state directory is mounted; otherwise the directory is empty).
+	textfile {
+		directory = "/var/lib/homelab-pull/metrics"
+	}
 }
 
 discovery.relabel "host" {
@@ -225,6 +232,57 @@ loki.process "npm" {
 			site   = "",
 			status = "",
 			method = "",
+		}
+	}
+	forward_to = [loki.write.argus.receiver]
+}
+
+// ── homelab-pull deploys (only if /var/lib/homelab-pull is mounted) ─────
+// One line per deploy attempt in each stack's deploys.log:
+// 2026-10-14T13:56:52-0500 media ok 0123456789ab -> 89abcdef0123 Bump x (#2) [recreated: a]
+local.file_match "homelab_pull" {
+	path_targets = [{
+		"__path__" = "/var/lib/homelab-pull/*/deploys.log",
+		"job"      = "homelab-pull",
+	}]
+}
+
+loki.source.file "homelab_pull" {
+	targets = local.file_match.homelab_pull.targets
+	// From the start: a few lines a day, and the history fills the Deploys
+	// dashboard on the first start.
+	tail_from_end = false
+	forward_to    = [loki.process.homelab_pull.receiver]
+}
+
+loki.process "homelab_pull" {
+	// Credentials in URLs (?apikey=, ?X-Plex-Token=, ?access_token=, …) would be
+	// stored in Loki for 30 days, readable by every Grafana user: keep the
+	// parameter, replace its value.
+	stage.replace {
+		expression = "(?i)[?&;](?:access_token|api_?key|x-plex-token|token|signature|password|passwd|secret|key)=([^&\\s\"';]+)"
+		replace    = "REDACTED"
+	}
+
+	stage.regex {
+		expression = "^(?P<time>\\S+) (?P<stack>[a-z0-9-]+) (?P<result>ok|failed:[a-z]+) "
+	}
+
+	stage.timestamp {
+		source = "time"
+		format = "2006-01-02T15:04:05-0700"
+	}
+
+	// Loki rejects lines older than a week.
+	stage.drop {
+		older_than          = "144h"
+		drop_counter_reason = "too_old"
+	}
+
+	stage.labels {
+		values = {
+			stack  = "",
+			result = "",
 		}
 	}
 	forward_to = [loki.write.argus.receiver]

@@ -1187,3 +1187,171 @@ groups:
     annotations:
       summary: 'Tdarr: {{ with $values.A }}{{ humanize .Value }}{{ end }} file(s) queued, but no transcode or health check finished in a day (node paused, outside its schedule, or stuck).'
     isPaused: false
+- orgId: 1
+  name: Deploys
+  folder: Argus
+  interval: 1m
+  rules:
+  # homelab-pull (a pull-based deploy agent) rewrites its metrics file when a run ends, every ~90 s;
+  # one run may take up to 45 minutes (a deploy with big image pulls), so 50 minutes without a run
+  # means the timer stopped or the install broke. A host that's down is "Host stopped reporting".
+  - uid: argus-deploy-agent-silent
+    title: Deploy agent silent
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, stack) (time() - homelab_pull_last_run_timestamp_seconds{job="node"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 3000
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: 'homelab-pull for {{ $labels.stack }} on {{ $labels.host }} last ran {{ with $values.A }}{{ humanizeDuration .Value }}{{ end }} ago: its timer stopped or the install broke.'
+    isPaused: false
+  # A deploy attempt failed and no later one succeeded, for 15 minutes (the agent retries a failed
+  # commit every 15 minutes). Every stack keeps a series (0), so the summary always has a value.
+  - uid: argus-deploy-failing
+    title: Deploy failing
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, stack, commit, kind) (homelab_pull_deploy_failure_info{job="node"})
+          or on (host, stack) max by (host, stack) (homelab_pull_deploy_failing{job="node"}) * 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: Deploying {{ $labels.stack }} on {{ $labels.host }} fails at {{ $labels.kind }} (commit {{ $labels.commit }}); what runs is the last deployed commit.
+    isPaused: false
+  # Every run in 15 minutes ended in an error without a failed deploy to show for it: the fetch from
+  # GitHub fails, or the settings are broken. (While a deploy is failing, the runs that wait out its
+  # retry delay succeed, so this doesn't fire alongside "Deploy failing".)
+  - uid: argus-deploy-agent-erroring
+    title: Deploy agent erroring
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 900
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, stack) (max_over_time(homelab_pull_last_run_success{job="node"}[15m]))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: Every homelab-pull run for {{ $labels.stack }} on {{ $labels.host }} failed for 15 minutes (fetching from GitHub, or its settings); see its journal.
+    isPaused: false
+  # The checkout isn't on its branch (pinned by hand to a tag or another branch), so merges don't
+  # reach the host.
+  - uid: argus-deploy-paused
+    title: Deploys paused
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (host, stack) (homelab_pull_paused{job="node"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 2h
+    labels:
+      severity: warning
+    annotations:
+      summary: Deploys of {{ $labels.stack }} on {{ $labels.host }} have been paused for 2 hours (its checkout isn't on its branch), so merges don't reach it.
+    isPaused: false
