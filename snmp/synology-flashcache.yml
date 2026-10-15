@@ -1,0 +1,230 @@
+# snmp_exporter module for Synology SSD caches (SYNOLOGY-FLASHCACHE-MIB, 1.3.6.1.4.1.6574.103), which the
+# image's bundled `synology` module doesn't walk. Written in the generator's output format; loaded as a third
+# --config.file next to the bundled snmp.yml and secrets/snmp-auth.yml. Each series carries the cache's SSD
+# device (flashCacheSSDDev) and the device it caches (flashCacheSpaceDev); a NAS without a cache returns none.
+# DSM counts flashCacheReadHitRate over the reads the cache may serve: ReadHits / (TotalRead - ReadSeqSkip).
+modules:
+  synology_flashcache:
+    walk:
+    - 1.3.6.1.4.1.6574.103.1.1
+    metrics:
+    - name: flashCacheReadHits
+      oid: 1.3.6.1.4.1.6574.103.1.1.4
+      type: counter
+      help: Reads the SSD cache served - 1.3.6.1.4.1.6574.103.1.1.4
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheWriteHits
+      oid: 1.3.6.1.4.1.6574.103.1.1.5
+      type: counter
+      help: Writes the SSD cache absorbed (read-write caches only) - 1.3.6.1.4.1.6574.103.1.1.5
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheDiskRead
+      oid: 1.3.6.1.4.1.6574.103.1.1.6
+      type: counter
+      help: Reads that went to the disks (misses and skipped sequential reads) - 1.3.6.1.4.1.6574.103.1.1.6
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheDiskWrite
+      oid: 1.3.6.1.4.1.6574.103.1.1.7
+      type: counter
+      help: Writes that went to the disks - 1.3.6.1.4.1.6574.103.1.1.7
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheTotalRead
+      oid: 1.3.6.1.4.1.6574.103.1.1.8
+      type: counter
+      help: Reads of the cached volume - 1.3.6.1.4.1.6574.103.1.1.8
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheTotalWrite
+      oid: 1.3.6.1.4.1.6574.103.1.1.9
+      type: counter
+      help: Writes to the cached volume - 1.3.6.1.4.1.6574.103.1.1.9
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheReadHitRate
+      oid: 1.3.6.1.4.1.6574.103.1.1.10
+      type: gauge
+      help: Read hit rate (%), of the reads the cache may serve (sequential reads skipped) - 1.3.6.1.4.1.6574.103.1.1.10
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheWriteHitRate
+      oid: 1.3.6.1.4.1.6574.103.1.1.11
+      type: gauge
+      help: Write hit rate (%) - 1.3.6.1.4.1.6574.103.1.1.11
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheReadSeqSkip
+      oid: 1.3.6.1.4.1.6574.103.1.1.12
+      type: counter
+      help: Sequential reads sent straight to the disks, past the cache - 1.3.6.1.4.1.6574.103.1.1.12
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheWriteSeqSkip
+      oid: 1.3.6.1.4.1.6574.103.1.1.13
+      type: counter
+      help: Sequential writes sent straight to the disks, past the cache - 1.3.6.1.4.1.6574.103.1.1.13
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex
+    - name: flashCacheWriteMissSsd
+      oid: 1.3.6.1.4.1.6574.103.1.1.14
+      type: counter
+      help: Writes that missed the SSD - 1.3.6.1.4.1.6574.103.1.1.14
+      indexes:
+      - labelname: flashCacheIndex
+        type: gauge
+      lookups:
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSSDDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.2
+        type: DisplayString
+      - labels:
+        - flashCacheIndex
+        labelname: flashCacheSpaceDev
+        oid: 1.3.6.1.4.1.6574.103.1.1.3
+        type: DisplayString
+      - labels: []
+        labelname: flashCacheIndex

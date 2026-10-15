@@ -117,8 +117,11 @@ services:
     profiles: [snmp]
     command:
       - --config.file=/etc/snmp_exporter/snmp.yml
+      # Synology SSD caches, which the bundled snmp.yml doesn't cover.
+      - --config.file=/etc/snmp_exporter/synology-flashcache.yml
       - --config.file=/etc/snmp_exporter/auth.yml
     volumes:
+      - ./snmp/synology-flashcache.yml:/etc/snmp_exporter/synology-flashcache.yml:ro
       - type: bind
         source: ./secrets/snmp-auth.yml
         target: /etc/snmp_exporter/auth.yml

@@ -44,7 +44,7 @@ docs/                user, security and project documentation
 | Internet / ISP | network | Is the ISP delivering the speed we pay for, and how often does the connection drop? | unpoller: the UniFi gateway's own speed tests and the plan speeds set in UniFi |
 | Media Stack | media | Who's watching what, is the download pipeline flowing, and is the library healthy? | [exportarr](https://github.com/onedr0p/exportarr) (*arr, SABnzbd), [qbittorrent-exporter](https://github.com/martabal/qbittorrent-exporter); Plex exporter beside Plex (`agent/compose.yml`, `plex` profile) |
 | Tdarr | media | Is Tdarr keeping up, and how much space has it saved? | [tdarr-exporter](https://github.com/homeylab/tdarr-exporter) through Tdarr's API (`tdarr` profile); the Tdarr container's CPU, memory and logs from the Argus agent |
-| NAS / Storage | storage | Are the NAS units healthy, and how fast are they filling? | snmp-exporter (bundled `synology` + standard MIB modules), SNMPv3 |
+| NAS / Storage | storage | Are the NAS units healthy, and how fast are they filling? | snmp-exporter (bundled `synology` + standard MIB modules, and Argus' [`synology_flashcache`](snmp/synology-flashcache.yml) for SSD caches), SNMPv3 |
 | Smart Home | home | What's the house doing — temperatures, HVAC, energy? | Home Assistant's Prometheus integration (long-lived token) |
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
@@ -94,7 +94,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Uptime Kuma monitors (Overview) | `uptime_kuma.json` | `uptime_kuma_api_key` | — |
 | DNS / Pi-hole | `blackbox_dns.json` | `pihole-exporter.env` | — |
 | Network / UniFi, Internet / ISP | — | `unpoller.env` (console URL + read-only local account), `unifi_password` | — |
-| NAS / Storage | `snmp.json` | `snmp-auth.yml` (SNMPv3) | `snmp` |
+| NAS / Storage | `snmp.json` (add `synology_flashcache` to a Synology's `module` list for its SSD cache) | `snmp-auth.yml` (SNMPv3) | `snmp` |
 | Smart Home | `homeassistant.json` | `home_assistant_token` | — |
 | UPS / Power | `peanut.json` | `peanut_username`, `peanut_password` (PeaNUT 6's login; PeaNUT 5 ignores them) | — |
 | Media Stack (*arr, SABnzbd, qBittorrent) | `media.json` (enabled exporters only) | `<app>.env` (URL), `<app>_api_key` (qBittorrent: `qbittorrent.env` with URL + user, `qbittorrent_password`) | the app's profile, e.g. `radarr,sonarr` |

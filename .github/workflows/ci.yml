@@ -101,6 +101,14 @@ jobs:
             prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e \
             -c 'promtool test rules /tests/*.yml'
 
+      - name: snmp_exporter config (bundled modules + Synology SSD cache module + example credentials)
+        run: |
+          docker run --rm \
+            -v "$PWD/snmp/synology-flashcache.yml:/c/synology-flashcache.yml:ro" \
+            -v "$PWD/secrets.example/snmp-auth.yml:/c/auth.yml:ro" \
+            --entrypoint /bin/snmp_exporter prom/snmp-exporter:v0.30.1 --dry-run \
+            --config.file=/etc/snmp_exporter/snmp.yml --config.file=/c/synology-flashcache.yml --config.file=/c/auth.yml
+
       - name: blackbox_exporter config
         run: |
           docker run --rm \
