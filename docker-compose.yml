@@ -271,6 +271,35 @@ services:
       - path: ./secrets/tdarr.env
         required: false
 
+  # Tautulli (Plex's activity and libraries) through Varken's Prometheus output
+  # (`varken` profile; HoneyBearTech/Varken, Prometheus-only from 2.0.0). Only
+  # its Tautulli module is on, with GeoIP off. Tautulli's URL comes from
+  # secrets/varken.env, the API key from secrets/tautulli_api_key (a compose
+  # secret Varken reads through its *_FILE variable). /config holds the
+  # varken.ini Varken writes on first start.
+  varken:
+    <<: *hardened
+    image: ghcr.io/honeybeartech/varken:2.0.0
+    restart: unless-stopped
+    profiles: [varken]
+    environment:
+      VRKN_GLOBAL_TAUTULLI_SERVER_IDS: "1"
+      VRKN_GLOBAL_SONARR_SERVER_IDS: "false"
+      VRKN_GLOBAL_RADARR_SERVER_IDS: "false"
+      VRKN_GLOBAL_LIDARR_SERVER_IDS: "false"
+      VRKN_GLOBAL_OMBI_SERVER_IDS: "false"
+      VRKN_GLOBAL_SICKCHILL_SERVER_IDS: "false"
+      VRKN_GLOBAL_UNIFI_SERVER_IDS: "false"
+      VRKN_TAUTULLI_1_APIKEY_FILE: /run/secrets/tautulli_api_key
+      LOG_TO_FILE: "false"
+      DEBUG: "false"
+    env_file:
+      - path: ./secrets/varken.env
+        required: false
+    secrets: [tautulli_api_key]
+    volumes:
+      - varken_data:/config
+
   # Log store for the agents' container logs. Optional (`loki` profile): Loki can
   # also run on another host with more disk (logs/compose.yml); point LOKI_URL
   # at it either way.
@@ -341,8 +370,10 @@ secrets:
   sabnzbd_api_key: {file: ./secrets/sabnzbd_api_key}
   qbittorrent_password: {file: ./secrets/qbittorrent_password}
   pve.yml: {file: ./secrets/pve.yml}
+  tautulli_api_key: {file: ./secrets/tautulli_api_key}
 
 volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  varken_data:

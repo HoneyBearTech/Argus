@@ -424,6 +424,20 @@ def test_tdarr_exporter_reads_its_settings_only_from_its_env_file() -> None:
     assert "secrets" not in tdarr
 
 
+def test_varken_reads_tautullis_key_from_a_secret_file_and_only_runs_tautulli() -> None:
+    varken = load("docker-compose.yml")["services"]["varken"]
+    env = varken["environment"]
+    assert varken["secrets"] == ["tautulli_api_key"]
+    assert env["VRKN_TAUTULLI_1_APIKEY_FILE"] == "/run/secrets/tautulli_api_key"
+    assert varken["env_file"] == [{"path": "./secrets/varken.env", "required": False}]
+    # The URL comes from secrets/varken.env; no key or password in the compose file or the template.
+    assert not any(name.endswith(("_APIKEY", "_PASSWORD")) for name in env)
+    assert env["VRKN_GLOBAL_TAUTULLI_SERVER_IDS"] == "1"
+    others = ("SONARR", "RADARR", "LIDARR", "OMBI", "SICKCHILL", "UNIFI")
+    assert all(env[f"VRKN_GLOBAL_{app}_SERVER_IDS"] == "false" for app in others)
+    assert env["LOG_TO_FILE"] == "false"
+
+
 def test_every_secret_is_a_file_in_secrets_with_a_template() -> None:
     for name, secret in load("docker-compose.yml")["secrets"].items():
         assert secret == {"file": f"./secrets/{name}"}

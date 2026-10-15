@@ -1,0 +1,158 @@
+# Tautulli dashboard and alerts, from Varken's Prometheus output. Varken records each job's outcome
+# (varken_job_up) and the time of its last good run; Tautulli's numbers come from the activity job.
+evaluation_interval: 1m
+tests:
+  # Varken reads Tautulli fine for 30 minutes, then Tautulli goes down: the activity job fails from
+  # 30m on, and its last success stays at 29m.
+  - interval: 1m
+    input_series:
+      - series: 'varken_job_up{service="tautulli", server="1", job="activity"}'
+        values: "1x29 0x30"
+      - series: 'varken_job_up{service="tautulli", server="1", job="stats"}'
+        values: "1x59"
+      - series: 'varken_job_last_success_timestamp_seconds{service="tautulli", server="1", job="activity"}'
+        values: "0+60x29 1740x30"
+      - series: 'varken_tautulli_streams{server="1"}'
+        values: "2x29"
+      - series: 'varken_tautulli_streams_by_decision{server="1", decision="transcode"}'
+        values: "1x29"
+      - series: 'varken_tautulli_streams_by_decision{server="1", decision="direct_play"}'
+        values: "1x29"
+      - series: 'varken_tautulli_bandwidth_bytes_per_second{server="1", network="total"}'
+        values: "1000000x29"
+      - series: 'varken_tautulli_bandwidth_bytes_per_second{server="1", network="wan"}'
+        values: "250000x29"
+    promql_expr_test:
+      - rule: argus-tautulli-unreachable
+        eval_time: 20m
+        exp_samples: []
+      # Down: the alert's series exists from 30m (Grafana holds it for the rule's 10 minutes).
+      - rule: argus-tautulli-unreachable
+        eval_time: 45m
+        exp_samples:
+          - labels: '{server="1", job="activity"}'
+            value: 0
+      # Down is "unreachable", not "stale": the two never fire together.
+      - rule: argus-tautulli-stale
+        eval_time: 45m
+        exp_samples: []
+      - dashboard: argus-tautulli
+        panel: Tautulli
+        vars: {server: ".*"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-tautulli
+        panel: Tautulli
+        vars: {server: ".*"}
+        eval_time: 45m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      - dashboard: argus-tautulli
+        panel: Streams
+        vars: {server: ".*"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-tautulli
+        panel: Transcodes
+        vars: {server: ".*"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-tautulli
+        panel: Bandwidth
+        vars: {server: ".*"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 1000000
+      - dashboard: argus-tautulli
+        panel: Remote bandwidth
+        vars: {server: ".*"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 250000
+      # At 45m the last good read was at 29m: 16 minutes ago.
+      - dashboard: argus-tautulli
+        panel: Last read
+        vars: {server: ".*"}
+        eval_time: 45m
+        exp_samples:
+          - labels: "{}"
+            value: 960
+      - dashboard: argus-tautulli
+        panel: Varken's Tautulli jobs
+        ref_id: A
+        vars: {server: ".*"}
+        eval_time: 45m
+        exp_samples:
+          - labels: '{job="activity"}'
+            value: 0
+          - labels: '{job="stats"}'
+            value: 1
+
+  # A hung request: the activity job still reports up (its last run never finished), but nothing
+  # has succeeded since 10m.
+  - interval: 1m
+    input_series:
+      - series: 'varken_job_up{service="tautulli", server="1", job="activity"}'
+        values: "1x40"
+      - series: 'varken_job_last_success_timestamp_seconds{service="tautulli", server="1", job="activity"}'
+        values: "0+60x10 600x30"
+    promql_expr_test:
+      # 5 minutes without a read is normal enough (a slow Tautulli); no alert.
+      - rule: argus-tautulli-stale
+        eval_time: 15m
+        exp_samples: []
+      - rule: argus-tautulli-stale
+        eval_time: 25m
+        exp_samples:
+          - labels: '{server="1"}'
+            value: 900
+      - rule: argus-tautulli-unreachable
+        eval_time: 25m
+        exp_samples: []
+
+  # The session table and the library table group Varken's counts without any viewer identity.
+  - interval: 1m
+    input_series:
+      - series: 'varken_tautulli_sessions{server="1", state="playing", media_type="episode", transcode_decision="transcode", video_decision="transcode", quality="1080p", platform="Chrome"}'
+        values: "2x10"
+      - series: 'varken_tautulli_sessions{server="1", state="paused", media_type="movie", transcode_decision="direct_play", video_decision="direct_play", quality="4K", platform="Roku"}'
+        values: "1x10"
+      - series: 'varken_tautulli_library_items{server="1", library="TV Shows", type="show", item="total"}'
+        values: "3x10"
+      - series: 'varken_tautulli_library_items{server="1", library="TV Shows", type="show", item="episodes"}'
+        values: "40x10"
+    promql_expr_test:
+      - dashboard: argus-tautulli
+        panel: Current sessions
+        vars: {server: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{state="playing", media_type="episode", transcode_decision="transcode", video_decision="transcode", quality="1080p", platform="Chrome"}'
+            value: 2
+          - labels: '{state="paused", media_type="movie", transcode_decision="direct_play", video_decision="direct_play", quality="4K", platform="Roku"}'
+            value: 1
+      - dashboard: argus-tautulli
+        panel: Library sizes
+        ref_id: A
+        vars: {server: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{library="TV Shows", type="show"}'
+            value: 3
+      - dashboard: argus-tautulli
+        panel: Library sizes
+        ref_id: C
+        vars: {server: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{library="TV Shows"}'
+            value: 40
