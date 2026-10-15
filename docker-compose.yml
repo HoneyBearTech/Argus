@@ -273,7 +273,9 @@ services:
 
   # Tautulli (Plex's activity and libraries) through Varken's Prometheus output
   # (`varken` profile; HoneyBearTech/Varken, Prometheus-only from 2.0.0). Only
-  # its Tautulli module is on, with GeoIP off. Tautulli's URL comes from
+  # its Tautulli module is on, with GeoIP off. stream_details is on for the
+  # Varken dashboard's Users Online table and map: who watches what lands in
+  # Prometheus (never in this repo). Tautulli's URL comes from
   # secrets/varken.env, the API key from secrets/tautulli_api_key (a compose
   # secret Varken reads through its *_FILE variable). Its data follows the
   # homelab standard: CONFIG_ROOT/varken/config at /config (the varken.ini it
@@ -282,7 +284,7 @@ services:
   # uid 1000, the image's user.
   varken:
     <<: *hardened
-    image: ghcr.io/honeybeartech/varken:2.0.0
+    image: ghcr.io/honeybeartech/varken:2.1.0
     restart: unless-stopped
     profiles: [varken]
     environment:
@@ -294,6 +296,7 @@ services:
       VRKN_GLOBAL_SICKCHILL_SERVER_IDS: "false"
       VRKN_GLOBAL_UNIFI_SERVER_IDS: "false"
       VRKN_TAUTULLI_1_APIKEY_FILE: /run/secrets/tautulli_api_key
+      VRKN_PROMETHEUS_STREAM_DETAILS: "true"
       LOG_TO_FILE: "false"
       DEBUG: "false"
     env_file:

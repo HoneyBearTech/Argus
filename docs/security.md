@@ -62,6 +62,9 @@ Loki must not be reachable from outside it.
   Manager logs before shipping them, but secrets printed any other way are stored as they are. CI job
   containers started by GitLab Runner (the label it marks them with as managed) are never read: Docker
   keeps their output without the secret masking GitLab applies to job logs.
+- **Prometheus holds viewing activity.** Varken runs with `stream_details` on, so Prometheus keeps who watched
+  what, on which player and (with GeoIP on) from which city, for its retention time. Anyone who can query
+  Prometheus or open the Varken dashboard can see it.
 - **The agent is root on its host.** It no longer runs privileged, but it runs as root in the host's PID
   and network namespaces, can read every file on the host, and holds the Docker and containerd sockets,
   which are equivalent to root even when mounted read-only ([its exceptions](#the-agents-exceptions)). A

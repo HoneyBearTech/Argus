@@ -588,7 +588,7 @@
       "id": 10,
       "type": "table",
       "title": "Current sessions",
-      "description": "What's playing now, counted by state, media type, how it's delivered, quality and platform. Who is watching, and what, is only exported with Varken's stream_details setting, which Argus leaves off.",
+      "description": "What's playing now, counted by state, media type, how it's delivered, quality and platform. Who is watching, and what, is in the Varken dashboard's Users Online table.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
