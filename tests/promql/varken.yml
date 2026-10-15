@@ -1,0 +1,113 @@
+# Varken dashboard (the original Varken dashboard, ported), from Varken 2.1's Prometheus output. The library
+# panels follow the dashboard's library variables; the item tables list one row per series.
+evaluation_interval: 1m
+tests:
+  # A movie library that grows from 10 to 12 over the hour, one TV library, a 4K library nobody has, a
+  # stream, Ombi counts and one movie in Radarr's queue.
+  - interval: 1m
+    input_series:
+      - series: 'varken_tautulli_library_items{server="1", library="Movies", type="movie", item="total"}'
+        values: "10x30 12x30"
+      - series: 'varken_tautulli_library_items{server="1", library="TV", type="show", item="total"}'
+        values: "3x60"
+      - series: 'varken_tautulli_library_items{server="1", library="TV", type="show", item="episodes"}'
+        values: "40x60"
+      - series: 'varken_tautulli_streams{server="1"}'
+        values: "2x60"
+      - series: 'varken_tautulli_streams_by_decision{server="1", decision="transcode"}'
+        values: "1x60"
+      - series: 'varken_tautulli_bandwidth_bytes_per_second{server="1", network="wan"}'
+        values: "250000x60"
+      - series: 'varken_tautulli_sessions{server="1", state="playing", media_type="movie", transcode_decision="transcode", video_decision="transcode", quality="1080p", platform="Roku"}'
+        values: "1x60"
+      - series: 'varken_tautulli_sessions{server="1", state="paused", media_type="episode", transcode_decision="direct_play", video_decision="direct_play", quality="4K", platform="Roku"}'
+        values: "1x60"
+      - series: 'varken_ombi_requests{server="1", status="pending"}'
+        values: "3x60"
+      - series: 'varken_ombi_issues{server="1", status="resolved"}'
+        values: "9x60"
+      - series: 'varken_radarr_queue_item_info{server="1", movie="A Film (2025)", quality="Bluray-2160p", protocol="torrent"}'
+        values: "1x60"
+    promql_expr_test:
+      - dashboard: argus-varken
+        panel: Total Streams
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-varken
+        panel: Transcodes
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-varken
+        panel: WAN BW
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 250000
+      - dashboard: argus-varken
+        panel: Movies
+        vars: {movieslibrary: "Movies"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 12
+      # Only the selected library's type counts: a TV library picked as a movie library adds nothing.
+      - dashboard: argus-varken
+        panel: Movies
+        vars: {movieslibrary: "Movies|TV"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 12
+      - dashboard: argus-varken
+        panel: Movies Added
+        vars: {movieslibrary: "Movies", __range: "1h"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-varken
+        panel: TV Episodes
+        vars: {tvlibrary: "TV"}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 40
+      # No 4K library: no data, which the panel shows as "No library".
+      - dashboard: argus-varken
+        panel: 4K Movies
+        vars: {movies4klibrary: ""}
+        eval_time: 60m
+        exp_samples: []
+      - dashboard: argus-varken
+        panel: Device Types
+        eval_time: 60m
+        exp_samples:
+          - labels: '{platform="Roku"}'
+            value: 2
+      - dashboard: argus-varken
+        panel: Req. Pending
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      - dashboard: argus-varken
+        panel: Issues Resolved
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 9
+      - dashboard: argus-varken
+        panel: Movies in Queue
+        eval_time: 60m
+        exp_samples:
+          - labels: 'varken_radarr_queue_item_info{server="1", movie="A Film (2025)", quality="Bluray-2160p", protocol="torrent"}'
+            value: 1
+      # Sonarr isn't read: its queue table is empty.
+      - dashboard: argus-varken
+        panel: TV Shows in Queue
+        eval_time: 60m
+        exp_samples: []
