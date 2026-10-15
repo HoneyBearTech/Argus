@@ -379,7 +379,7 @@ def autoheal_poll_pattern() -> re.Pattern[str]:
 
 
 PROXY = (
-    "::ffff:172.27.0.3:49160 [14/Oct/2026:20:23:01.425] proxy docker/socket 0/0/0/2/2 {status} 190 - - ---- "
+    "::ffff:192.0.2.3:49160 [14/Oct/2026:20:23:01.425] proxy docker/socket 0/0/0/2/2 {status} 190 - - ---- "
     "1/1/0/0/0 0/0 "
 )
 AUTOHEAL_POLL = (
