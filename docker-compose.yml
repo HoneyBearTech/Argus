@@ -288,7 +288,7 @@ services:
   # uid 1000, the image's user.
   varken:
     <<: *hardened
-    image: ghcr.io/honeybeartech/varken:2.2.0
+    image: ghcr.io/honeybeartech/varken:2.2.1
     restart: unless-stopped
     profiles: [varken]
     environment:
