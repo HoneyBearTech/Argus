@@ -10,6 +10,14 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
+- Tautulli dashboard (Media folder): what's playing on Plex now and how it's delivered (streams, transcodes vs
+  direct play/stream, bandwidth on the LAN and WAN, sessions by quality and platform), library sizes, and Varken's
+  own health, CPU and logs. The data comes from [Varken](https://github.com/HoneyBearTech/Varken) 2.0.0's
+  Prometheus output, which reads Tautulli's API: compose service `varken` behind the `varken` profile, Tautulli's
+  address in `secrets/varken.env` and its API key in `secrets/tautulli_api_key`, target `targets/varken.json`, job
+  `varken`. No viewer names, titles or locations are collected.
+- Alerts: Tautulli unreachable (Varken can't read it for 10 minutes) and Tautulli data stale (no successful read
+  for 10 minutes while Varken still reports it up, i.e. a hanging request). Both warnings.
 - NAS / Storage: an SSD cache row for Synology NAS units with an SSD cache. It shows the read hit rate, both
   DSM's own figure and the last hour's, and where reads are served (from the cache, missed, or sequential:
   sent straight to the disks, as for streaming a film), plus a table of each cache with the volume device it

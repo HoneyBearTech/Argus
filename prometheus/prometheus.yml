@@ -111,6 +111,14 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/tdarr.json]
 
+  # Tautulli via Varken's Prometheus output (only runs with the `varken` compose
+  # profile, so targets/varken.json lists it only where it's enabled). Varken
+  # reads Tautulli on its own schedule; a scrape returns its last snapshot.
+  - job_name: varken
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/varken.json]
+
   # GitLab CI pipelines and jobs via gitlab-ci-pipelines-exporter (only runs
   # with the `gitlab` compose profile, so targets/gitlab.json lists it only
   # where it's enabled). It polls GitLab's API every 30 s.

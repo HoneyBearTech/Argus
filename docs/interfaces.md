@@ -23,7 +23,7 @@ Outbound connections:
 | Agent | `ARGUS_PROMETHEUS_URL`, `ARGUS_LOKI_URL` | metrics (Prometheus remote write) and logs (Loki push) |
 | Prometheus | everything in `targets/*.json` | scrapes (HTTP, or HTTPS where a target uses it) |
 | blackbox_exporter | URLs in `targets/blackbox_http.json`, DNS servers in `targets/blackbox_dns.json` | HTTP(S) probes with certificate verification; DNS queries (UDP) |
-| Exporters | the service each one watches (from `secrets/<name>.env` and the credential files) | the service's API (Pi-hole, UniFi, SNMPv3, *arr, qBittorrent, Plex) |
+| Exporters | the service each one watches (from `secrets/<name>.env` and the credential files) | the service's API (Pi-hole, UniFi, SNMPv3, *arr, qBittorrent, Tdarr, Tautulli, Plex) |
 | Grafana | Prometheus, Loki (`LOKI_URL`), the Discord webhook (`secrets/discord_webhook_url`) | queries; alert notifications (HTTPS). It downloads no plugins: `GF_PLUGINS_PREINSTALL_DISABLED=true` |
 | Auto-deploy (optional, [auto-deploy.md](auto-deploy.md)) | GitHub (`git fetch`, the public API), the Discord webhook (`secrets/discord_webhook_url`, else `DISCORD_WEBHOOK_URL` in `.env`) | the new commit and its check result (HTTPS, no token); deploy and rollback notices |
 
@@ -55,9 +55,10 @@ format; placeholders in [`targets.example/`](../targets.example/)): a list of
 read-only, so the containers' users must be able to read them (mode 644; the env files, which only the compose
 command reads, can stay 600): Grafana's admin password (`grafana_admin_password`, required) and the Discord
 webhook (`discord_webhook_url`), both mounted under `/run/secrets/`; env files with the exporters' URLs and user names (`pihole-exporter.env`, which also holds
-the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`, and `tdarr.env`, which also holds Tdarr's API key once Tdarr's
-own login is on); the exporters' passwords and API
-keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, `qbittorrent_password`);
+the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`, `tdarr.env`, which also holds Tdarr's API key once Tdarr's
+own login is on, and `varken.env`, Tautulli's address); the exporters' passwords and API
+keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, `qbittorrent_password`,
+`tautulli_api_key`);
 `gitlab.yml` (GitLab, its token and what to watch); `pve.yml` (the Proxmox VE API token, mounted under
 `/run/secrets/`); the CA certificate of Proxmox VE (`pve-ca.pem`); files Prometheus reads
 (`home_assistant_token`, `uptime_kuma_api_key`, `peanut_username` and `peanut_password`,

@@ -1269,6 +1269,95 @@ groups:
       summary: 'Tdarr: {{ with $values.A }}{{ humanize .Value }}{{ end }} file(s) queued, but no transcode or health check finished in a day (node paused, outside its schedule, or stuck).'
     isPaused: false
 - orgId: 1
+  name: Tautulli
+  folder: Argus
+  interval: 1m
+  rules:
+  # Varken's last read of a Tautulli job failed (a request failed or Varken logged an error): Tautulli
+  # is down, its API key is wrong, or its reply can't be read. 10 minutes, so a Tautulli restart
+  # doesn't page. Varken itself going silent is "Monitoring target down" (job varken).
+  - uid: argus-tautulli-unreachable
+    title: Tautulli unreachable
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (server, job) (varken_job_up{service="tautulli"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Varken can not read Tautulli (server {{ $labels.server }}, {{ $labels.job }}): Tautulli is down, its API key is wrong, or its reply is unreadable.'
+    isPaused: false
+  # Varken still reports Tautulli's activity job as up, but no read has finished for 10 minutes:
+  # its last run never ended (Varken's requests have no timeout yet, so a hung Tautulli holds them).
+  # Only while the job is up, so this and "Tautulli unreachable" never fire together.
+  - uid: argus-tautulli-stale
+    title: Tautulli data stale
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (server) (time() - varken_job_last_success_timestamp_seconds{service="tautulli",
+          job="activity"}) and on (server) (max by (server) (varken_job_up{service="tautulli", job="activity"})
+          == 1)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 600
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Varken has not finished reading Tautulli (server {{ $labels.server }}) for {{ with $values.A }}{{ humanizeDuration .Value }}{{ end }}: a request to Tautulli is hanging.'
+    isPaused: false
+- orgId: 1
   name: Deploys
   folder: Argus
   interval: 1m
