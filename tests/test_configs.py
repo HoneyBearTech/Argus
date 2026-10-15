@@ -433,6 +433,7 @@ def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr
         "sonarr4k_api_key",
         "radarr_api_key",
         "radarr4k_api_key",
+        "maxmind_license_key",
     ]
     assert env["VRKN_TAUTULLI_1_APIKEY_FILE"] == "/run/secrets/tautulli_api_key"
     # Server 1 is the app, 2 its 4K instance; the keys are exportarr's secrets.
@@ -441,8 +442,10 @@ def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr
         assert env[f"VRKN_{app.upper()}_1_APIKEY_FILE"] == f"/run/secrets/{app}_api_key"
         assert env[f"VRKN_{app.upper()}_2_APIKEY_FILE"] == f"/run/secrets/{app}4k_api_key"
     assert varken["env_file"] == [{"path": "./secrets/varken.env", "required": False}]
+    # GeoIP: the MaxMind license key is a secret file too; the account ID is in secrets/varken.env.
+    assert env["VRKN_GLOBAL_MAXMIND_LICENSE_KEY_FILE"] == "/run/secrets/maxmind_license_key"
     # The URL comes from secrets/varken.env; no key or password in the compose file or the template.
-    assert not any(name.endswith(("_APIKEY", "_PASSWORD")) for name in env)
+    assert not any(name.endswith(("_APIKEY", "_PASSWORD", "_LICENSE_KEY")) for name in env)
     assert env["VRKN_GLOBAL_TAUTULLI_SERVER_IDS"] == "1"
     others = ("LIDARR", "OMBI", "SICKCHILL", "UNIFI")
     assert all(env[f"VRKN_GLOBAL_{app}_SERVER_IDS"] == "false" for app in others)

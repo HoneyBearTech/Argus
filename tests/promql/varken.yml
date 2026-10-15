@@ -3,7 +3,7 @@
 evaluation_interval: 1m
 tests:
   # A movie library that grows from 10 to 12 over the hour, one TV library, a 4K library nobody has, a
-  # stream, Ombi counts and one movie in Radarr's queue.
+  # stream and one movie in Radarr's queue. (Argus' copy has no Ombi panels: it runs no Ombi.)
   - interval: 1m
     input_series:
       - series: 'varken_tautulli_library_items{server="1", library="Movies", type="movie", item="total"}'
@@ -22,10 +22,6 @@ tests:
         values: "1x60"
       - series: 'varken_tautulli_sessions{server="1", state="paused", media_type="episode", transcode_decision="direct_play", video_decision="direct_play", quality="4K", platform="Roku"}'
         values: "1x60"
-      - series: 'varken_ombi_requests{server="1", status="pending"}'
-        values: "3x60"
-      - series: 'varken_ombi_issues{server="1", status="resolved"}'
-        values: "9x60"
       - series: 'varken_radarr_queue_item_info{server="1", movie="A Film (2025)", quality="Bluray-2160p", protocol="torrent"}'
         values: "1x60"
     promql_expr_test:
@@ -88,18 +84,6 @@ tests:
         exp_samples:
           - labels: '{platform="Roku"}'
             value: 2
-      - dashboard: argus-varken
-        panel: Req. Pending
-        eval_time: 60m
-        exp_samples:
-          - labels: "{}"
-            value: 3
-      - dashboard: argus-varken
-        panel: Issues Resolved
-        eval_time: 60m
-        exp_samples:
-          - labels: "{}"
-            value: 9
       - dashboard: argus-varken
         panel: Movies in Queue
         eval_time: 60m

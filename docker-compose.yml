@@ -275,7 +275,9 @@ services:
   # (`varken` profile; HoneyBearTech/Varken, Prometheus-only from 2.0.0). Its
   # Tautulli, Sonarr and Radarr modules are on (server 1 = Sonarr / Radarr,
   # 2 = Sonarr 4K / Radarr 4K, reusing exportarr's API-key secrets; their
-  # addresses in secrets/varken.env), with GeoIP off. stream_details is on for the
+  # addresses in secrets/varken.env). GeoIP is on: the MaxMind license key is
+  # the maxmind_license_key secret, the account ID is in secrets/varken.env, and
+  # Varken keeps the GeoLite2 database in its config folder (refreshed monthly). stream_details is on for the
   # Varken dashboard's Users Online table and map: who watches what lands in
   # Prometheus (never in this repo). Tautulli's URL comes from
   # secrets/varken.env, the API key from secrets/tautulli_api_key (a compose
@@ -286,7 +288,7 @@ services:
   # uid 1000, the image's user.
   varken:
     <<: *hardened
-    image: ghcr.io/honeybeartech/varken:2.1.0
+    image: ghcr.io/honeybeartech/varken:2.2.0
     restart: unless-stopped
     profiles: [varken]
     environment:
@@ -302,13 +304,15 @@ services:
       VRKN_SONARR_2_APIKEY_FILE: /run/secrets/sonarr4k_api_key
       VRKN_RADARR_1_APIKEY_FILE: /run/secrets/radarr_api_key
       VRKN_RADARR_2_APIKEY_FILE: /run/secrets/radarr4k_api_key
+      VRKN_GLOBAL_MAXMIND_LICENSE_KEY_FILE: /run/secrets/maxmind_license_key
       VRKN_PROMETHEUS_STREAM_DETAILS: "true"
       LOG_TO_FILE: "false"
       DEBUG: "false"
     env_file:
       - path: ./secrets/varken.env
         required: false
-    secrets: [tautulli_api_key, sonarr_api_key, sonarr4k_api_key, radarr_api_key, radarr4k_api_key]
+    secrets:
+      [tautulli_api_key, sonarr_api_key, sonarr4k_api_key, radarr_api_key, radarr4k_api_key, maxmind_license_key]
     volumes:
       - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/varken/config:/config
 
@@ -383,6 +387,7 @@ secrets:
   qbittorrent_password: {file: ./secrets/qbittorrent_password}
   pve.yml: {file: ./secrets/pve.yml}
   tautulli_api_key: {file: ./secrets/tautulli_api_key}
+  maxmind_license_key: {file: ./secrets/maxmind_license_key}
 
 volumes:
   prometheus_data:
