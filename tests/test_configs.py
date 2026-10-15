@@ -403,6 +403,19 @@ def test_agent_drops_only_autoheals_answered_polls(request_line: str, status: in
     assert bool(autoheal_poll_pattern().search(line)) == dropped
 
 
+def test_snmp_exporter_loads_the_ssd_cache_module() -> None:
+    """The module file is mounted and passed as a --config.file; its walk covers every metric it defines."""
+    exporter = load("docker-compose.yml")["services"]["snmp-exporter"]
+    target = "/etc/snmp_exporter/synology-flashcache.yml"
+    assert f"./snmp/synology-flashcache.yml:{target}:ro" in exporter["volumes"]
+    assert f"--config.file={target}" in exporter["command"]
+    module = load("snmp/synology-flashcache.yml")["modules"]["synology_flashcache"]
+    assert module["walk"] == ["1.3.6.1.4.1.6574.103.1.1"]
+    assert all(m["oid"].startswith(module["walk"][0] + ".") for m in module["metrics"])
+    modules = [t["labels"]["module"].split(",") for t in json.loads((ROOT / "targets.example/snmp.json").read_text())]
+    assert all("synology_flashcache" in m for m in modules if "synology" in m)
+
+
 def test_tdarr_exporter_reads_its_settings_only_from_its_env_file() -> None:
     """Its image reads the API key only from the environment, so the key stays in secrets/tdarr.env."""
     tdarr = load("docker-compose.yml")["services"]["tdarr-exporter"]

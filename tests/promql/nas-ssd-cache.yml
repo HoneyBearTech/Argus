@@ -1,0 +1,59 @@
+# The NAS dashboard's SSD cache row (SYNOLOGY-FLASHCACHE-MIB, snmp/synology-flashcache.yml). The cache serves
+# 4 of 128 reads a second; 96 are sequential and skip it, so 4 of the 32 it may serve were hits: 12.5 %, DSM's
+# way of counting. TotalRead = ReadHits + DiskRead, as on the real NAS. One sample per 30 minutes with steps
+# that are multiples of 1800 make every rate a whole number, so the ratios are exact.
+evaluation_interval: 1m
+tests:
+  - interval: 30m
+    input_series:
+      - series: 'flashCacheReadHits{job="snmp", host="nas", flashCacheSSDDev="/dev/cache_1", flashCacheSpaceDev="/dev/vg1000/lv"}'
+        values: "0+7200x3"
+      - series: 'flashCacheTotalRead{job="snmp", host="nas", flashCacheSSDDev="/dev/cache_1", flashCacheSpaceDev="/dev/vg1000/lv"}'
+        values: "0+230400x3"
+      - series: 'flashCacheDiskRead{job="snmp", host="nas", flashCacheSSDDev="/dev/cache_1", flashCacheSpaceDev="/dev/vg1000/lv"}'
+        values: "0+223200x3"
+      - series: 'flashCacheReadSeqSkip{job="snmp", host="nas", flashCacheSSDDev="/dev/cache_1", flashCacheSpaceDev="/dev/vg1000/lv"}'
+        values: "0+172800x3"
+    promql_expr_test:
+      # Last hour's hit rate, as DSM counts it (sequential reads excluded).
+      - dashboard: argus-nas
+        panel: SSD caches
+        ref_id: B
+        vars: {host: ".*"}
+        eval_time: 90m
+        exp_samples:
+          - labels: '{key="nas//dev/cache_1"}'
+            value: 12.5
+      # The share of all reads the cache served.
+      - dashboard: argus-nas
+        panel: SSD caches
+        ref_id: C
+        vars: {host: ".*"}
+        eval_time: 90m
+        exp_samples:
+          - labels: '{key="nas//dev/cache_1"}'
+            value: 3.125
+      # Where reads are served: from cache + missed + sequential = 100 %.
+      - dashboard: argus-nas
+        panel: Where reads are served
+        vars: {host: ".*", __rate_interval: "1h"}
+        eval_time: 90m
+        exp_samples:
+          - labels: '{host="nas"}'
+            value: 3.125
+      - dashboard: argus-nas
+        panel: Where reads are served
+        ref_id: B
+        vars: {host: ".*", __rate_interval: "1h"}
+        eval_time: 90m
+        exp_samples:
+          - labels: '{host="nas"}'
+            value: 21.875
+      - dashboard: argus-nas
+        panel: Where reads are served
+        ref_id: C
+        vars: {host: ".*", __rate_interval: "1h"}
+        eval_time: 90m
+        exp_samples:
+          - labels: '{host="nas"}'
+            value: 75

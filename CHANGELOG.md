@@ -8,6 +8,16 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- NAS / Storage: an SSD cache row for Synology NAS units with an SSD cache. It shows the read hit rate, both
+  DSM's own figure and the last hour's, and where reads are served (from the cache, missed, or sequential:
+  sent straight to the disks, as for streaming a film), plus a table of each cache with the volume device it
+  caches. Data comes from SYNOLOGY-FLASHCACHE-MIB, which the snmp-exporter image's bundled `synology` module
+  doesn't walk, through a new module in [`snmp/synology-flashcache.yml`](snmp/synology-flashcache.yml),
+  loaded next to the bundled one. Add `synology_flashcache` to a Synology's `module` list in
+  `targets/snmp.json`; a NAS without a cache reports nothing. CI now dry-runs the snmp-exporter configuration.
+
 ## [0.7.1] - 2026-10-15
 
 ### Changed

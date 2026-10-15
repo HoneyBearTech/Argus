@@ -1725,6 +1725,520 @@
         }
       },
       "interval": "60s"
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "SSD cache",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "SSD caches",
+      "description": "Each SSD cache and the volume device it caches. Read hit rate (DSM): what DSM reports, over the reads the cache may serve since its counters started (sequential reads go straight to the disks and don't count). Last hour: the same over the last hour. Reads from cache: the share of all reads, sequential ones included, that the cache served in the last hour. A read-only cache has no write hits.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(max by (host, flashCacheSSDDev, flashCacheSpaceDev) (flashCacheReadHitRate{job=\"snmp\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"flashCacheSSDDev\")",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(100 * rate(flashCacheReadHits{job=\"snmp\", host=~\"$host\"}[1h]) / (rate(flashCacheTotalRead{job=\"snmp\", host=~\"$host\"}[1h]) - rate(flashCacheReadSeqSkip{job=\"snmp\", host=~\"$host\"}[1h])), \"key\", \"/\", \"host\", \"flashCacheSSDDev\"))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(100 * rate(flashCacheReadHits{job=\"snmp\", host=~\"$host\"}[1h]) / rate(flashCacheTotalRead{job=\"snmp\", host=~\"$host\"}[1h]), \"key\", \"/\", \"host\", \"flashCacheSSDDev\"))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(flashCacheWriteHitRate{job=\"snmp\", host=~\"$host\"}, \"key\", \"/\", \"host\", \"flashCacheSSDDev\"))",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "No SSD cache"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Read hit rate (DSM)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last hour"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reads from cache"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Write hit rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "key",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "key": true
+            },
+            "indexByName": {
+              "host": 0,
+              "flashCacheSSDDev": 1,
+              "flashCacheSpaceDev": 2,
+              "Value #A": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "Value #D": 6
+            },
+            "renameByName": {
+              "host": "NAS",
+              "flashCacheSSDDev": "Cache device",
+              "flashCacheSpaceDev": "Caches",
+              "Value #A": "Read hit rate (DSM)",
+              "Value #B": "Last hour",
+              "Value #C": "Reads from cache",
+              "Value #D": "Write hit rate"
+            }
+          }
+        }
+      ],
+      "interval": "1m"
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Cache read hit rate",
+      "description": "Share of the reads the cache may serve (not sequential ones) that it served: over the last hour, and DSM's own figure since its counters started.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * rate(flashCacheReadHits{job=\"snmp\", host=~\"$host\"}[1h]) / (rate(flashCacheTotalRead{job=\"snmp\", host=~\"$host\"}[1h]) - rate(flashCacheReadSeqSkip{job=\"snmp\", host=~\"$host\"}[1h]))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} last hour"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "flashCacheReadHitRate{job=\"snmp\", host=~\"$host\"}",
+          "refId": "B",
+          "range": true,
+          "legendFormat": "{{host}} DSM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "noValue": "No SSD cache",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* DSM"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m"
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Where reads are served",
+      "description": "All reads of the cached volume: served by the SSD cache, missed it (read from the disks, then cached), or sequential (sent straight to the disks: streaming a film, a backup). A cache earns its keep when the first band is large; lots of sequential reads it never sees is normal on a media volume.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 42,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * sum by (host) (rate(flashCacheReadHits{job=\"snmp\", host=~\"$host\"}[$__rate_interval])) / sum by (host) (rate(flashCacheTotalRead{job=\"snmp\", host=~\"$host\"}[$__rate_interval]))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} from cache"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (sum by (host) (rate(flashCacheDiskRead{job=\"snmp\", host=~\"$host\"}[$__rate_interval])) - sum by (host) (rate(flashCacheReadSeqSkip{job=\"snmp\", host=~\"$host\"}[$__rate_interval]))) / sum by (host) (rate(flashCacheTotalRead{job=\"snmp\", host=~\"$host\"}[$__rate_interval]))",
+          "refId": "B",
+          "range": true,
+          "legendFormat": "{{host}} missed"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * sum by (host) (rate(flashCacheReadSeqSkip{job=\"snmp\", host=~\"$host\"}[$__rate_interval])) / sum by (host) (rate(flashCacheTotalRead{job=\"snmp\", host=~\"$host\"}[$__rate_interval]))",
+          "refId": "C",
+          "range": true,
+          "legendFormat": "{{host}} sequential"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "noValue": "No SSD cache",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* from cache"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* missed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* sequential"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "interval": "5m"
     }
   ]
 }
