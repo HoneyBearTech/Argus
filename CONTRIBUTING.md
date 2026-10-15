@@ -67,6 +67,10 @@ image, starts the Grafana image to check that every dashboard, alert rule, datas
 point loads, and validates the compose files. CodeQL, a weekly image vulnerability scan and OpenSSF
 Scorecard also run on the repository, and pull requests need a DCO sign-off (below).
 
+The maintainer also keeps a copy on a self-hosted GitLab, mirrored from GitHub by a scheduled job in
+[`.gitlab-ci.yml`](.gitlab-ci.yml), which re-runs the "Dashboards + config" steps that need no Docker daemon
+on every commit it receives. Changes go to GitHub only; a commit made on the GitLab copy stops the mirror.
+
 ## Before you open a pull request
 
 Run what CI runs and make sure it passes:

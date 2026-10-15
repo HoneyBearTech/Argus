@@ -19,6 +19,12 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
+- `.gitlab-ci.yml` for the copy of the repository on the maintainer's self-hosted GitLab. GitHub stays the
+  project's home and its Actions the required check; on GitLab a scheduled job mirrors `main` and the tags from
+  GitHub (fast-forward only, with a project access token in a masked, protected CI/CD variable), and every
+  commit that arrives gets the checks that need no Docker daemon: ruff, yamllint, the unit tests with the
+  coverage floor, the dashboard and public-repo check, actionlint, hadolint, the `alloy fmt` diff, promtool's
+  config check and PromQL tests, blackbox_exporter's config check and the compose files.
 - Tautulli dashboard (Media folder): what's playing on Plex now and how it's delivered (streams, transcodes vs
   direct play/stream, bandwidth on the LAN and WAN, sessions by quality and platform), library sizes, and Varken's
   own health, CPU and logs. The data comes from [Varken](https://github.com/HoneyBearTech/Varken) 2.0.0's

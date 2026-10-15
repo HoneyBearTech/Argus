@@ -65,6 +65,8 @@ have no scrape `up` to go to 0.
   gitignored. Upgrading is changing `ARGUS_VERSION` ([upgrading.md](upgrading.md)).
 - **Development.** `docker-compose.source.yml` builds the images from the checkout and bind-mounts
   `dashboards/`, `provisioning/` and the configs, so edits show up without a rebuild.
+- **GitLab copy.** [`.gitlab-ci.yml`](../.gitlab-ci.yml) is the pipeline of the copy on the maintainer's
+  self-hosted GitLab: it mirrors GitHub on a schedule and re-runs the checks that need no Docker daemon.
 
 ## Key properties
 
