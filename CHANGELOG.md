@@ -8,6 +8,8 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-15
+
 ### Added
 
 - Proxmox VE dashboard: cluster quorum and QDevice status, which nodes are online, per-node CPU and memory, how much memory the running guests are allocated and how many
@@ -124,10 +126,12 @@ Each release's notes on GitHub are its section here.
   container keeps the capability that let root read other users' files). Check with
   `ls -l secrets/` and `chmod 644` any credential file that isn't (`unifi_password` and `qbittorrent_password`
   were read by root until now); the `*.env` files can stay 600.
-- Agents: copy the new `agent/compose.yml` and run `docker compose up -d`, or re-run the README's
+- Agents: copy the new `agent/compose.yml`, set `ARGUS_AGENT_IMAGE` to `0.7.0` and run `docker compose up -d`, or re-run the README's
   `docker run` command (it now needs `-v argus-agent-data:/var/lib/alloy/data`). The agent's existing data
   volume is kept as it is. On a host that homelab-pull deploys, also set `HOMELAB_PULL_DIR` in the agent's
-  `.env` (its state directory, e.g. `/home/<user>/.local/state/homelab-pull`); elsewhere leave it unset.
+  `.env` (its state directory, e.g. `/home/<user>/.local/state/homelab-pull`); elsewhere leave it unset. On a
+  host with an NVIDIA GPU, add `gpu` to the agent's `COMPOSE_PROFILES` and list the host in the server's
+  `targets/gpu.json`.
 
 - In `targets/blackbox_http.json`, list the URL each service ends on (its login page, for example) rather than
   one that redirects there: each redirect is another DNS lookup and request per probe.
@@ -414,7 +418,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/HoneyBearTech/Argus/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/HoneyBearTech/Argus/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/HoneyBearTech/Argus/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/HoneyBearTech/Argus/compare/v0.4.1...v0.5.0
