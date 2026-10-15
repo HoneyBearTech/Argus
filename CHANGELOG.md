@@ -8,6 +8,26 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Agents on hosts without homelab-pull logged `failed to read textfile collector directory` on every scrape
+  (and reported `node_textfile_scrape_error 1`): 0.7.0 pointed node_exporter's textfile collector at
+  `metrics/` inside `HOMELAB_PULL_DIR`, which doesn't exist in the empty fallback directory. The metrics
+  directory now has its own mount, `${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics`, which Docker creates
+  empty where homelab-pull isn't installed.
+
+### Changed
+
+- The agent no longer ships the Docker socket proxy's log lines for autoheal's answered health checks and pings
+  (`GET /containers/json?filters={"health":["unhealthy"],…}` and `GET /_ping` with status 200): about 8.5k
+  lines a day per host that runs autoheal. Every other request it logs, refused ones (403) included, still
+  reaches Loki.
+
+### Upgrading
+
+- Agents: copy the new `agent/compose.yml` with the new agent image. On a 0.7.0 agent without homelab-pull,
+  `sudo mkdir -p no-homelab-pull/metrics` in the agent's directory stops the errors until then.
+
 ## [0.7.0] - 2026-10-15
 
 ### Added
