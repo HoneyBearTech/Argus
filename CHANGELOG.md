@@ -10,6 +10,8 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Varken 2.2.1: an upgrade that adds a setting no longer logs an ERROR (which Argus counted), and a successful
+  GeoLite2 download is logged.
 - Varken 2.2.0 with GeoIP on, for the Varken dashboard's viewer map: the MaxMind license key is the new
   `maxmind_license_key` secret and the account ID goes in `secrets/varken.env` (`VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`).
   Varken downloads the GeoLite2 database into its config folder; with GeoIP on, it contacts MaxMind about monthly.
