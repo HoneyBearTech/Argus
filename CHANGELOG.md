@@ -10,6 +10,9 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- The GitLab CI dashboard counts several runners: the Runners tile shows how many are up and how many are
+  down (it read "Up" while any one answered), and the Runner jobs chart's concurrency limit is the runners'
+  combined limit. Add one target per runner to `targets/gitlab_runner.json`.
 - The Varken dashboards' Device Types and Stream Types pies cover the time range, so they no longer go blank when
   nobody is watching; the classic copy's Server Popularity strip asks for few enough points for Grafana to draw it.
 - Varken 3.2.0 with its Lidarr module on: the Varken and Varken [Classic] dashboards show Lidarr's queue and its

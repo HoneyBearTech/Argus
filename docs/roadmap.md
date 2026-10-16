@@ -27,7 +27,7 @@ OpenSSF Best Practices badge.
 
 **Dashboards and integrations**
 
-- GitLab runner and server health (the runner's and GitLab's own metrics endpoints); pipelines and jobs
+- GitLab runner and server health (the runners' and GitLab's own metrics endpoints); pipelines and jobs
   already have a dashboard.
 - Local AI model servers (loaded models, memory), once they expose metrics.
 - Internet speed history for ISP accountability.
