@@ -133,3 +133,23 @@ tests:
         exp_samples:
           - labels: 'varken_seerr_request_info{server="1", type="movie", title="A Film (2025)", status="pending", is4k="false", requested="2026-10-15T20:00:00.000Z", user="someone"}'
             value: 1
+      # The classic copy (the original dashboard's look): bandwidth in bits per second, pies over the range.
+      - dashboard: argus-varken-classic
+        panel: 1
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-varken-classic
+        panel: 7
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 2000000
+      - dashboard: argus-varken-classic
+        panel: Device Types
+        vars: {__range: "1h"}
+        eval_time: 60m
+        exp_samples:
+          - labels: '{platform="Roku"}'
+            value: 2
