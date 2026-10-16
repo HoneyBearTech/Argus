@@ -2,7 +2,7 @@
   "id": null,
   "uid": "argus-gitlab-ci",
   "title": "GitLab CI",
-  "description": "Are pipelines healthy, is the runner keeping up, and is GitLab itself healthy?",
+  "description": "Are pipelines healthy, are the runners keeping up, and is GitLab itself healthy?",
   "tags": [
     "argus",
     "ci"
@@ -1445,8 +1445,8 @@
     {
       "id": 14,
       "type": "stat",
-      "title": "Runner",
-      "description": "Whether Prometheus can read the runner's metrics endpoint (listen_address in its config.toml).",
+      "title": "Runners",
+      "description": "Runners whose metrics endpoint Prometheus can read (listen_address in each runner's config.toml), and those it can't.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1463,8 +1463,20 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(up{job=\"gitlab_runner\"})",
+          "expr": "count(up{job=\"gitlab_runner\"} == 1) or count(up{job=\"gitlab_runner\"}) * 0",
           "refId": "A",
+          "legendFormat": "Up",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(up{job=\"gitlab_runner\"} == 0) or count(up{job=\"gitlab_runner\"}) * 0",
+          "refId": "B",
+          "legendFormat": "Down",
           "instant": true,
           "range": false
         }
@@ -1473,41 +1485,43 @@
         "defaults": {
           "decimals": 0,
           "color": {
-            "mode": "thresholds"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Down",
-                  "color": "red",
-                  "index": 0
-                },
-                "1": {
-                  "text": "Up",
-                  "color": "green",
-                  "index": 1
-                }
-              }
-            }
-          ],
           "noValue": "Not set up"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Down"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -1520,7 +1534,7 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
-        "textMode": "auto",
+        "textMode": "value_and_name",
         "orientation": "auto"
       },
       "interval": "30s"
@@ -1712,7 +1726,7 @@
       "id": 17,
       "type": "timeseries",
       "title": "Runner jobs",
-      "description": "Jobs the runner started in each interval (bars) and jobs running at each scrape, against its concurrency limit. Short jobs can finish between scrapes, so the bars are the reliable count.",
+      "description": "Jobs the runners started in each interval (bars) and jobs running at each scrape, against their combined concurrency limit. Short jobs can finish between scrapes, so the bars are the reliable count.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1747,7 +1761,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(gitlab_runner_concurrent{job=\"gitlab_runner\"})",
+          "expr": "sum(gitlab_runner_concurrent{job=\"gitlab_runner\"})",
           "refId": "C",
           "legendFormat": "Concurrency limit"
         }

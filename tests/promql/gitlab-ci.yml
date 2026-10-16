@@ -182,6 +182,15 @@ tests:
         values: "80+2x10"
       - series: 'gitlab_runner_jobs_total{job="gitlab_runner", runner="r"}'
         values: "0 0 1 1 1 2 2 2 2 3 3"
+      # Two runners, one of them unreachable; limits of 1 and 4 concurrent jobs.
+      - series: 'up{job="gitlab_runner", instance="r1:9252"}'
+        values: "1x10"
+      - series: 'up{job="gitlab_runner", instance="r2:9252"}'
+        values: "0x10"
+      - series: 'gitlab_runner_concurrent{job="gitlab_runner", instance="r1:9252"}'
+        values: "1x10"
+      - series: 'gitlab_runner_concurrent{job="gitlab_runner", instance="r2:9252"}'
+        values: "4x10"
     promql_expr_test:
       - rule: argus-gitlab-component-down
         eval_time: 10m
@@ -218,3 +227,23 @@ tests:
         exp_samples:
           - labels: "{}"
             value: 3
+      - dashboard: argus-gitlab-ci
+        panel: Runners
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-gitlab-ci
+        panel: Runners
+        ref_id: B
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-gitlab-ci
+        panel: Runner jobs
+        ref_id: C
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 5

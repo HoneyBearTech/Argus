@@ -52,7 +52,7 @@ docs/                user, security and project documentation
 | Reverse Proxy Traffic | network | What's hitting the services behind the reverse proxy, and is anything erroring? | Nginx Proxy Manager access logs → Alloy → Loki |
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
 | Deploys | ci | Did every merge reach its host, and is every host's deploy agent alive? | [homelab-pull](docs/interfaces.md#data-contracts)'s metrics and deploy log (a pull-based deploy agent: one stack per host, deployed from its git branch), read by the Argus agent (`HOMELAB_PULL_DIR`); deploy markers on Host Health and Docker Containers |
-| GitLab CI | ci | Are pipelines healthy, is the runner keeping up, and is GitLab itself healthy? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile); GitLab Runner's metrics endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through `/federate` |
+| GitLab CI | ci | Are pipelines healthy, are the runners keeping up, and is GitLab itself healthy? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile); GitLab Runner's metrics endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through `/federate` |
 | Proxmox VE | proxmox | Are the Proxmox nodes overcommitted, are the guests that should run running, and how is storage filling? | [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) with a read-only API token (`proxmox` profile) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
 
@@ -108,7 +108,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | Media Stack (Plex) | `plex.json` | `PLEX_TOKEN` in the Plex host's agent `.env` | `plex`, in that host's agent `.env` |
 | Loki's own health | `loki.json` (`loki:3100` for the bundled one) | — | — |
 | GitLab CI (pipelines) | `gitlab.json` | `gitlab.yml` (GitLab's URL and a `read_api` token) | `gitlab` |
-| GitLab CI (runner) | `gitlab_runner.json` (`<runner>:9252`); set `listen_address = ":9252"` in the runner's `config.toml` | — | — |
+| GitLab CI (runners) | `gitlab_runner.json` (`<runner>:9252`, one target per runner); set `listen_address = ":9252"` in each runner's `config.toml` | — | — |
 | GitLab CI (GitLab's health) | `gitlab_server.json` (`<gitlab>:9090`); set `prometheus['listen_address'] = '0.0.0.0:9090'` in `gitlab.rb` and run `gitlab-ctl reconfigure` (restarts Puma and Sidekiq: a minute or two of 502s) | — | — |
 | Proxmox VE | `pve.json`: each node's API address (port 8006 by default), which the node's certificate must name; in a cluster, label every node but one `"cluster": "0"` | `pve.yml` (an API token with the `PVEAuditor` role; the commands are in the template), `pve-ca.pem` (the cluster's CA, `/etc/pve/pve-root-ca.pem` on any node) | `proxmox` |
 
