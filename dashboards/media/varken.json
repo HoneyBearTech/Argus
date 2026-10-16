@@ -1235,6 +1235,7 @@
           "options": {
             "include": {
               "names": [
+                "server",
                 "movie",
                 "quality",
                 "protocol"
@@ -1246,11 +1247,13 @@
           "id": "organize",
           "options": {
             "indexByName": {
-              "movie": 0,
-              "quality": 1,
-              "protocol": 2
+              "server": 0,
+              "movie": 1,
+              "quality": 2,
+              "protocol": 3
             },
             "renameByName": {
+              "server": "Instance",
               "movie": "Movie",
               "quality": "Quality",
               "protocol": "Protocol"
@@ -1268,7 +1271,38 @@
             }
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "HD",
+                        "index": 0
+                      },
+                      "2": {
+                        "text": "4K",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
@@ -1435,6 +1469,7 @@
           "options": {
             "include": {
               "names": [
+                "server",
                 "series",
                 "episode",
                 "title",
@@ -1447,12 +1482,14 @@
           "id": "organize",
           "options": {
             "indexByName": {
-              "series": 0,
-              "episode": 1,
-              "title": 2,
-              "protocol": 3
+              "server": 0,
+              "series": 1,
+              "episode": 2,
+              "title": 3,
+              "protocol": 4
             },
             "renameByName": {
+              "server": "Instance",
               "series": "Series",
               "episode": "Episode",
               "title": "Title",
@@ -1471,7 +1508,38 @@
             }
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "HD",
+                        "index": 0
+                      },
+                      "2": {
+                        "text": "4K",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
@@ -1580,6 +1648,7 @@
           "options": {
             "include": {
               "names": [
+                "server",
                 "airs",
                 "series",
                 "episode",
@@ -1605,13 +1674,15 @@
           "id": "organize",
           "options": {
             "indexByName": {
-              "airs": 0,
-              "series": 1,
-              "episode": 2,
-              "title": 3,
-              "downloaded": 4
+              "server": 0,
+              "airs": 1,
+              "series": 2,
+              "episode": 3,
+              "title": 4,
+              "downloaded": 5
             },
             "renameByName": {
+              "server": "Instance",
               "airs": "Airs",
               "series": "Series",
               "episode": "Episode",
@@ -1641,6 +1712,36 @@
               {
                 "id": "unit",
                 "value": "time: MMM D HH:mm"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "HD",
+                        "index": 0
+                      },
+                      "2": {
+                        "text": "4K",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 80
               }
             ]
           }
@@ -1795,6 +1896,7 @@
           "options": {
             "include": {
               "names": [
+                "server",
                 "movie"
               ]
             }
@@ -1804,9 +1906,11 @@
           "id": "organize",
           "options": {
             "indexByName": {
-              "movie": 0
+              "server": 0,
+              "movie": 1
             },
             "renameByName": {
+              "server": "Instance",
               "movie": "Movie"
             }
           }
@@ -1822,7 +1926,38 @@
             }
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "HD",
+                        "index": 0
+                      },
+                      "2": {
+                        "text": "4K",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
@@ -1872,6 +2007,7 @@
           "options": {
             "include": {
               "names": [
+                "server",
                 "airs",
                 "series",
                 "episode",
@@ -1896,12 +2032,14 @@
           "id": "organize",
           "options": {
             "indexByName": {
-              "airs": 0,
-              "series": 1,
-              "episode": 2,
-              "title": 3
+              "server": 0,
+              "airs": 1,
+              "series": 2,
+              "episode": 3,
+              "title": 4
             },
             "renameByName": {
+              "server": "Instance",
               "airs": "Aired",
               "series": "Series",
               "episode": "Episode",
@@ -1930,6 +2068,36 @@
               {
                 "id": "unit",
                 "value": "time: MMM D HH:mm"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "HD",
+                        "index": 0
+                      },
+                      "2": {
+                        "text": "4K",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 80
               }
             ]
           }

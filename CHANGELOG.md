@@ -16,6 +16,7 @@ Each release's notes on GitHub are its section here.
   (apt and unattended-upgrades run one), so "GPU not reporting" fires until the container is restarted. The README
   gives a check (`sudo systemctl daemon-reload`, then `docker exec argus-gpu-exporter nvidia-smi -L`).
   `agent/compose.yml` changes only in a comment.
+- The Varken dashboard's Sonarr and Radarr tables say which instance each row is from (HD or 4K).
 - Varken 2.2.1: an upgrade that adds a setting no longer logs an ERROR (which Argus counted), and a successful
   GeoLite2 download is logged.
 - Varken 2.2.0 with GeoIP on, for the Varken dashboard's viewer map: the MaxMind license key is the new
