@@ -62,6 +62,8 @@ Loki must not be reachable from outside it.
   Manager logs before shipping them, but secrets printed any other way are stored as they are. CI job
   containers started by GitLab Runner (the label it marks them with as managed) are never read: Docker
   keeps their output without the secret masking GitLab applies to job logs.
+- **Varken holds Seerr's admin key.** Seerr has no read-only API key, so `secrets/seerr_api_key` can change
+  anything in Seerr; Varken only reads with it. Keep the file at mode 600, like the other secrets.
 - **Prometheus holds viewing activity.** Varken runs with `stream_details` on, so Prometheus keeps who watched
   what, on which player and from which city (GeoIP is on), with the city's coordinates, for its retention
   time. Anyone who can query Prometheus or open the Varken dashboard can see it. Viewer IP addresses are

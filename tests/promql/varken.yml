@@ -3,7 +3,7 @@
 evaluation_interval: 1m
 tests:
   # A movie library that grows from 10 to 12 over the hour, one TV library, a 4K library nobody has, a
-  # stream and one movie in Radarr's queue. (Argus' copy has no Ombi panels: it runs no Ombi.)
+  # stream, one movie in Radarr's queue and Seerr's requests. (Argus' copy shows Seerr where the original had Ombi.)
   - interval: 1m
     input_series:
       - series: 'varken_tautulli_library_items{server="1", library="Movies", type="movie", item="total"}'
@@ -23,6 +23,14 @@ tests:
       - series: 'varken_tautulli_sessions{server="1", state="paused", media_type="episode", transcode_decision="direct_play", video_decision="direct_play", quality="4K", platform="Roku"}'
         values: "1x60"
       - series: 'varken_radarr_queue_item_info{server="1", movie="A Film (2025)", quality="Bluray-2160p", protocol="torrent"}'
+        values: "1x60"
+      - series: 'varken_seerr_requests{server="1", status="pending"}'
+        values: "2x60"
+      - series: 'varken_seerr_requests{server="1", status="processing"}'
+        values: "3x60"
+      - series: 'varken_seerr_issues{server="1", status="open"}'
+        values: "1x60"
+      - series: 'varken_seerr_request_info{server="1", type="movie", title="A Film (2025)", status="pending", is4k="false", requested="2026-10-15T20:00:00.000Z", user="someone"}'
         values: "1x60"
     promql_expr_test:
       - dashboard: argus-varken
@@ -95,3 +103,33 @@ tests:
         panel: TV Shows in Queue
         eval_time: 60m
         exp_samples: []
+      # Seerr, in Ombi's places (Argus runs Seerr).
+      - dashboard: argus-varken
+        panel: Req. Pending
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-varken
+        panel: Req. Processing
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      - dashboard: argus-varken
+        panel: Issues Open
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      # No Seerr series for declined requests: no data, not a made-up zero.
+      - dashboard: argus-varken
+        panel: Req. Declined
+        eval_time: 60m
+        exp_samples: []
+      - dashboard: argus-varken
+        panel: Requests Waiting (Seerr)
+        eval_time: 60m
+        exp_samples:
+          - labels: 'varken_seerr_request_info{server="1", type="movie", title="A Film (2025)", status="pending", is4k="false", requested="2026-10-15T20:00:00.000Z", user="someone"}'
+            value: 1

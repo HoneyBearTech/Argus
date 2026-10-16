@@ -433,6 +433,7 @@ def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr
         "sonarr4k_api_key",
         "radarr_api_key",
         "radarr4k_api_key",
+        "seerr_api_key",
         "maxmind_license_key",
     ]
     assert env["VRKN_TAUTULLI_1_APIKEY_FILE"] == "/run/secrets/tautulli_api_key"
@@ -447,6 +448,8 @@ def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr
     # The URL comes from secrets/varken.env; no key or password in the compose file or the template.
     assert not any(name.endswith(("_APIKEY", "_PASSWORD", "_LICENSE_KEY")) for name in env)
     assert env["VRKN_GLOBAL_TAUTULLI_SERVER_IDS"] == "1"
+    assert env["VRKN_GLOBAL_SEERR_SERVER_IDS"] == "1"
+    assert env["VRKN_SEERR_1_APIKEY_FILE"] == "/run/secrets/seerr_api_key"
     others = ("LIDARR", "OMBI", "SICKCHILL", "UNIFI")
     assert all(env[f"VRKN_GLOBAL_{app}_SERVER_IDS"] == "false" for app in others)
     assert env["LOG_TO_FILE"] == "false"
