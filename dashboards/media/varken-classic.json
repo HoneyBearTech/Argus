@@ -1162,7 +1162,7 @@
     {
       "type": "piechart",
       "title": "Device Types",
-      "description": "Current sessions by the player's platform.",
+      "description": "Viewing by the player's platform over the dashboard's time range (average concurrent sessions).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1406,7 +1406,7 @@
     {
       "type": "piechart",
       "title": "Stream Types",
-      "description": "Current sessions by video decision (direct play, copy, transcode).",
+      "description": "Viewing by video decision (direct play, copy, transcode) over the dashboard's time range (average concurrent sessions).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1911,7 +1911,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(varken_tautulli_streams)",
+          "expr": "sum(max_over_time(varken_tautulli_streams[$__interval]))",
           "refId": "A",
           "instant": false,
           "range": true,
@@ -1944,7 +1944,8 @@
         }
       },
       "interval": "1m",
-      "id": 29
+      "id": 29,
+      "maxDataPoints": 120
     },
     {
       "type": "table",
