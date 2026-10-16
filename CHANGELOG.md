@@ -10,6 +10,7 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Varken 3.1.0: a GeoLite2 download is installed only if it matches the SHA-256 MaxMind publishes beside it.
 - Varken 3.0.0 with its Seerr module on: the Varken dashboard shows Seerr's requests (pending, processing,
   available, declined), issues and the requests still waiting, where it had Ombi's. Seerr's API key is the new
   `seerr_api_key` secret, its address `VRKN_SEERR_1_URL` in `secrets/varken.env`. Seerr's key acts as its admin;
