@@ -10,6 +10,10 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Varken 3.0.0 with its Seerr module on: the Varken dashboard shows Seerr's requests (pending, processing,
+  available, declined), issues and the requests still waiting, where it had Ombi's. Seerr's API key is the new
+  `seerr_api_key` secret, its address `VRKN_SEERR_1_URL` in `secrets/varken.env`. Seerr's key acts as its admin;
+  Varken only reads.
 - Docs: the agent's `gpu` profile needs **Docker Engine 29.2 or later** and NVIDIA Container Toolkit 1.18 or later
   (README, "NVIDIA GPUs"). From 29.2 Docker serves the exporter's `driver: nvidia` reservation through CDI; on an
   older Engine it uses NVIDIA's runtime hook, and the exporter loses the GPU at every `systemctl daemon-reload`
