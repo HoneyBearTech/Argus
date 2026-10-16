@@ -90,8 +90,10 @@ tests:
         vars: {movies4klibrary: ""}
         eval_time: 60m
         exp_samples: []
+      # Over the dashboard's time range: viewing with nobody watching right now still shows.
       - dashboard: argus-varken
         panel: Device Types
+        vars: {__range: "1h"}
         eval_time: 60m
         exp_samples:
           - labels: '{platform="Roku"}'
@@ -175,3 +177,11 @@ tests:
         panel: Albums Coming Out
         eval_time: 60m
         exp_samples: []
+      # The pies keep the range's viewing after it stops: the sessions end at 60m, the pie at 90m still has them.
+      - dashboard: argus-varken
+        panel: Device Types
+        vars: {__range: "1h"}
+        eval_time: 90m
+        exp_samples:
+          - labels: '{platform="Roku"}'
+            value: 2

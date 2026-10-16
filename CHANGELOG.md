@@ -10,6 +10,8 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- The Varken dashboards' Device Types and Stream Types pies cover the time range, so they no longer go blank when
+  nobody is watching; the classic copy's Server Popularity strip asks for few enough points for Grafana to draw it.
 - Varken 3.2.0 with its Lidarr module on: the Varken and Varken [Classic] dashboards show Lidarr's queue and its
   missing and upcoming albums. Lidarr's address goes in `secrets/varken.env` (`VRKN_LIDARR_1_URL`); the key is
   exportarr's `lidarr_api_key` secret.
