@@ -81,7 +81,10 @@ services:
   # NVIDIA GPU load (GPU, video encoder and decoder), memory, temperature and
   # power, read through nvidia-smi — only on a host with an NVIDIA GPU and the
   # NVIDIA Container Toolkit (COMPOSE_PROFILES=gpu). Prometheus scrapes it
-  # (job `gpu`).
+  # (job `gpu`). Needs Docker Engine 29.2+ and toolkit 1.18+: from 29.2 Docker
+  # serves `driver: nvidia` through CDI; on an older Engine (NVIDIA's runtime
+  # hook) the container loses the GPU at every `systemctl daemon-reload`
+  # (README, "NVIDIA GPUs").
   gpu-exporter:
     image: utkuozdemir/nvidia_gpu_exporter:1.15.1
     container_name: argus-gpu-exporter
