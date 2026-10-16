@@ -2558,6 +2558,317 @@
         ]
       },
       "id": 42
+    },
+    {
+      "type": "table",
+      "title": "Music in Queue",
+      "description": "Releases in Lidarr's download queue.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "varken_lidarr_queue_item_info",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "artist",
+                "album",
+                "release",
+                "quality",
+                "protocol"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "artist": 0,
+              "album": 1,
+              "release": 2,
+              "quality": 3,
+              "protocol": 4
+            },
+            "renameByName": {
+              "artist": "Artist",
+              "album": "Album",
+              "release": "Release",
+              "quality": "Quality",
+              "protocol": "Protocol"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 80,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Artist",
+            "desc": false
+          }
+        ]
+      },
+      "id": 43
+    },
+    {
+      "type": "table",
+      "title": "Missing Albums",
+      "description": "Monitored albums released in Lidarr's last `missing_days` without every track.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 38,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "varken_lidarr_album_info{kind=\"missing\"}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "released",
+                "artist",
+                "album",
+                "tracks"
+              ]
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "released",
+                "destinationType": "time"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "released": 0,
+              "artist": 1,
+              "album": 2,
+              "tracks": 3
+            },
+            "renameByName": {
+              "released": "Released",
+              "artist": "Artist",
+              "album": "Album",
+              "tracks": "Tracks"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 80,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Released"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time: MMM D HH:mm"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Released",
+            "desc": false
+          }
+        ]
+      },
+      "id": 44
+    },
+    {
+      "type": "table",
+      "title": "Albums Coming Out",
+      "description": "Albums coming out from today through Lidarr's `future_days`.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 38,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "varken_lidarr_album_info{kind=\"future\"}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "released",
+                "artist",
+                "album",
+                "tracks"
+              ]
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "released",
+                "destinationType": "time"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "released": 0,
+              "artist": 1,
+              "album": 2,
+              "tracks": 3
+            },
+            "renameByName": {
+              "released": "Released",
+              "artist": "Artist",
+              "album": "Album",
+              "tracks": "Tracks"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 80,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Released"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time: MMM D HH:mm"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Released",
+            "desc": false
+          }
+        ]
+      },
+      "id": 45
     }
   ]
 }

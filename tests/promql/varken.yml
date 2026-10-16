@@ -24,6 +24,10 @@ tests:
         values: "1x60"
       - series: 'varken_radarr_queue_item_info{server="1", movie="A Film (2025)", quality="Bluray-2160p", protocol="torrent"}'
         values: "1x60"
+      - series: 'varken_lidarr_queue_item_info{server="1", artist="A Band", album="Half There", release="A.Band-Half.There-FLAC", quality="FLAC", protocol="torrent"}'
+        values: "1x60"
+      - series: 'varken_lidarr_album_info{server="1", kind="missing", artist="A Band", album="Half There", released="2026-10-01T00:00:00Z", tracks="5/10"}'
+        values: "1x60"
       - series: 'varken_seerr_requests{server="1", status="pending"}'
         values: "2x60"
       - series: 'varken_seerr_requests{server="1", status="processing"}'
@@ -153,3 +157,21 @@ tests:
         exp_samples:
           - labels: '{platform="Roku"}'
             value: 2
+      # Lidarr, in both copies (the original dashboard had none).
+      - dashboard: argus-varken
+        panel: Music in Queue
+        eval_time: 60m
+        exp_samples:
+          - labels: 'varken_lidarr_queue_item_info{server="1", artist="A Band", album="Half There", release="A.Band-Half.There-FLAC", quality="FLAC", protocol="torrent"}'
+            value: 1
+      - dashboard: argus-varken-classic
+        panel: Missing Albums
+        eval_time: 60m
+        exp_samples:
+          - labels: 'varken_lidarr_album_info{server="1", kind="missing", artist="A Band", album="Half There", released="2026-10-01T00:00:00Z", tracks="5/10"}'
+            value: 1
+      # Nothing coming out: an empty table, not an error.
+      - dashboard: argus-varken
+        panel: Albums Coming Out
+        eval_time: 60m
+        exp_samples: []

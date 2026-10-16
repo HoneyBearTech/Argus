@@ -273,7 +273,7 @@ services:
 
   # Tautulli (Plex's activity and libraries) through Varken's Prometheus output
   # (`varken` profile; HoneyBearTech/Varken, Prometheus-only from 2.0.0). Its
-  # Tautulli, Sonarr, Radarr and Seerr modules are on (server 1 = Sonarr /
+  # Tautulli, Sonarr, Radarr, Lidarr and Seerr modules are on (server 1 = Sonarr /
   # Radarr, 2 = Sonarr 4K / Radarr 4K, reusing exportarr's API-key secrets;
   # Seerr's key is the seerr_api_key secret, an admin key Varken only reads
   # with; the addresses in secrets/varken.env). GeoIP is on: the MaxMind license key is
@@ -289,14 +289,14 @@ services:
   # uid 1000, the image's user.
   varken:
     <<: *hardened
-    image: ghcr.io/honeybeartech/varken:3.1.0
+    image: ghcr.io/honeybeartech/varken:3.2.0
     restart: unless-stopped
     profiles: [varken]
     environment:
       VRKN_GLOBAL_TAUTULLI_SERVER_IDS: "1"
       VRKN_GLOBAL_SONARR_SERVER_IDS: "1,2"
       VRKN_GLOBAL_RADARR_SERVER_IDS: "1,2"
-      VRKN_GLOBAL_LIDARR_SERVER_IDS: "false"
+      VRKN_GLOBAL_LIDARR_SERVER_IDS: "1"
       VRKN_GLOBAL_OMBI_SERVER_IDS: "false"
       VRKN_GLOBAL_SEERR_SERVER_IDS: "1"
       VRKN_GLOBAL_SICKCHILL_SERVER_IDS: "false"
@@ -307,6 +307,7 @@ services:
       VRKN_RADARR_1_APIKEY_FILE: /run/secrets/radarr_api_key
       VRKN_RADARR_2_APIKEY_FILE: /run/secrets/radarr4k_api_key
       VRKN_SEERR_1_APIKEY_FILE: /run/secrets/seerr_api_key
+      VRKN_LIDARR_1_APIKEY_FILE: /run/secrets/lidarr_api_key
       VRKN_GLOBAL_MAXMIND_LICENSE_KEY_FILE: /run/secrets/maxmind_license_key
       VRKN_PROMETHEUS_STREAM_DETAILS: "true"
       LOG_TO_FILE: "false"
@@ -320,6 +321,7 @@ services:
       - sonarr4k_api_key
       - radarr_api_key
       - radarr4k_api_key
+      - lidarr_api_key
       - seerr_api_key
       - maxmind_license_key
     volumes:
