@@ -8,6 +8,12 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- Varken 3.2.0 with its Lidarr module on: the Varken and Varken [Classic] dashboards show Lidarr's queue and its
+  missing and upcoming albums. Lidarr's address goes in `secrets/varken.env` (`VRKN_LIDARR_1_URL`); the key is
+  exportarr's `lidarr_api_key` secret.
+
 ### Added
 
 - Varken [Classic] dashboard (Media folder): the Varken dashboard in the original "Varken [Official]" look —

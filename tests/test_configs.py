@@ -433,6 +433,7 @@ def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr
         "sonarr4k_api_key",
         "radarr_api_key",
         "radarr4k_api_key",
+        "lidarr_api_key",
         "seerr_api_key",
         "maxmind_license_key",
     ]
@@ -450,7 +451,9 @@ def test_varken_reads_keys_from_secret_files_and_runs_tautulli_sonarr_and_radarr
     assert env["VRKN_GLOBAL_TAUTULLI_SERVER_IDS"] == "1"
     assert env["VRKN_GLOBAL_SEERR_SERVER_IDS"] == "1"
     assert env["VRKN_SEERR_1_APIKEY_FILE"] == "/run/secrets/seerr_api_key"
-    others = ("LIDARR", "OMBI", "SICKCHILL", "UNIFI")
+    assert env["VRKN_GLOBAL_LIDARR_SERVER_IDS"] == "1"
+    assert env["VRKN_LIDARR_1_APIKEY_FILE"] == "/run/secrets/lidarr_api_key"
+    others = ("OMBI", "SICKCHILL", "UNIFI")
     assert all(env[f"VRKN_GLOBAL_{app}_SERVER_IDS"] == "false" for app in others)
     assert env["LOG_TO_FILE"] == "false"
     # The homelab standard: data in CONFIG_ROOT/<service>/config, never a named volume.
