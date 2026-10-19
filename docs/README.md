@@ -7,6 +7,7 @@ Start with the [README](../README.md) for what Argus is, its dashboards and aler
 | [Quick start](quick-start.md) | Running Argus on one machine and seeing your first dashboards in about ten minutes |
 | [Architecture](architecture.md) | The components, how metrics, logs and alerts flow through them, and why |
 | [Interfaces](interfaces.md) | Every port, push endpoint, environment variable, file and image Argus exposes or reads |
+| [Server hardware (IPMI)](ipmi.md) | Reading each server's BMC (temperatures, fans, power supplies, batteries) for the Server Hardware dashboard and alerts |
 | [Upgrading](upgrading.md) | Moving to a new release, and rolling back |
 | [Auto-deploy](auto-deploy.md) | Letting a server that runs from a checkout follow `main` by itself |
 | [Verifying releases](verifying-releases.md) | Checking that images and release files came from this repository, unchanged |

@@ -228,6 +228,24 @@ scrape_configs:
 
   # Loki's own metrics (ingestion, storage), so a stalled log pipeline shows
   # up as a down target like any other exporter.
+  # Server hardware from each machine's BMC (iDRAC, Supermicro IPMI, ...): temperatures, fans, power
+  # supplies, batteries, power draw and the BMC's event log. prometheus-ipmi-exporter runs on the server
+  # itself and reads its own BMC through /dev/ipmi0 (docs/ipmi.md), so no BMC password is involved; the
+  # exporter asks for basic auth instead. targets/ipmi.json lists `<server>:9290` with a `host` label.
+  # Reading the BMC's sensors takes a second or two, hence the minute interval. `bmc_url` (the BMC's own
+  # address) is dropped: nothing uses it and it would show the BMC's IP wherever the info series is shown.
+  - job_name: ipmi
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    basic_auth:
+      username: argus
+      password_file: /etc/prometheus/secrets/ipmi_password
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/ipmi.json]
+    metric_relabel_configs:
+      - regex: bmc_url
+        action: labeldrop
+
   - job_name: loki
     scrape_interval: 60s
     file_sd_configs:

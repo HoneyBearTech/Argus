@@ -1,0 +1,228 @@
+# Server Hardware dashboard and the BMC alert rules (prometheus-ipmi-exporter, job "ipmi"). Two servers:
+# s1 looks like a Dell iDRAC (CPU sensors both named "Temp", absent slots as Entity Presence sensors at 2,
+# a failed CMOS battery), s2 like a Supermicro BMC (PatternN LED sensors stuck at 2, per-DIMM temperatures,
+# a full event log). Sensor states: 0 nominal, 1 warning, 2 critical, NaN not available.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # s1: every collector answers.
+      - series: 'ipmi_up{job="ipmi", host="s1", collector="ipmi"}'
+        values: "1x10"
+      - series: 'ipmi_up{job="ipmi", host="s1", collector="dcmi"}'
+        values: "1x10"
+      - series: 'ipmi_up{job="ipmi", host="s1", collector="sel"}'
+        values: "1x10"
+      # Critical: the CMOS battery has failed.
+      - series: 'ipmi_sensor_state{job="ipmi", host="s1", id="78", name="CMOS Battery", type="Battery"}'
+        values: "2x10"
+      # Not a fault: an empty slot. Not available: no vFlash card.
+      - series: 'ipmi_sensor_state{job="ipmi", host="s1", id="52", name="Presence", type="Entity Presence"}'
+        values: "2x10"
+      - series: 'ipmi_sensor_state{job="ipmi", host="s1", id="77", name="vFlash", type="Module/Board"}'
+        values: "NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN"
+      - series: 'ipmi_temperature_celsius{job="ipmi", host="s1", id="18", name="Inlet Temp"}'
+        values: "27x10"
+      - series: 'ipmi_temperature_state{job="ipmi", host="s1", id="18", name="Inlet Temp"}'
+        values: "0x10"
+      - series: 'ipmi_temperature_celsius{job="ipmi", host="s1", id="20", name="Temp"}'
+        values: "39x10"
+      - series: 'ipmi_temperature_celsius{job="ipmi", host="s1", id="21", name="Temp"}'
+        values: "42x10"
+      - series: 'ipmi_fan_speed_rpm{job="ipmi", host="s1", id="30", name="Fan1A"}'
+        values: "4920x10"
+      - series: 'ipmi_fan_speed_rpm{job="ipmi", host="s1", id="31", name="Fan1B"}'
+        values: "4680x10"
+      - series: 'ipmi_dcmi_power_consumption_watts{job="ipmi", host="s1"}'
+        values: "129x10"
+      - series: 'ipmi_sel_logs_count{job="ipmi", host="s1"}'
+        values: "59x10"
+      - series: 'ipmi_sel_free_space_bytes{job="ipmi", host="s1"}'
+        values: "15440x10"
+      - series: 'ipmi_bmc_info{job="ipmi", host="s1", manufacturer_id="Dell Inc. (674)", firmware_revision="2.65", system_firmware_version="2.9.0"}'
+        values: "1x10"
+      # s2: the DCMI collector stops answering at minute 3.
+      - series: 'ipmi_up{job="ipmi", host="s2", collector="ipmi"}'
+        values: "1x10"
+      - series: 'ipmi_up{job="ipmi", host="s2", collector="dcmi"}'
+        values: "1 1 1 0 0 0 0 0 0 0 0"
+      - series: 'ipmi_up{job="ipmi", host="s2", collector="sel"}'
+        values: "1x10"
+      # Not a fault: Supermicro's LED pattern sensors sit at 2 permanently.
+      - series: 'ipmi_sensor_state{job="ipmi", host="s2", id="1001", name="Pattern1", type="Other Units Based Sensor"}'
+        values: "2x10"
+      - series: 'ipmi_sensor_state{job="ipmi", host="s2", id="1005", name="UID STATUS", type="Other Units Based Sensor"}'
+        values: "NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN"
+      - series: 'ipmi_temperature_celsius{job="ipmi", host="s2", id="138", name="System Temp"}'
+        values: "26x10"
+      # CPU1 passes its warning limit at minute 5.
+      - series: 'ipmi_temperature_celsius{job="ipmi", host="s2", id="4", name="CPU1 Temp"}'
+        values: "48x10"
+      - series: 'ipmi_temperature_state{job="ipmi", host="s2", id="4", name="CPU1 Temp"}'
+        values: "0 0 0 0 0 1 1 1 1 1 1"
+      # A DIMM is warmer than the CPU, but isn't a CPU.
+      - series: 'ipmi_temperature_celsius{job="ipmi", host="s2", id="339", name="P1-DIMMA1 TEMP"}'
+        values: "50x10"
+      - series: 'ipmi_fan_speed_rpm{job="ipmi", host="s2", id="41", name="FAN1"}'
+        values: "6225x10"
+      - series: 'ipmi_dcmi_power_consumption_watts{job="ipmi", host="s2"}'
+        values: "104x10"
+      - series: 'ipmi_sel_logs_count{job="ipmi", host="s2"}'
+        values: "512x10"
+      - series: 'ipmi_sel_free_space_bytes{job="ipmi", host="s2"}'
+        values: "0x10"
+    promql_expr_test:
+      # Only the battery is critical: the empty slot and the LED pattern sensor don't count, NaN never does.
+      - rule: argus-ipmi-sensor-critical
+        eval_time: 1m
+        exp_samples:
+          - labels: '{host="s1", id="78", name="CMOS Battery", type="Battery"}'
+            value: 2
+      - rule: argus-ipmi-sensor-warning
+        eval_time: 2m
+        exp_samples: []
+      # Temperature states carry no `type` label.
+      - rule: argus-ipmi-sensor-warning
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s2", id="4", name="CPU1 Temp"}'
+            value: 1
+      - rule: argus-ipmi-bmc-unreadable
+        eval_time: 1m
+        exp_samples: []
+      - rule: argus-ipmi-bmc-unreadable
+        eval_time: 5m
+        exp_samples:
+          - labels: '{collector="dcmi", host="s2"}'
+            value: 0
+      - rule: argus-ipmi-sel-full
+        eval_time: 1m
+        exp_samples:
+          - labels: '{host="s2"}'
+            value: 0
+      # Headline stats.
+      - dashboard: argus-hardware
+        panel: BMCs not answering
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      - dashboard: argus-hardware
+        panel: BMCs not answering
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-hardware
+        panel: Critical sensors
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-hardware
+        panel: Warning sensors
+        vars: {host: ".*"}
+        eval_time: 2m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      - dashboard: argus-hardware
+        panel: Warning sensors
+        vars: {host: ".*"}
+        eval_time: 6m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-hardware
+        panel: 4
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: "{}"
+            value: 233
+      # Dell's Inlet Temp and Supermicro's System Temp.
+      - dashboard: argus-hardware
+        panel: Hottest inlet
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: "{}"
+            value: 27
+      - dashboard: argus-hardware
+        panel: Event log space left
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: "{}"
+            value: 0
+      # The host filter.
+      - dashboard: argus-hardware
+        panel: Event log space left
+        vars: {host: "s1"}
+        eval_time: 1m
+        exp_samples:
+          - labels: "{}"
+            value: 15440
+      # The table lists the same sensors the alerts watch.
+      - dashboard: argus-hardware
+        panel: Sensors not nominal
+        vars: {host: ".*"}
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s1", id="78", name="CMOS Battery", type="Battery"}'
+            value: 2
+          - labels: '{host="s2", id="4", name="CPU1 Temp"}'
+            value: 1
+      # Servers table: sensors not OK per server, 0 where none (not missing).
+      - dashboard: argus-hardware
+        panel: Servers
+        ref_id: F
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: '{host="s1"}'
+            value: 1
+          - labels: '{host="s2"}'
+            value: 0
+      - dashboard: argus-hardware
+        panel: Servers
+        ref_id: C
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: '{host="s1"}'
+            value: 27
+          - labels: '{host="s2"}'
+            value: 26
+      # Hottest CPU: Dell's "Temp" sensors and Supermicro's "CPUn Temp", not DIMMs.
+      - dashboard: argus-hardware
+        panel: Servers
+        ref_id: D
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: '{host="s1"}'
+            value: 42
+          - labels: '{host="s2"}'
+            value: 48
+      - dashboard: argus-hardware
+        panel: Servers
+        ref_id: E
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: '{host="s1"}'
+            value: 4680
+          - labels: '{host="s2"}'
+            value: 6225
+      - dashboard: argus-hardware
+        panel: Servers
+        ref_id: I
+        vars: {host: ".*"}
+        eval_time: 1m
+        exp_samples:
+          - labels: '{host="s1", manufacturer_id="Dell Inc. (674)", firmware_revision="2.65", system_firmware_version="2.9.0"}'
+            value: 1

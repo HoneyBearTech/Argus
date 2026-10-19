@@ -513,6 +513,43 @@ def test_pve_quorum_job_asks_every_node_for_its_own_view() -> None:
     assert drop in jobs["pve"]["metric_relabel_configs"]
 
 
+def test_ipmi_job_scrapes_with_basic_auth_from_a_secret_file() -> None:
+    """The IPMI exporter runs on each server and asks for basic auth; the password is a file in secrets/."""
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "ipmi")
+    assert job["basic_auth"] == {"username": "argus", "password_file": "/etc/prometheus/secrets/ipmi_password"}
+    assert (ROOT / "secrets.example" / "ipmi_password").is_file()
+    assert job["file_sd_configs"] == [{"files": ["/etc/prometheus/targets/ipmi.json"]}]
+    targets = json.loads((ROOT / "targets.example" / "ipmi.json").read_text())
+    assert targets
+    assert all(t["labels"]["host"] for t in targets), "the dashboard and alerts name servers by their host label"
+    # The BMC's own address (bmc_url on ipmi_bmc_info) never reaches Prometheus.
+    assert {"regex": "bmc_url", "action": "labeldrop"} in job["metric_relabel_configs"]
+
+
+def test_ipmi_dashboard_lists_the_sensors_the_alerts_watch() -> None:
+    """Empty slots (Entity Presence) and Supermicro's PatternN LED sensors sit at state 2 without being faults.
+
+    The alerts leave them out; the dashboard's counts and table use the same selector, so what it shows as not
+    OK is exactly what alerts.
+    """
+    rules = {r["uid"]: r for g in load("provisioning/alerting/rules.yaml")["groups"] for r in g["rules"]}
+    selector_re = re.compile(r'\{__name__=~"ipmi_\(sensor[^}]*\}')
+    critical = selector_re.findall(rules["argus-ipmi-sensor-critical"]["data"][0]["model"]["expr"])
+    warning = selector_re.findall(rules["argus-ipmi-sensor-warning"]["data"][0]["model"]["expr"])
+    assert len(critical) == 1
+    assert 'type!="Entity Presence"' in critical[0]
+    assert 'name!~"Pattern[0-9]+"' in critical[0]
+    assert warning == critical
+    # The dashboard adds only its host filter.
+    exprs = [
+        t["expr"]
+        for p in json.loads((ROOT / "dashboards/proxmox/hardware.json").read_text())["panels"]
+        for t in p.get("targets", [])
+    ]
+    used = {s.replace('host=~"$host", ', "") for e in exprs for s in selector_re.findall(e)}
+    assert used == set(critical)
+
+
 def test_secrets_mounts_never_create_the_host_path() -> None:
     """Regression test: a missing secrets/ file must stop the service, not become an empty root-owned directory.
 
