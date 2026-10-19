@@ -31,7 +31,7 @@ Loki must not be reachable from outside it.
    without an admin password (`secrets/grafana_admin_password` missing, empty or unreadable).
 5. **Only three services listen on the network**: Grafana, Prometheus and Loki (plus, where enabled, the
    Plex exporter on a Plex host and the GPU exporter on a GPU host; both serve metrics only, without a
-   login). blackbox_exporter and the exporters are reachable only from the compose
+   login; and the IPMI exporter on a server whose hardware Argus reads, behind basic auth). blackbox_exporter and the exporters are reachable only from the compose
    network, and the agent accepts no connections from other machines.
 6. **TLS is verified by default** on every outgoing connection that uses it: web probes (an invalid or
    expired certificate fails the probe), the UniFi console (unless `UNIFI_VERIFY_SSL=false`), the Discord
@@ -104,6 +104,11 @@ Loki must not be reachable from outside it.
 - If you open GitLab's bundled Prometheus (`prometheus['listen_address']`) or GitLab Runner's metrics port
   for Argus, they answer anyone who can reach them, without authentication; allow only the Argus server
   with a host firewall (for example `ufw allow from <argus-server> to any port 9090`).
+- The IPMI exporter ([IPMI](ipmi.md)) reads the BMC as root through sudo rules that allow only its four
+  read-only command lines; keep those rules exact rather than allowing the binaries with any arguments
+  (`ipmi-sel` can clear the event log, `ipmi-dcmi` set power limits, `ipmi-chassis` power the server off).
+  It uses basic auth without TLS by default; add TLS to its web config if the password shouldn't cross
+  your network in the clear.
 
 ## Hardening
 

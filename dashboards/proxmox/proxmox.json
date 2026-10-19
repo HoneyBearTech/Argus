@@ -32,6 +32,17 @@
       "keepTime": true,
       "targetBlank": false,
       "icon": "external link"
+    },
+    {
+      "title": "Server Hardware",
+      "type": "link",
+      "url": "/d/argus-hardware",
+      "icon": "dashboard",
+      "keepTime": true,
+      "targetBlank": false,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
     }
   ],
   "templating": {

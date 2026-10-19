@@ -14,6 +14,7 @@ what it accepts, and how it's configured. The trust placed in each is described 
 | blackbox_exporter, the exporters | server, compose network only (not published) | HTTP `/metrics` or `/probe` | Prometheus |
 | Plex exporter | the Plex host, `:9594` (`plex` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/plex.json`) |
 | GPU exporter | a host with an NVIDIA GPU, `:9835` (`gpu` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/gpu.json`) |
+| IPMI exporter | each server whose hardware Argus reads, `<server address>:9290` (Debian's `prometheus-ipmi-exporter`, [`deploy/ipmi/`](../deploy/ipmi/)) | HTTP `/metrics`, basic auth (user `argus`, `secrets/ipmi_password`) | Prometheus (`targets/ipmi.json`) |
 | Agent | each host; Alloy's own UI on `127.0.0.1:12345` only | — (the agent accepts no connections from other machines) | — |
 
 Outbound connections:
@@ -49,7 +50,7 @@ the host's PID and network namespaces and the `DAC_OVERRIDE` capability, not `--
 [file service discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config)
 format; placeholders in [`targets.example/`](../targets.example/)): a list of
 `{"targets": [...], "labels": {...}}`. Labels the dashboards use: `service` and `group` (blackbox),
-`host`, `module` and `auth` (SNMP), `app` (media). Prometheus reloads these files without a restart.
+`host`, `module` and `auth` (SNMP), `app` (media), `host` (GPUs, IPMI). Prometheus reloads these files without a restart.
 
 **Credentials** (`secrets/`, placeholders in [`secrets.example/`](../secrets.example/)), mounted
 read-only, so the containers' users must be able to read them (mode 644; the env files, which only the compose
@@ -62,7 +63,7 @@ keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, 
 `gitlab.yml` (GitLab, its token and what to watch); `pve.yml` (the Proxmox VE API token, mounted under
 `/run/secrets/`); the CA certificate of Proxmox VE (`pve-ca.pem`); files Prometheus reads
 (`home_assistant_token`, `uptime_kuma_api_key`, `peanut_username` and `peanut_password`,
-`prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
+`ipmi_password` (the IPMI exporters' basic auth; see [IPMI](ipmi.md)), `prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
 
 ## Data contracts
 

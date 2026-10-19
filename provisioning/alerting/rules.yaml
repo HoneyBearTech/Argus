@@ -760,6 +760,162 @@ groups:
     annotations:
       summary: '{{ $labels.host }} {{ $labels.name }} is at {{ with $values.A }}{{ humanize .Value }}{{ end }} °C.'
     isPaused: false
+  # BMC sensor states (prometheus-ipmi-exporter): 0 nominal, 1 warning, 2 critical, NaN not available.
+  # Not counted: Entity Presence sensors (2 = an empty slot or a part that isn't fitted, such as an
+  # unused PSU bay or a dedicated BMC NIC on a board that shares one) and Supermicro's PatternN LED
+  # sensors, which sit at 2 permanently. tests/test_configs.py keeps the dashboard on the same selector.
+  - uid: argus-ipmi-sensor-critical
+    title: Hardware sensor critical
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 'max by (host, name, id, type) ({__name__=~"ipmi_(sensor|temperature|fan_speed|voltage|current|power)_state", job="ipmi", type!="Entity Presence", name!~"Pattern[0-9]+"})'
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.host }}: the BMC reports {{ $labels.name }}{{ if $labels.type }} ({{ $labels.type }}){{ end }} as critical: a failed battery, power supply or fan, or a reading past its critical limit.'
+    isPaused: false
+  - uid: argus-ipmi-sensor-warning
+    title: Hardware sensor warning
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 'max by (host, name, id, type) ({__name__=~"ipmi_(sensor|temperature|fan_speed|voltage|current|power)_state", job="ipmi", type!="Entity Presence", name!~"Pattern[0-9]+"} == 1)'
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }}: the BMC reports {{ $labels.name }}{{ if $labels.type }} ({{ $labels.type }}){{ end }} as a warning: a reading past its warning limit, or redundancy reduced.'
+    isPaused: false
+  - uid: argus-ipmi-bmc-unreadable
+    title: BMC not answering
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (host, collector) (ipmi_up{job="ipmi"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }}: the IPMI exporter can''t read the BMC ({{ $labels.collector }} collector), so that server''s hardware sensors aren''t being checked.'
+    isPaused: false
+  - uid: argus-ipmi-sel-full
+    title: BMC event log full
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (host) (ipmi_sel_free_space_bytes{job="ipmi"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1024
+    noDataState: OK
+    execErrState: Error
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }}: {{ with $values.A }}{{ humanize1024 .Value }}{{ end }}B left in the BMC''s event log. Once it''s full, the BMC records no new hardware events: save the log, then clear it.'
+    isPaused: false
 - orgId: 1
   name: Network
   folder: Argus
