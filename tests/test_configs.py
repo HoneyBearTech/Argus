@@ -550,6 +550,43 @@ def test_ipmi_dashboard_lists_the_sensors_the_alerts_watch() -> None:
     assert used == set(critical)
 
 
+def test_hwmon_job_scrapes_with_basic_auth_from_a_secret_file() -> None:
+    """node_exporter on servers without the agent asks for basic auth; the password is a file in secrets/."""
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "hwmon")
+    assert job["basic_auth"] == {"username": "argus", "password_file": "/etc/prometheus/secrets/hwmon_password"}
+    assert (ROOT / "secrets.example" / "hwmon_password").is_file()
+    assert job["file_sd_configs"] == [{"files": ["/etc/prometheus/targets/hwmon.json"]}]
+    targets = json.loads((ROOT / "targets.example" / "hwmon.json").read_text())
+    assert targets
+    assert all(t["labels"]["host"] for t in targets), "the dashboard and the alert name servers by their host label"
+
+
+def test_hwmon_setup_runs_only_the_hwmon_collector_on_one_address_behind_auth() -> None:
+    """The exporter runs on a hypervisor: nothing but hardware sensors, on the address given, with a password."""
+    script = (ROOT / "deploy" / "hwmon" / "setup-node-exporter.sh").read_text()
+    args = " ".join(re.findall(r'^ARGS="(?:\$ARGS )?([^"]*)"$', script, re.MULTILINE)).split()
+    collectors = [a for a in args if a.startswith("--collector.")]
+    assert collectors == ["--collector.disable-defaults", "--collector.hwmon"]
+    assert "--web.listen-address=${LISTEN_IP}:9100" in args
+    assert "--web.config.file=/etc/prometheus/node_exporter_web.yml" in args
+    # Debian's Recommends (prometheus-node-exporter-collectors) runs timers as root.
+    assert "--no-install-recommends prometheus-node-exporter" in script
+
+
+def test_gpu_panels_and_the_gpu_hot_alert_pick_the_same_hwmon_chips() -> None:
+    """Server Hardware's GPU panels show exactly the cards the GPU hot alert watches: Intel's i915 and xe drivers."""
+    rules = {r["uid"]: r for g in load("provisioning/alerting/rules.yaml")["groups"] for r in g["rules"]}
+    chips_re = re.compile(r"node_hwmon_chip_names\{([^}]*)\}")
+    alert = chips_re.findall(rules["argus-gpu-hot"]["data"][0]["model"]["expr"])
+    assert alert == ['chip_name=~"i915|xe"']
+    panels = json.loads((ROOT / "dashboards/proxmox/hardware.json").read_text())["panels"]
+    gpu_panels = [p for p in panels if "GPU" in p["title"]]
+    assert [p["title"] for p in gpu_panels] == ["Hottest GPU", "GPU temperature", "GPU fan speed"]
+    for panel in gpu_panels:
+        used = chips_re.findall(panel["targets"][0]["expr"])
+        assert [s.replace(', host=~"$host"', "") for s in used] == alert, panel["title"]
+
+
 def test_secrets_mounts_never_create_the_host_path() -> None:
     """Regression test: a missing secrets/ file must stop the service, not become an empty root-owned directory.
 

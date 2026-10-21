@@ -15,6 +15,7 @@ what it accepts, and how it's configured. The trust placed in each is described 
 | Plex exporter | the Plex host, `:9594` (`plex` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/plex.json`) |
 | GPU exporter | a host with an NVIDIA GPU, `:9835` (`gpu` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/gpu.json`) |
 | IPMI exporter | each server whose hardware Argus reads, `<server address>:9290` (Debian's `prometheus-ipmi-exporter`, [`deploy/ipmi/`](../deploy/ipmi/)) | HTTP `/metrics`, basic auth (user `argus`, `secrets/ipmi_password`) | Prometheus (`targets/ipmi.json`) |
+| node_exporter (hwmon only) | a server without the agent whose add-in GPU Argus reads, `<server address>:9100` (Debian's `prometheus-node-exporter`, [`deploy/hwmon/`](../deploy/hwmon/)) | HTTP `/metrics`, basic auth (user `argus`, `secrets/hwmon_password`) | Prometheus (`targets/hwmon.json`) |
 | Agent | each host; Alloy's own UI on `127.0.0.1:12345` only | — (the agent accepts no connections from other machines) | — |
 
 Outbound connections:
@@ -63,7 +64,8 @@ keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, 
 `gitlab.yml` (GitLab, its token and what to watch); `pve.yml` (the Proxmox VE API token, mounted under
 `/run/secrets/`); the CA certificate of Proxmox VE (`pve-ca.pem`); files Prometheus reads
 (`home_assistant_token`, `uptime_kuma_api_key`, `peanut_username` and `peanut_password`,
-`ipmi_password` (the IPMI exporters' basic auth; see [IPMI](ipmi.md)), `prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
+`ipmi_password` (the IPMI exporters' basic auth; see [IPMI](ipmi.md)), `hwmon_password` (node_exporter's
+basic auth on servers; see [hwmon](hwmon.md)), `prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
 
 ## Data contracts
 

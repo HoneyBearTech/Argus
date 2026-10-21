@@ -720,7 +720,10 @@ groups:
     annotations:
       summary: '{{ $labels.name }} is at {{ humanize $values.A.Value }} °C.'
     isPaused: false
-  # Consumer and workstation GPUs slow themselves down in the high 80s to 90s °C.
+  # Consumer and workstation GPUs slow themselves down in the high 80s to 90s °C. NVIDIA GPUs come from the
+  # gpu job (nvidia-smi); Intel discrete GPUs (i915 or xe driver) from node_exporter's hwmon collector, whichever
+  # host's driver has the card: the server it's fitted in (job hwmon) or a VM it's passed through to (the agent,
+  # job node). Their name is the card's PCI address, from node_exporter's chip label (…_0000:43:00_0).
   - uid: argus-gpu-hot
     title: GPU hot
     condition: C
@@ -733,7 +736,9 @@ groups:
       model:
         refId: A
         expr: max by (host, uuid, name) (nvidia_smi_temperature_gpu{job="gpu"} * on (host, uuid) group_left (name)
-          nvidia_smi_gpu_info{job="gpu"})
+          nvidia_smi_gpu_info{job="gpu"}) or max by (host, chip, name) (label_replace(node_hwmon_temp_celsius
+          * on (job, host, chip) group_left (chip_name) node_hwmon_chip_names{chip_name=~"i915|xe"},
+          "name", "Intel GPU $1.$2", "chip", ".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])"))
         instant: true
         range: false
         intervalMs: 15000

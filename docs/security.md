@@ -109,6 +109,9 @@ Loki must not be reachable from outside it.
   (`ipmi-sel` can clear the event log, `ipmi-dcmi` set power limits, `ipmi-chassis` power the server off).
   It uses basic auth without TLS by default; add TLS to its web config if the password shouldn't cross
   your network in the clear.
+- node_exporter on a server without the agent ([hwmon](hwmon.md)) runs only its hwmon collector, as an
+  unprivileged user without sudo, so it serves hardware sensor readings and nothing about processes, file
+  systems or the network. It uses basic auth without TLS too.
 
 ## Hardening
 

@@ -8,6 +8,7 @@ Start with the [README](../README.md) for what Argus is, its dashboards and aler
 | [Architecture](architecture.md) | The components, how metrics, logs and alerts flow through them, and why |
 | [Interfaces](interfaces.md) | Every port, push endpoint, environment variable, file and image Argus exposes or reads |
 | [Server hardware (IPMI)](ipmi.md) | Reading each server's BMC (temperatures, fans, power supplies, batteries) for the Server Hardware dashboard and alerts |
+| [Add-in GPUs on servers (hwmon)](hwmon.md) | Reading a server's add-in GPU (temperature, fan), which its BMC can't see, for the Server Hardware dashboard and the GPU hot alert |
 | [Upgrading](upgrading.md) | Moving to a new release, and rolling back |
 | [Auto-deploy](auto-deploy.md) | Letting a server that runs from a checkout follow `main` by itself |
 | [Verifying releases](verifying-releases.md) | Checking that images and release files came from this repository, unchanged |
