@@ -581,10 +581,11 @@ def test_gpu_panels_and_the_gpu_hot_alert_pick_the_same_hwmon_chips() -> None:
     assert alert == ['chip_name=~"i915|xe"']
     panels = json.loads((ROOT / "dashboards/proxmox/hardware.json").read_text())["panels"]
     gpu_panels = [p for p in panels if "GPU" in p["title"]]
-    assert [p["title"] for p in gpu_panels] == ["Hottest GPU", "GPU temperature", "GPU fan speed"]
+    assert [p["title"] for p in gpu_panels] == ["Hottest GPU", "GPU temperature", "GPU power", "GPU fan speed"]
     for panel in gpu_panels:
-        used = chips_re.findall(panel["targets"][0]["expr"])
-        assert [s.replace(', host=~"$host"', "") for s in used] == alert, panel["title"]
+        for target in panel["targets"]:
+            used = chips_re.findall(target["expr"])
+            assert [s.replace(', host=~"$host"', "") for s in used] == alert, (panel["title"], target["refId"])
 
 
 def test_secrets_mounts_never_create_the_host_path() -> None:

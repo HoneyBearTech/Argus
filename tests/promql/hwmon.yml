@@ -3,6 +3,7 @@
 # 0000:43:00.0 behind the card's own PCIe switch; it heats up to 90 °C at minute 5. Its CPUs (coretemp) are
 # hotter still, but aren't a GPU. s2: a VM the card is passed through to (the Argus agent, job node), where it
 # sits at 0000:00:10.0. s3: a server with no GPU. h3: an NVIDIA GPU (job gpu) at 90 °C, for the alert's other half.
+# s1's card draws 10 W (600 J a minute) under a 31.25 W limit; the server's ACPI power meter isn't a GPU.
 evaluation_interval: 1m
 tests:
   - interval: 1m
@@ -13,6 +14,14 @@ tests:
         values: "45 45 45 45 45 90 90 90 90 90 90"
       - series: 'node_hwmon_fan_rpm{job="hwmon", host="s1", instance="s1:9100", chip="0000:42:01_0_0000:43:00_0", sensor="fan1"}'
         values: "3160x10"
+      - series: 'node_hwmon_energy_joule_total{job="hwmon", host="s1", instance="s1:9100", chip="0000:42:01_0_0000:43:00_0", sensor="energy1"}'
+        values: "42000+600x10"
+      - series: 'node_hwmon_power_max_watt{job="hwmon", host="s1", instance="s1:9100", chip="0000:42:01_0_0000:43:00_0", sensor="power1"}'
+        values: "31.25x10"
+      - series: 'node_hwmon_chip_names{job="hwmon", host="s1", instance="s1:9100", chip="lnxsybus:00_acpi000d:00", chip_name="power_meter"}'
+        values: "1x10"
+      - series: 'node_hwmon_power_average_watt{job="hwmon", host="s1", instance="s1:9100", chip="lnxsybus:00_acpi000d:00", sensor="power1"}'
+        values: "126x10"
       - series: 'node_hwmon_chip_names{job="hwmon", host="s1", instance="s1:9100", chip="platform_coretemp_0", chip_name="coretemp"}'
         values: "1x10"
       - series: 'node_hwmon_temp_celsius{job="hwmon", host="s1", instance="s1:9100", chip="platform_coretemp_0", sensor="temp1"}'
@@ -97,3 +106,20 @@ tests:
         exp_samples:
           - labels: '{host="s1", chip="0000:42:01_0_0000:43:00_0", gpu="0000:43:00.0"}'
             value: 3160
+      # Power from the card's energy counter (J/s = W), not the server's power meter.
+      - dashboard: argus-hardware
+        panel: GPU power
+        vars: {host: ".*", __rate_interval: "2m"}
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s1", chip="0000:42:01_0_0000:43:00_0", gpu="0000:43:00.0"}'
+            value: 10
+      # The dashed power limit line.
+      - dashboard: argus-hardware
+        panel: GPU power
+        ref_id: B
+        vars: {host: ".*"}
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s1", chip="0000:42:01_0_0000:43:00_0", gpu="0000:43:00.0"}'
+            value: 31.25

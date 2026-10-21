@@ -1364,7 +1364,7 @@
       "gridPos": {
         "x": 4,
         "y": 33,
-        "w": 10,
+        "w": 20,
         "h": 8
       },
       "targets": [
@@ -1415,7 +1415,7 @@
       "options": {
         "legend": {
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true,
           "calcs": [
             "lastNotNull",
@@ -1432,6 +1432,105 @@
     },
     {
       "type": "timeseries",
+      "title": "GPU power",
+      "description": "Each add-in GPU's power draw, from the energy counter its driver keeps, and its power limit (dashed): the sustained draw the driver holds the card to. A card near its limit is busy, transcoding for example; a card that runs hot at low power is short of airflow.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, chip, gpu) (label_replace(rate(node_hwmon_energy_joule_total{host=~\"$host\"}[$__rate_interval]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"gpu\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{gpu}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, chip, gpu) (label_replace(node_hwmon_power_max_watt{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"gpu\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "refId": "B",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{gpu}} power limit"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m",
+      "id": 16
+    },
+    {
+      "type": "timeseries",
       "title": "GPU fan speed",
       "description": "The add-in GPUs' own fans. The server's fans don't speed up for a third-party card, so this fan and the server's airflow are all it has.",
       "datasource": {
@@ -1439,9 +1538,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 14,
-        "y": 33,
-        "w": 10,
+        "x": 12,
+        "y": 41,
+        "w": 12,
         "h": 8
       },
       "targets": [
@@ -1474,7 +1573,7 @@
       "options": {
         "legend": {
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true,
           "calcs": [
             "lastNotNull",

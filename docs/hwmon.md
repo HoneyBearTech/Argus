@@ -2,8 +2,8 @@
 
 The **Server Hardware** dashboard's GPU panels and the **GPU hot** alert read add-in GPUs that the server's BMC
 can't see, such as an Intel Arc card in a Dell server: the iDRAC reads Dell's own parts, not a third-party
-card. The server's kernel driver does read the card's temperature and fan, and publishes them as hardware
-monitoring (hwmon) sensors. Debian's `prometheus-node-exporter`, running with only its hwmon collector, serves
+card. The server's kernel driver does read the card's temperature, fan, energy use and power limit, and
+publishes them as hardware monitoring (hwmon) sensors. Debian's `prometheus-node-exporter`, running with only its hwmon collector, serves
 them to Prometheus.
 
 Hosts that run the Argus agent report hwmon sensors already (the agent embeds node_exporter). This page is for
@@ -25,6 +25,9 @@ server ── GPU driver (i915) ── /sys/class/hwmon
 - node_exporter names each chip after its device's path rather than its `hwmonN` number, which can change
   between boots. So an add-in card's `chip` label ends in its PCI address (`…_0000:43:00_0` for a card at
   `0000:43:00.0`), and the panels and the alert name the card by that address.
+- The GPU power panel is the rate of the card's energy counter (`node_hwmon_energy_joule_total`), with the
+  driver's sustained power limit (`node_hwmon_power_max_watt`) as a dashed line. A card near its limit is busy;
+  one that runs hot at low power is short of airflow.
 
 **Which GPUs.** The panels and the alert pick chips whose driver is Intel's `i915` or `xe`. These drivers
 register hwmon sensors for discrete cards only, so an integrated GPU doesn't show up. NVIDIA GPUs come from the
