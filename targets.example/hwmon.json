@@ -1,0 +1,6 @@
+[
+  {
+    "targets": ["server-1.example:9100"],
+    "labels": {"host": "server-1"}
+  }
+]

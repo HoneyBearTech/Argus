@@ -2,7 +2,7 @@
   "id": null,
   "uid": "argus-hardware",
   "title": "Server Hardware",
-  "description": "Is the server hardware healthy: temperatures, fans, power supplies, batteries, power draw, and room in the BMCs' event logs?",
+  "description": "Is the server hardware healthy: temperatures, fans, power supplies, batteries, power draw, room in the BMCs' event logs, and add-in GPUs?",
   "tags": [
     "argus",
     "proxmox",
@@ -1281,6 +1281,213 @@
         }
       },
       "interval": "1m"
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Hottest GPU",
+      "description": "The warmest add-in GPU that the server's own driver reads (Intel i915 or xe, through node_exporter's hwmon collector; the BMC can't see these cards). Orange from 80 \u00b0C, red from 85 \u00b0C, where the GPU hot alert starts counting.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 4,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"})",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 0,
+          "noValue": "No GPU reporting",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "interval": "1m"
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU temperature",
+      "description": "Each add-in GPU's temperature, named by its PCI address. The dashed line is the GPU hot alert's 85 \u00b0C (it fires after 10 minutes above it). If the card is passed through to a VM, the VM reports it instead of the server.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 33,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, chip, gpu) (label_replace(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"gpu\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m",
+      "id": 14
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU fan speed",
+      "description": "The add-in GPUs' own fans. The server's fans don't speed up for a third-party card, so this fan and the server's airflow are all it has.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 33,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, chip, gpu) (label_replace(node_hwmon_fan_rpm{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"gpu\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rotrpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m",
+      "id": 15
     }
   ]
 }

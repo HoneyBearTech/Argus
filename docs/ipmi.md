@@ -3,7 +3,9 @@
 The **Server Hardware** dashboard and the BMC alerts read each server's baseboard management controller (BMC:
 Dell iDRAC, Supermicro IPMI and the like): temperatures, fans, voltages, power supplies, batteries, the live
 power draw and how full the BMC's event log is. They answer *is the server hardware healthy?* — for example a
-failed CMOS battery, a dead fan or a lost power supply, which the operating system never sees.
+failed CMOS battery, a dead fan or a lost power supply, which the operating system never sees. Add-in cards
+the BMC can't see, such as a third-party GPU, are read from the server's own driver instead: see
+[hwmon](hwmon.md).
 
 ## How it works
 

@@ -21,6 +21,14 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
+- Server Hardware dashboard: add-in GPUs that the BMC can't see (Intel cards on the `i915` or `xe` driver) —
+  the hottest GPU, each card's temperature and its fan speed, named by the card's PCI address. New `hwmon` scrape
+  job for [node_exporter](https://github.com/prometheus/node_exporter) running on the server with only its
+  hwmon collector (`targets/hwmon.json` with a `host` label, basic auth with `secrets/hwmon_password`), and
+  [`deploy/hwmon/setup-node-exporter.sh`](deploy/hwmon/setup-node-exporter.sh) to set one up: Debian's package
+  as an unprivileged user, without its recommended root timers, on the server's address only. A card passed
+  through to a VM is read by the VM's agent instead. See [docs/hwmon.md](docs/hwmon.md).
+- The GPU hot alert (85 °C for 10 minutes) covers those Intel GPUs too, not only NVIDIA's.
 - Server Hardware dashboard (Proxmox folder, linked from Proxmox VE): each server's BMC — sensors not in their
   normal state, temperatures, fans, live power draw, BMC firmware and BIOS versions, and how full the BMC's
   event log is. New `ipmi` scrape job for [prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter)
