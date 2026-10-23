@@ -12,7 +12,7 @@
 [![Grafana](https://img.shields.io/badge/grafana-13.2.4-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
 [![License](https://img.shields.io/github/license/HoneyBearTech/Argus)](LICENSE)
 
-Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts and their logs, the Plex/arr media stack, reverse proxy traffic, DNS, the network and internet connection, NAS storage, UPS power, the smart home, GitLab CI, Tdarr, Plex's current streams (through Tautulli) and the Proxmox VE cluster — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
+Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts and their logs, the Plex/arr media stack, reverse proxy traffic, DNS, the network and internet connection, NAS storage, UPS power, the smart home, GitLab CI, Steerhouse (an Ansible web UI), Tdarr, Plex's current streams (through Tautulli) and the Proxmox VE cluster — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
 
 ## How it works
 Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP, the media apps, Tdarr, Tautulli (through Varken), GitLab CI and Proxmox run on one server from [`docker-compose.yml`](docker-compose.yml) (the optional ones behind Compose profiles, and Loki on another host if you prefer); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
@@ -27,7 +27,7 @@ logs/                Loki config, plus a compose file to run Loki on a separate 
 images/              Dockerfiles for the published server images
 targets.example/     placeholder scrape/probe targets; real ones go in targets/ (gitignored)
 secrets.example/     placeholder credentials Prometheus scrapes with; real ones go in secrets/ (gitignored)
-scripts/             repo checks and the PromQL test builder, run in CI
+scripts/             repo checks and the PromQL test builder, run in CI; the Steerhouse dashboard port
 tests/               unit tests (pytest) and PromQL tests (tests/promql/, run with promtool)
 docs/                user, security and project documentation
 ```
@@ -53,6 +53,9 @@ docs/                user, security and project documentation
 | Logs | hosts | What did a host or container log around the time something broke? | Docker container logs → Alloy → Loki |
 | Deploys | ci | Did every merge reach its host, and is every host's deploy agent alive? | [homelab-pull](docs/interfaces.md#data-contracts)'s metrics and deploy log (a pull-based deploy agent: one stack per host, deployed from its git branch), read by the Argus agent (`HOMELAB_PULL_DIR`); deploy markers on Host Health and Docker Containers |
 | GitLab CI | ci | Are pipelines healthy, are the runners keeping up, and is GitLab itself healthy? | [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter) with a `read_api` token (`gitlab` profile); GitLab Runner's metrics endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through `/federate` |
+| Steerhouse: overview & runs | ci | Is Steerhouse healthy right now, and how have its Ansible runs gone: which failed, and how long did they take? | [Steerhouse](https://github.com/HoneyBearTech/Steerhouse)'s token-protected `/metrics` (port 8002) and its database's read-only `analytics` views, as the `grafana_ro` role over TLS; the three Steerhouse dashboards are Steerhouse's own, ported by [`scripts/port_steerhouse.py`](scripts/port_steerhouse.py) |
+| Steerhouse: execution, queue & workers | ci | Is Steerhouse keeping up: are runs waiting for a worker, are notifications going out, and is its API healthy? | The same |
+| Steerhouse: security & access | ci | Is anyone trying to get into Steerhouse, and who changed users, access or keys? | The same |
 | Proxmox VE | proxmox | Are the Proxmox nodes overcommitted, are the guests that should run running, and how is storage filling? | [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) with a read-only API token (`proxmox` profile) |
 | Server Hardware | proxmox | Is the server hardware healthy: temperatures, fans, power supplies, batteries, power draw, room in the BMCs' event logs, and add-in GPUs? | [prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter) on each server (Debian package), reading its own BMC through `/dev/ipmi0` — see [docs/ipmi.md](docs/ipmi.md); add-in GPUs, which the BMC can't see, from [node_exporter](https://github.com/prometheus/node_exporter)'s hwmon collector (Debian package, hwmon only) — see [docs/hwmon.md](docs/hwmon.md) |
 | UPS / Power | power | How long would the lab survive a power cut, and is the UPS healthy? | [PeaNUT](https://github.com/Brandawg93/PeaNUT) `/api/v1/metrics` |
@@ -72,6 +75,7 @@ Grafana-managed alert rules live in [`provisioning/alerting/rules.yaml`](provisi
 | Tdarr | new transcode or health-check errors in the last hour, files queued but no transcode or health check finished in a day |
 | Deploys | a deploy agent that hasn't finished a run for 50 minutes, a deploy failing for 15 minutes, every run of an agent failing for 15 minutes (fetch or settings), deploys paused for 2 hours (the checkout isn't on its branch) |
 | GitLab | a GitLab component (Puma, Sidekiq, Gitaly, PostgreSQL, …) down for 5 minutes, the latest pipeline on a watched branch failed |
+| Steerhouse | more than 30 % of the runs that ended in the last hour failed or timed out (for 15 minutes), over 30 failed sign-ins in 15 minutes, a notification waiting over 15 minutes to be sent, Steerhouse's API unable to read its database for 5 minutes. Single events (a failed run, a worker offline, a lockout) are Steerhouse's own notifications; its metrics not arriving is "monitoring target down" |
 
 Alerts are grouped per rule and repeat every 12 hours while firing.
 
@@ -113,6 +117,7 @@ Host Health, Docker Containers and Logs work with just the agents. Every other d
 | GitLab CI (pipelines) | `gitlab.json` | `gitlab.yml` (GitLab's URL and a `read_api` token) | `gitlab` |
 | GitLab CI (runners) | `gitlab_runner.json` (`<runner>:9252`, one target per runner); set `listen_address = ":9252"` in each runner's `config.toml` | — | — |
 | GitLab CI (GitLab's health) | `gitlab_server.json` (`<gitlab>:9090`); set `prometheus['listen_address'] = '0.0.0.0:9090'` in `gitlab.rb` and run `gitlab-ctl reconfigure` (restarts Puma and Sidekiq: a minute or two of 502s) | — | — |
+| Steerhouse | `steerhouse.json` (`<steerhouse host>:8002`, the backend's metrics port, which Steerhouse serves once `METRICS_TOKEN` and `METRICS_HOST` are set); and `STEERHOUSE_DB_ADDRESS` in `.env` (its PostgreSQL, `host:port`) | `steerhouse_metrics_token` (Steerhouse's `METRICS_TOKEN`), `steerhouse_db_password` (the `grafana_ro` role's password: see [docs/steerhouse.md](docs/steerhouse.md)), `steerhouse_db_ca` (the CA certificate that signed the database's TLS certificate, which must name the address) | — |
 | Proxmox VE | `pve.json`: each node's API address (port 8006 by default), which the node's certificate must name; in a cluster, label every node but one `"cluster": "0"` | `pve.yml` (an API token with the `PVEAuditor` role; the commands are in the template), `pve-ca.pem` (the cluster's CA, `/etc/pve/pve-root-ca.pem` on any node) | `proxmox` |
 
 To upgrade, pull new images (`docker compose pull && docker compose up -d`), or pin `ARGUS_VERSION` in `.env` to a release; see [docs/upgrading.md](docs/upgrading.md). New to Argus? The [quick start](docs/quick-start.md) runs it on one machine in about ten minutes.

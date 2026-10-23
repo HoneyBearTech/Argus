@@ -26,7 +26,7 @@ Outbound connections:
 | Prometheus | everything in `targets/*.json` | scrapes (HTTP, or HTTPS where a target uses it) |
 | blackbox_exporter | URLs in `targets/blackbox_http.json`, DNS servers in `targets/blackbox_dns.json` | HTTP(S) probes with certificate verification; DNS queries (UDP) |
 | Exporters | the service each one watches (from `secrets/<name>.env` and the credential files) | the service's API (Pi-hole, UniFi, SNMPv3, *arr, qBittorrent, Tdarr, Tautulli, Plex) |
-| Grafana | Prometheus, Loki (`LOKI_URL`), the Discord webhook (`secrets/discord_webhook_url`) | queries; alert notifications (HTTPS). It downloads no plugins: `GF_PLUGINS_PREINSTALL_DISABLED=true` |
+| Grafana | Prometheus, Loki (`LOKI_URL`), Steerhouse's PostgreSQL (`STEERHOUSE_DB_ADDRESS`), the Discord webhook (`secrets/discord_webhook_url`) | queries (PostgreSQL over TLS, the server verified against `secrets/steerhouse_db_ca`); alert notifications (HTTPS). It downloads no plugins: `GF_PLUGINS_PREINSTALL_DISABLED=true` |
 | Auto-deploy (optional, [auto-deploy.md](auto-deploy.md)) | GitHub (`git fetch`, the public API), the Discord webhook (`secrets/discord_webhook_url`, else `DISCORD_WEBHOOK_URL` in `.env`) | the new commit and its check result (HTTPS, no token); deploy and rollback notices |
 
 ## Configuration
@@ -35,7 +35,8 @@ Outbound connections:
 `GRAFANA_ROOT_URL`, `ARGUS_VERSION`, `ARGUS_REGISTRY`,
 `COMPOSE_FILE` (source mode, proxy network), `ARGUS_PROXY_NETWORK`, `GRAFANA_BIND`, `PROMETHEUS_BIND`, `LOKI_BIND`,
 `PROMETHEUS_RETENTION_TIME`, `PROMETHEUS_RETENTION_SIZE`, `COMPOSE_PROFILES` (`loki`, `snmp`, one per
-media app), `UNIFI_VERIFY_SSL`, `LOKI_URL`. Grafana's admin password and the Discord webhook are files in
+media app), `UNIFI_VERIFY_SSL`, `LOKI_URL`, `STEERHOUSE_DB_ADDRESS` (Steerhouse's PostgreSQL, `host:port`).
+Grafana's admin password and the Discord webhook are files in
 `secrets/` (below); `GF_SECURITY_ADMIN_PASSWORD` and `DISCORD_WEBHOOK_URL` in `.env` are no longer passed to
 Grafana (auto-deploy still falls back to `DISCORD_WEBHOOK_URL`).
 
@@ -56,7 +57,10 @@ format; placeholders in [`targets.example/`](../targets.example/)): a list of
 **Credentials** (`secrets/`, placeholders in [`secrets.example/`](../secrets.example/)), mounted
 read-only, so the containers' users must be able to read them (mode 644; the env files, which only the compose
 command reads, can stay 600): Grafana's admin password (`grafana_admin_password`, required) and the Discord
-webhook (`discord_webhook_url`), both mounted under `/run/secrets/`; env files with the exporters' URLs and user names (`pihole-exporter.env`, which also holds
+webhook (`discord_webhook_url`), both mounted under `/run/secrets/`, like the password of Steerhouse's
+`grafana_ro` database role (`steerhouse_db_password`) and the CA certificate its PostgreSQL's TLS certificate is
+checked against (`steerhouse_db_ca`), which Grafana needs to start (the templates will do where Steerhouse isn't
+watched); env files with the exporters' URLs and user names (`pihole-exporter.env`, which also holds
 the Pi-hole passwords, `unpoller.env`, `<app>.env`, `qbittorrent.env`, `tdarr.env`, which also holds Tdarr's API key once Tdarr's
 own login is on, and `varken.env`, Tautulli's address); the exporters' passwords and API
 keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, `qbittorrent_password`,
@@ -65,11 +69,12 @@ keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, 
 `/run/secrets/`); the CA certificate of Proxmox VE (`pve-ca.pem`); files Prometheus reads
 (`home_assistant_token`, `uptime_kuma_api_key`, `peanut_username` and `peanut_password`,
 `ipmi_password` (the IPMI exporters' basic auth; see [IPMI](ipmi.md)), `hwmon_password` (node_exporter's
-basic auth on servers; see [hwmon](hwmon.md)), `prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
+basic auth on servers; see [hwmon](hwmon.md)), `steerhouse_metrics_token` (Steerhouse's `METRICS_TOKEN`; see
+[Steerhouse](steerhouse.md)), `prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
 
 ## Data contracts
 
-- **Datasource uids** `prometheus` and `loki` ([`provisioning/datasources/argus.yaml`](../provisioning/datasources/argus.yaml))
+- **Datasource uids** `prometheus`, `loki` and `steerhouse-db` ([`provisioning/datasources/argus.yaml`](../provisioning/datasources/argus.yaml))
   and **dashboard uids** (`argus-*`) are stable: links and bookmarks to them survive upgrades.
 - **Labels**: host series carry `host` (= `ARGUS_HOST`) and `instance`; container series `host`, `name`;
   logs `host`, `container`, `compose_project`, `job` (`docker`, `npm` or `homelab-pull`), for NPM `site`,

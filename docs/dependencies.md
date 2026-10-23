@@ -85,7 +85,7 @@ exhaustion, or a crash); none allows code execution or data access.
   `golang.org/x/net/http2`: excessive HTTP/2 `SETTINGS` frames) and **CVE-2026-97031** (`crypto/tls`:
   repeated ECH outer extensions exhaust a TLS server's memory). Fixed in Go 1.26.9 and 1.27.2 and
   `golang.org/x/net` 0.60.0. They're in Prometheus and promtool (v3.15.0), Loki (3.7.8), Alloy in the agent
-  (v1.20.1), blackbox_exporter (v0.29.0) and the two datasource plugins Grafana keeps; each is that
+  (v1.20.1), blackbox_exporter (v0.29.0) and the three datasource plugins Grafana keeps; each is that
   project's latest release, and none has been rebuilt with the fixed Go yet.
   Assessment: **CVE-2026-97031** needs a Go TLS server, and none of Argus' Go programs terminates TLS
   (Grafana sits behind the reverse proxy, which isn't Go). **CVE-2026-78669** on the server side needs

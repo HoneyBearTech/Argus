@@ -94,6 +94,14 @@ def test_grafana_runs_only_the_plugins_in_its_image() -> None:
     assert not plugins.group(1).startswith("/var/lib/grafana")
 
 
+def test_grafana_image_keeps_the_datasource_plugins_argus_provisions() -> None:
+    """Regression test: the image trims Grafana's bundled plugins, which would have removed PostgreSQL's."""
+    dockerfile = (ROOT / "images" / "grafana" / "Dockerfile").read_text()
+    kept = set(re.findall(r"! -name (\S+)", dockerfile))
+    provisioned = {ds["type"] for ds in load("provisioning/datasources/argus.yaml")["datasources"]}
+    assert provisioned <= kept, f"the image removes {provisioned - kept}"
+
+
 def test_grafana_image_does_not_run_as_root() -> None:
     dockerfile = (ROOT / "images" / "grafana" / "Dockerfile").read_text()
     users = re.findall(r"^USER\s+(\S+)", dockerfile, re.MULTILINE)
@@ -108,7 +116,12 @@ def test_grafana_reads_its_admin_password_and_webhook_from_files() -> None:
     assert environment["GF_SECURITY_ADMIN_PASSWORD__FILE"] == "/run/secrets/grafana_admin_password"  # noqa: S105 - a path
     assert "GF_SECURITY_ADMIN_PASSWORD" not in environment
     assert "DISCORD_WEBHOOK_URL" not in environment
-    assert grafana["secrets"] == ["grafana_admin_password", "discord_webhook_url"]
+    assert grafana["secrets"] == [
+        "grafana_admin_password",
+        "discord_webhook_url",
+        "steerhouse_db_password",
+        "steerhouse_db_ca",
+    ]
     receivers = [r for p in load("provisioning/alerting/contact-points.yaml")["contactPoints"] for r in p["receivers"]]
     assert [r["settings"]["url"] for r in receivers] == ["$__file{/run/secrets/discord_webhook_url}"]
 
@@ -586,6 +599,35 @@ def test_gpu_panels_and_the_gpu_hot_alert_pick_the_same_hwmon_chips() -> None:
         for target in panel["targets"]:
             used = chips_re.findall(target["expr"])
             assert [s.replace(', host=~"$host"', "") for s in used] == alert, (panel["title"], target["refId"])
+
+
+def test_steerhouse_job_sends_the_metrics_token_from_a_secret_file() -> None:
+    """Steerhouse serves its metrics only to requests with its METRICS_TOKEN; the token is a file in secrets/."""
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "steerhouse")
+    assert job["authorization"] == {"credentials_file": "/etc/prometheus/secrets/steerhouse_metrics_token"}
+    assert (ROOT / "secrets.example" / "steerhouse_metrics_token").is_file()
+    assert job["file_sd_configs"] == [{"files": ["/etc/prometheus/targets/steerhouse.json"]}]
+    assert json.loads((ROOT / "targets.example" / "steerhouse.json").read_text())
+
+
+def test_steerhouse_datasource_verifies_the_server_and_stays_under_the_roles_connection_limit() -> None:
+    """Read-only role, password from a compose secret, TLS checked against Steerhouse's CA, at most 5 connections."""
+    datasources = load("provisioning/datasources/argus.yaml")["datasources"]
+    datasource = next(d for d in datasources if d["uid"] == "steerhouse-db")
+    assert datasource["type"] == "grafana-postgresql-datasource"
+    assert datasource["url"] == "${STEERHOUSE_DB_ADDRESS}"
+    assert datasource["user"] == "grafana_ro"
+    assert datasource["secureJsonData"] == {"password": "$__file{/run/secrets/steerhouse_db_password}"}
+    settings = datasource["jsonData"]
+    assert settings["sslmode"] == "verify-full"
+    assert settings["tlsConfigurationMethod"] == "file-path"
+    assert settings["sslRootCertFile"] == "/run/secrets/steerhouse_db_ca"
+    # grafana_ro's CONNECTION LIMIT is 10; Grafana's default would open up to 100.
+    assert 0 < settings["maxOpenConns"] < 10
+    assert settings["maxIdleConns"] <= settings["maxOpenConns"]
+    environment = load("docker-compose.yml")["services"]["grafana"]["environment"]
+    assert "STEERHOUSE_DB_ADDRESS" in environment
+    assert not [key for key in environment if "STEERHOUSE" in key and key != "STEERHOUSE_DB_ADDRESS"]
 
 
 def test_secrets_mounts_never_create_the_host_path() -> None:

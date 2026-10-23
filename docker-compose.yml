@@ -355,10 +355,17 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
       # Where Loki runs: the bundled one (`loki` profile) by default.
       LOKI_URL: ${LOKI_URL:-http://loki:3100}
+      # Steerhouse's PostgreSQL (host:port), for the "Steerhouse database"
+      # datasource. Unset, that datasource has no address and its panels fail.
+      STEERHOUSE_DB_ADDRESS: ${STEERHOUSE_DB_ADDRESS:-}
     # The alert contact point (provisioning/alerting/contact-points.yaml) reads
     # the Discord webhook from secrets/discord_webhook_url; its template points
-    # nowhere, so a sandbox can't post to the real channel.
-    secrets: [grafana_admin_password, discord_webhook_url]
+    # nowhere, so a sandbox can't post to the real channel. The Steerhouse
+    # datasource reads the grafana_ro role's password and the CA certificate of
+    # Steerhouse's PostgreSQL from steerhouse_db_password and steerhouse_db_ca:
+    # Grafana won't start without them, so their templates are enough where
+    # Steerhouse isn't monitored.
+    secrets: [grafana_admin_password, discord_webhook_url, steerhouse_db_password, steerhouse_db_ca]
     # Its datasource plugins (separate processes) talk to it over sockets in /tmp.
     tmpfs:
       - /tmp
@@ -386,6 +393,8 @@ services:
 secrets:
   grafana_admin_password: {file: ./secrets/grafana_admin_password}
   discord_webhook_url: {file: ./secrets/discord_webhook_url}
+  steerhouse_db_password: {file: ./secrets/steerhouse_db_password}
+  steerhouse_db_ca: {file: ./secrets/steerhouse_db_ca}
   unifi_password: {file: ./secrets/unifi_password}
   radarr_api_key: {file: ./secrets/radarr_api_key}
   radarr4k_api_key: {file: ./secrets/radarr4k_api_key}

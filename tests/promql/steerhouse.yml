@@ -1,0 +1,420 @@
+# Steerhouse dashboards (ported by scripts/port_steerhouse.py) and alerts. Steerhouse's /metrics:
+# counters and histograms from the API process, gauges it reads from its database on each scrape.
+# Two projects, 1 (infra) and 2 (apps). From 31m the API can't read its database; from 41m failed
+# sign-ins come in at 3 a minute; from 61m project 1's runs fail 5 a minute instead of 1; a
+# notification has waited since 10m (60 s at 11m).
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'steerhouse_build_info{job="steerhouse", instance="steerhouse:8002", version="0.10.1"}'
+        values: "1x90"
+      - series: 'steerhouse_db_up{job="steerhouse", instance="steerhouse:8002"}'
+        values: "1x30 0x60"
+      - series: 'steerhouse_project_info{job="steerhouse", instance="steerhouse:8002", project_id="1", project="infra"}'
+        values: "1x90"
+      - series: 'steerhouse_project_info{job="steerhouse", instance="steerhouse:8002", project_id="2", project="apps"}'
+        values: "1x90"
+      - series: 'steerhouse_runs{job="steerhouse", instance="steerhouse:8002", project_id="1", status="running"}'
+        values: "2x90"
+      - series: 'steerhouse_runs{job="steerhouse", instance="steerhouse:8002", project_id="1", status="queued"}'
+        values: "3x90"
+      - series: 'steerhouse_runs{job="steerhouse", instance="steerhouse:8002", project_id="2", status="running"}'
+        values: "1x90"
+      - series: 'steerhouse_runs{job="steerhouse", instance="steerhouse:8002", project_id="2", status="queued"}'
+        values: "0x90"
+      - series: 'steerhouse_queue_oldest_age_seconds{job="steerhouse", instance="steerhouse:8002"}'
+        values: "120x90"
+      - series: 'steerhouse_workers{job="steerhouse", instance="steerhouse:8002", state="online"}'
+        values: "2x90"
+      - series: 'steerhouse_workers{job="steerhouse", instance="steerhouse:8002", state="offline"}'
+        values: "1x90"
+      - series: 'steerhouse_ops_alerts{job="steerhouse", instance="steerhouse:8002", kind="worker_offline"}'
+        values: "1x90"
+      - series: 'steerhouse_ops_alerts{job="steerhouse", instance="steerhouse:8002", kind="queue_stuck"}'
+        values: "0x90"
+      - series: 'steerhouse_slots{job="steerhouse", instance="steerhouse:8002", state="total"}'
+        values: "4x90"
+      - series: 'steerhouse_slots{job="steerhouse", instance="steerhouse:8002", state="busy"}'
+        values: "3x90"
+      - series: 'steerhouse_notification_outbox{job="steerhouse", instance="steerhouse:8002", status="pending"}'
+        values: "2x90"
+      - series: 'steerhouse_notification_outbox{job="steerhouse", instance="steerhouse:8002", status="sending"}'
+        values: "1x90"
+      # 0 while nothing waits; from 10m one notification waits on.
+      - series: 'steerhouse_notification_outbox_oldest_age_seconds{job="steerhouse", instance="steerhouse:8002"}'
+        values: "0x10 60+60x80"
+      - series: 'steerhouse_notification_deliveries_total{job="steerhouse", instance="steerhouse:8002", kind="email", outcome="sent"}'
+        values: "0+1x90"
+      - series: 'steerhouse_notification_deliveries_total{job="steerhouse", instance="steerhouse:8002", kind="webhook", outcome="failed"}'
+        values: "0+2x90"
+      # Runs that ended: project 1 succeeds 6 a minute and fails 1 (5 from 61m); project 2 times out 1
+      # a minute and is cancelled 5 a minute (cancelled runs aren't failures).
+      - series: 'steerhouse_runs_finished_total{job="steerhouse", instance="steerhouse:8002", project_id="1", status="success"}'
+        values: "0+6x90"
+      - series: 'steerhouse_runs_finished_total{job="steerhouse", instance="steerhouse:8002", project_id="1", status="failed"}'
+        values: "0+1x60 65+5x29"
+      - series: 'steerhouse_runs_finished_total{job="steerhouse", instance="steerhouse:8002", project_id="2", status="timed_out"}'
+        values: "0+1x90"
+      - series: 'steerhouse_runs_finished_total{job="steerhouse", instance="steerhouse:8002", project_id="2", status="cancelled"}'
+        values: "0+5x90"
+      # Queue wait: of 10 runs a minute, 5 within 1 s, 9 within 10 s.
+      - series: 'steerhouse_run_queue_wait_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="1"}'
+        values: "0+5x90"
+      - series: 'steerhouse_run_queue_wait_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="10"}'
+        values: "0+9x90"
+      - series: 'steerhouse_run_queue_wait_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="+Inf"}'
+        values: "0+10x90"
+      # Run duration of project 1: of 1200 runs a minute, 1140 (95 %) within a minute, all within 5. The
+      # percentiles below land on a bucket bound: interpolating inside a bucket rounds differently on
+      # arm64 (fused multiply-add) and amd64.
+      - series: 'steerhouse_run_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", project_id="1", le="60"}'
+        values: "0+1140x90"
+      - series: 'steerhouse_run_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", project_id="1", le="300"}'
+        values: "0+1200x90"
+      - series: 'steerhouse_run_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", project_id="1", le="+Inf"}'
+        values: "0+1200x90"
+      - series: 'steerhouse_git_syncs_total{job="steerhouse", instance="steerhouse:8002", outcome="ok"}'
+        values: "0+1x90"
+      - series: 'steerhouse_git_syncs_total{job="steerhouse", instance="steerhouse:8002", outcome="unchanged"}'
+        values: "0+4x90"
+      - series: 'steerhouse_git_syncs_total{job="steerhouse", instance="steerhouse:8002", outcome="failed"}'
+        values: "0x90"
+      - series: 'steerhouse_git_sync_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="1"}'
+        values: "0+3x90"
+      - series: 'steerhouse_git_sync_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="5"}'
+        values: "0+5x90"
+      - series: 'steerhouse_git_sync_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="+Inf"}'
+        values: "0+5x90"
+      # API traffic, per second: the public API (runs list 24 OK and 2 errors; 2 refused sign-ins) and the
+      # workers' internal one (4).
+      - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", status="200"}'
+        values: "0+1440x90"
+      - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", status="500"}'
+        values: "0+120x90"
+      - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="public", method="POST", route="/api/auth/login", status="401"}'
+        values: "0+120x90"
+      - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="internal", method="POST", route="/internal/runs/claim", status="200"}'
+        values: "0+240x90"
+      - series: 'steerhouse_http_request_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", le="0.25"}'
+        values: "0+57x90"
+      - series: 'steerhouse_http_request_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", le="0.5"}'
+        values: "0+59x90"
+      - series: 'steerhouse_http_request_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", le="+Inf"}'
+        values: "0+60x90"
+      # Another job's process metrics: the API process panel must not show them.
+      - series: 'process_resident_memory_bytes{job="steerhouse", instance="steerhouse:8002"}'
+        values: "100000000x90"
+      - series: 'process_resident_memory_bytes{job="prometheus", instance="localhost:9090"}'
+        values: "500000000x90"
+      - series: 'process_cpu_seconds_total{job="steerhouse", instance="steerhouse:8002"}'
+        values: "0+6x90"
+      - series: 'process_cpu_seconds_total{job="prometheus", instance="localhost:9090"}'
+        values: "0+30x90"
+      # Sign-ins: 1 a minute succeed; from 41m 3 a minute fail. Refused API keys, permission denials and
+      # a successful admin change, which the refusals panel leaves out.
+      - series: 'steerhouse_audit_events_total{job="steerhouse", instance="steerhouse:8002", action="auth.login", outcome="success"}'
+        values: "0+1x90"
+      - series: 'steerhouse_audit_events_total{job="steerhouse", instance="steerhouse:8002", action="auth.login", outcome="failure"}'
+        values: "0x40 0+3x50"
+      - series: 'steerhouse_audit_events_total{job="steerhouse", instance="steerhouse:8002", action="apikey.auth", outcome="failure"}'
+        values: "0+1x90"
+      - series: 'steerhouse_audit_events_total{job="steerhouse", instance="steerhouse:8002", action="permission.denied", outcome="denied"}'
+        values: "0+2x90"
+      - series: 'steerhouse_audit_events_total{job="steerhouse", instance="steerhouse:8002", action="user.create", outcome="success"}'
+        values: "0+1x90"
+      - series: 'steerhouse_login_lockouts_total{job="steerhouse", instance="steerhouse:8002"}'
+        values: "0x50 1x40"
+    promql_expr_test:
+      # Alerts. Runs: 2 of 8 a minute fail or time out (25 %) until 60m; over the hour to 90m it's 238
+      # of 592 (40 %). The 5 cancelled runs a minute count neither way (with them it would be 27 %).
+      - rule: argus-steerhouse-failure-ratio
+        eval_time: 45m
+        exp_samples: []
+      - rule: argus-steerhouse-failure-ratio
+        eval_time: 90m
+        exp_samples:
+          - labels: "{}"
+            value: 0.40202702702702703
+      - rule: argus-steerhouse-signin-failures
+        eval_time: 30m
+        exp_samples: []
+      # 45 failed sign-ins in the last 15 minutes.
+      - rule: argus-steerhouse-signin-failures
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 45
+      - rule: argus-steerhouse-notification-backlog
+        eval_time: 20m
+        exp_samples: []
+      - rule: argus-steerhouse-notification-backlog
+        eval_time: 40m
+        exp_samples:
+          - labels: '{instance="steerhouse:8002"}'
+            value: 1800
+      - rule: argus-steerhouse-database-down
+        eval_time: 20m
+        exp_samples: []
+      - rule: argus-steerhouse-database-down
+        eval_time: 40m
+        exp_samples:
+          - labels: '{instance="steerhouse:8002"}'
+            value: 0
+
+      # Overview: now.
+      - dashboard: argus-steerhouse-overview
+        panel: Database
+        eval_time: 20m
+        exp_samples:
+          - labels: 'steerhouse_db_up{job="steerhouse", instance="steerhouse:8002"}'
+            value: 1
+      - dashboard: argus-steerhouse-overview
+        panel: Running
+        vars: {project: "(1|2)"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      # The Project filter picks project 1's runs only.
+      - dashboard: argus-steerhouse-overview
+        panel: Running
+        vars: {project: "(1)"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-steerhouse-overview
+        panel: Queued
+        vars: {project: "(1|2)"}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 3
+      - dashboard: argus-steerhouse-overview
+        panel: Oldest queued run
+        eval_time: 20m
+        exp_samples:
+          - labels: 'steerhouse_queue_oldest_age_seconds{job="steerhouse", instance="steerhouse:8002"}'
+            value: 120
+      - dashboard: argus-steerhouse-overview
+        panel: Workers online
+        eval_time: 20m
+        exp_samples:
+          - labels: 'steerhouse_workers{job="steerhouse", instance="steerhouse:8002", state="online"}'
+            value: 2
+      - dashboard: argus-steerhouse-overview
+        panel: Ops alerts raised
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+
+      # Execution: queue and capacity.
+      - dashboard: argus-steerhouse-execution
+        panel: Runs queued and running
+        vars: {project: "(1|2)"}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{status="running"}'
+            value: 3
+          - labels: '{status="queued"}'
+            value: 3
+      - dashboard: argus-steerhouse-execution
+        panel: Oldest queued run
+        eval_time: 20m
+        exp_samples:
+          - labels: 'steerhouse_queue_oldest_age_seconds{job="steerhouse", instance="steerhouse:8002"}'
+            value: 120
+      - dashboard: argus-steerhouse-execution
+        panel: Run slots in use
+        ref_id: A
+        eval_time: 20m
+        exp_samples:
+          - labels: 'steerhouse_slots{job="steerhouse", instance="steerhouse:8002", state="total"}'
+            value: 4
+      - dashboard: argus-steerhouse-execution
+        panel: Run slots in use
+        ref_id: B
+        eval_time: 20m
+        exp_samples:
+          - labels: 'steerhouse_slots{job="steerhouse", instance="steerhouse:8002", state="busy"}'
+            value: 3
+      # Median: the 5th of 10 runs, at the top of the 1 s bucket. 95th: past the last finite bucket.
+      - dashboard: argus-steerhouse-execution
+        panel: Queue wait (median and 95th percentile)
+        ref_id: A
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-steerhouse-execution
+        panel: Queue wait (median and 95th percentile)
+        ref_id: B
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 10
+      # The 95th percentile is the top of the 60 s bucket. Named by project.
+      - dashboard: argus-steerhouse-execution
+        panel: Run duration, 95th percentile by project
+        vars: {project: "(1|2)", __rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{project_id="1", project="infra"}'
+            value: 60
+      - dashboard: argus-steerhouse-execution
+        panel: Run duration, 95th percentile by project
+        vars: {project: "(2)", __rate_interval: 5m}
+        eval_time: 20m
+        exp_samples: []
+
+      # Execution: notifications and git sources.
+      - dashboard: argus-steerhouse-execution
+        panel: Notification outbox
+        ref_id: A
+        eval_time: 20m
+        exp_samples:
+          - labels: '{status="pending"}'
+            value: 2
+          - labels: '{status="sending"}'
+            value: 1
+      - dashboard: argus-steerhouse-execution
+        panel: Notification outbox
+        ref_id: B
+        eval_time: 20m
+        exp_samples:
+          - labels: 'steerhouse_notification_outbox_oldest_age_seconds{job="steerhouse", instance="steerhouse:8002"}'
+            value: 600
+      - dashboard: argus-steerhouse-execution
+        panel: Notification sends
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{kind="email", outcome="sent"}'
+            value: 5
+          - labels: '{kind="webhook", outcome="failed"}'
+            value: 10
+      - dashboard: argus-steerhouse-execution
+        panel: Git syncs
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{outcome="ok"}'
+            value: 5
+          - labels: '{outcome="unchanged"}'
+            value: 20
+          - labels: '{outcome="failed"}'
+            value: 0
+      # The 4.75th of 5 syncs: seven eighths into the 1-5 s bucket.
+      - dashboard: argus-steerhouse-execution
+        panel: Git sync duration (95th percentile)
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 4.5
+
+      # Execution: the API (per second).
+      - dashboard: argus-steerhouse-execution
+        panel: API requests by status
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{status="200"}'
+            value: 24
+          - labels: '{status="500"}'
+            value: 2
+          - labels: '{status="401"}'
+            value: 2
+      # 57 of 60 requests (95 %) took up to 0.25 s: the top of that bucket.
+      - dashboard: argus-steerhouse-execution
+        panel: Slowest API routes (95th percentile)
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{route="/api/runs"}'
+            value: 0.25
+      # 2 server errors among 32 requests a second, the workers' calls included.
+      - dashboard: argus-steerhouse-execution
+        panel: Server errors (5xx share)
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: "{}"
+            value: 0.0625
+      - dashboard: argus-steerhouse-execution
+        panel: Worker API calls
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{route="/internal/runs/claim"}'
+            value: 4
+      - dashboard: argus-steerhouse-execution
+        panel: API process
+        ref_id: A
+        eval_time: 20m
+        exp_samples:
+          - labels: 'process_resident_memory_bytes{job="steerhouse", instance="steerhouse:8002"}'
+            value: 100000000
+      - dashboard: argus-steerhouse-execution
+        panel: API process
+        ref_id: B
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{job="steerhouse", instance="steerhouse:8002"}'
+            value: 0.1
+
+      # Security.
+      - dashboard: argus-steerhouse-security
+        panel: Failed sign-ins
+        vars: {__rate_interval: 5m}
+        eval_time: 60m
+        exp_samples:
+          - labels: "{}"
+            value: 15
+      - dashboard: argus-steerhouse-security
+        panel: Lockouts
+        vars: {__range: 1h}
+        eval_time: 80m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      - dashboard: argus-steerhouse-security
+        panel: Refused tokens and permission denials
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{action="apikey.auth"}'
+            value: 5
+          - labels: '{action="permission.denied"}'
+            value: 10
+      - dashboard: argus-steerhouse-security
+        panel: Refused HTTP requests by route
+        vars: {__rate_interval: 5m}
+        eval_time: 20m
+        exp_samples:
+          - labels: '{route="/api/auth/login", status="401"}'
+            value: 600
+
+  # A Prometheus that doesn't scrape Steerhouse: no alert fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="prometheus", instance="localhost:9090"}'
+        values: "1x30"
+    promql_expr_test:
+      - rule: argus-steerhouse-failure-ratio
+        eval_time: 30m
+        exp_samples: []
+      - rule: argus-steerhouse-signin-failures
+        eval_time: 30m
+        exp_samples: []
+      - rule: argus-steerhouse-notification-backlog
+        eval_time: 30m
+        exp_samples: []
+      - rule: argus-steerhouse-database-down
+        eval_time: 30m
+        exp_samples: []

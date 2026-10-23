@@ -1,0 +1,3 @@
+Replace this file with the certificate (PEM) of the CA that signed Steerhouse's
+PostgreSQL server certificate. Grafana's "Steerhouse database" datasource
+verifies the server against it (sslmode verify-full).
