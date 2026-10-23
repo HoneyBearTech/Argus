@@ -65,13 +65,15 @@ tests:
         values: "0+9x90"
       - series: 'steerhouse_run_queue_wait_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="+Inf"}'
         values: "0+10x90"
-      # Run duration of project 1: of 10 runs a minute, 8 within a minute, all within 5.
+      # Run duration of project 1: of 1200 runs a minute, 1140 (95 %) within a minute, all within 5. The
+      # percentiles below land on a bucket bound: interpolating inside a bucket rounds differently on
+      # arm64 (fused multiply-add) and amd64.
       - series: 'steerhouse_run_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", project_id="1", le="60"}'
-        values: "0+8x90"
+        values: "0+1140x90"
       - series: 'steerhouse_run_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", project_id="1", le="300"}'
-        values: "0+10x90"
+        values: "0+1200x90"
       - series: 'steerhouse_run_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", project_id="1", le="+Inf"}'
-        values: "0+10x90"
+        values: "0+1200x90"
       - series: 'steerhouse_git_syncs_total{job="steerhouse", instance="steerhouse:8002", outcome="ok"}'
         values: "0+1x90"
       - series: 'steerhouse_git_syncs_total{job="steerhouse", instance="steerhouse:8002", outcome="unchanged"}'
@@ -84,19 +86,20 @@ tests:
         values: "0+5x90"
       - series: 'steerhouse_git_sync_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", le="+Inf"}'
         values: "0+5x90"
-      # API traffic: the public API (runs list, 5 % errors; refused sign-ins) and the workers' internal one.
+      # API traffic, per second: the public API (runs list 24 OK and 2 errors; 2 refused sign-ins) and the
+      # workers' internal one (4).
       - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", status="200"}'
-        values: "0+57x90"
+        values: "0+1440x90"
       - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", status="500"}'
-        values: "0+3x90"
+        values: "0+120x90"
       - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="public", method="POST", route="/api/auth/login", status="401"}'
-        values: "0+2x90"
+        values: "0+120x90"
       - series: 'steerhouse_http_requests_total{job="steerhouse", instance="steerhouse:8002", server="internal", method="POST", route="/internal/runs/claim", status="200"}'
-        values: "0+18x90"
-      - series: 'steerhouse_http_request_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", le="0.1"}'
-        values: "0+50x90"
+        values: "0+240x90"
+      - series: 'steerhouse_http_request_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", le="0.25"}'
+        values: "0+57x90"
       - series: 'steerhouse_http_request_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", le="0.5"}'
-        values: "0+58x90"
+        values: "0+59x90"
       - series: 'steerhouse_http_request_duration_seconds_bucket{job="steerhouse", instance="steerhouse:8002", server="public", method="GET", route="/api/runs", le="+Inf"}'
         values: "0+60x90"
       # Another job's process metrics: the API process panel must not show them.
@@ -254,14 +257,14 @@ tests:
         exp_samples:
           - labels: "{}"
             value: 10
-      # The 9.5th of 10 runs: three quarters into the 60-300 s bucket. Named by project.
+      # The 95th percentile is the top of the 60 s bucket. Named by project.
       - dashboard: argus-steerhouse-execution
         panel: Run duration, 95th percentile by project
         vars: {project: "(1|2)", __rate_interval: 5m}
         eval_time: 20m
         exp_samples:
           - labels: '{project_id="1", project="infra"}'
-            value: 239.99999999999991
+            value: 60
       - dashboard: argus-steerhouse-execution
         panel: Run duration, 95th percentile by project
         vars: {project: "(2)", __rate_interval: 5m}
@@ -321,34 +324,34 @@ tests:
         eval_time: 20m
         exp_samples:
           - labels: '{status="200"}'
-            value: 0.95
+            value: 24
           - labels: '{status="500"}'
-            value: 0.05
+            value: 2
           - labels: '{status="401"}'
-            value: 0.03333333333333333
-      # The 57th of 60 requests: seven eighths into the 0.1-0.5 s bucket.
+            value: 2
+      # 57 of 60 requests (95 %) took up to 0.25 s: the top of that bucket.
       - dashboard: argus-steerhouse-execution
         panel: Slowest API routes (95th percentile)
         vars: {__rate_interval: 5m}
         eval_time: 20m
         exp_samples:
           - labels: '{route="/api/runs"}'
-            value: 0.44999999999999984
-      # 3 server errors among 80 requests a minute, the workers' calls included.
+            value: 0.25
+      # 2 server errors among 32 requests a second, the workers' calls included.
       - dashboard: argus-steerhouse-execution
         panel: Server errors (5xx share)
         vars: {__rate_interval: 5m}
         eval_time: 20m
         exp_samples:
           - labels: "{}"
-            value: 0.037500000000000006
+            value: 0.0625
       - dashboard: argus-steerhouse-execution
         panel: Worker API calls
         vars: {__rate_interval: 5m}
         eval_time: 20m
         exp_samples:
           - labels: '{route="/internal/runs/claim"}'
-            value: 0.3
+            value: 4
       - dashboard: argus-steerhouse-execution
         panel: API process
         ref_id: A
@@ -395,7 +398,7 @@ tests:
         eval_time: 20m
         exp_samples:
           - labels: '{route="/api/auth/login", status="401"}'
-            value: 10
+            value: 600
 
   # A Prometheus that doesn't scrape Steerhouse: no alert fires.
   - interval: 1m
