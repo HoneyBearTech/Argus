@@ -35,7 +35,8 @@ Loki must not be reachable from outside it.
    network, and the agent accepts no connections from other machines.
 6. **TLS is verified by default** on every outgoing connection that uses it: web probes (an invalid or
    expired certificate fails the probe), the UniFi console (unless `UNIFI_VERIFY_SSL=false`), the Discord
-   webhook, and HTTPS scrape targets.
+   webhook, HTTPS scrape targets, and Steerhouse's database (`verify-full`: the certificate must come from
+   the CA in `secrets/steerhouse_db_ca` and name the address).
 7. **Least privilege for the server.** Every server container runs as a non-root user, with no Linux
    capabilities, can't gain privileges (`no-new-privileges`), and has a read-only root filesystem: it
    writes only its own volume and, where needed, `/tmp` in memory ([hardening](#hardening)). The
@@ -109,6 +110,11 @@ Loki must not be reachable from outside it.
   (`ipmi-sel` can clear the event log, `ipmi-dcmi` set power limits, `ipmi-chassis` power the server off).
   It uses basic auth without TLS by default; add TLS to its web config if the password shouldn't cross
   your network in the clear.
+- Steerhouse ([Steerhouse](steerhouse.md)): Grafana reads its database as `grafana_ro`, a role that can read
+  only Steerhouse's `analytics` views, with a connection limit (Grafana opens at most 5), over TLS only.
+  Publish the database's port to the Argus server only, and let only TLS connections from it in
+  (`hostssl` in `pg_hba.conf`). Steerhouse's metrics port answers only requests with its token, which
+  crosses the network in the clear (plain HTTP); firewall the port to the Argus server.
 - node_exporter on a server without the agent ([hwmon](hwmon.md)) runs only its hwmon collector, as an
   unprivileged user without sudo, so it serves hardware sensor readings and nothing about processes, file
   systems or the network. It uses basic auth without TLS too.

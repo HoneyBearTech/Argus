@@ -21,6 +21,17 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
+- Three Steerhouse dashboards (CI folder): **overview & runs**, **execution, queue & workers** and **security &
+  access**, the dashboards [Steerhouse](https://github.com/HoneyBearTech/Steerhouse) (an Ansible web UI) ships,
+  ported from v0.10.1 by [`scripts/port_steerhouse.py`](scripts/port_steerhouse.py) with Argus' datasource uids.
+  They read Steerhouse's metrics (new `steerhouse` scrape job: `targets/steerhouse.json`, the backend's port 8002,
+  with Steerhouse's `METRICS_TOKEN` in `secrets/steerhouse_metrics_token`) and its database through a new
+  PostgreSQL datasource (uid `steerhouse-db`): the read-only `grafana_ro` role, at most 5 connections, TLS with
+  `verify-full` against `secrets/steerhouse_db_ca`, its password in `secrets/steerhouse_db_password`, the address
+  in `STEERHOUSE_DB_ADDRESS` (`.env`). See [docs/steerhouse.md](docs/steerhouse.md).
+- Alerts (new Steerhouse group, from Steerhouse's example rules): runs failing more than usual (> 30 % of the
+  last hour's runs, for 15 minutes), failed sign-ins spiking (> 30 in 15 minutes), notifications not going out
+  (one waiting > 15 minutes) and Steerhouse unable to read its database (5 minutes). Each links to its panel.
 - Server Hardware dashboard: add-in GPUs that the BMC can't see (Intel cards on the `i915` or `xe` driver) —
   the hottest GPU, each card's temperature, power draw (with its power limit) and fan speed, named by the card's
   PCI address. New `hwmon` scrape job for [node_exporter](https://github.com/prometheus/node_exporter) running on
@@ -99,6 +110,17 @@ Each release's notes on GitHub are its section here.
   doesn't walk, through a new module in [`snmp/synology-flashcache.yml`](snmp/synology-flashcache.yml),
   loaded next to the bundled one. Add `synology_flashcache` to a Synology's `module` list in
   `targets/snmp.json`; a NAS without a cache reports nothing. CI now dry-runs the snmp-exporter configuration.
+
+### Fixed
+
+- The Grafana image kept only the Prometheus and Loki datasource plugins, so a PostgreSQL datasource couldn't
+  work; it keeps Grafana's bundled PostgreSQL plugin too now (CI checks all three are there).
+
+### Upgrading
+
+- Grafana now needs `secrets/steerhouse_db_password` and `secrets/steerhouse_db_ca` to start, even without
+  Steerhouse: copy their templates before `docker compose up -d`
+  (`cp -n secrets.example/steerhouse_db_password secrets.example/steerhouse_db_ca secrets/`; mode 644).
 
 ## [0.7.1] - 2026-10-15
 

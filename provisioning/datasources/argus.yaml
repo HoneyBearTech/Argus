@@ -27,3 +27,28 @@ datasources:
     editable: false
     jsonData:
       maxLines: 1000
+
+  # Steerhouse's database (dashboards/ci/steerhouse-*.json), as the read-only
+  # grafana_ro role, which can read only Steerhouse's analytics views. The
+  # address (host:port) comes from STEERHOUSE_DB_ADDRESS; the server's
+  # certificate must name it and is checked against the CA in
+  # secrets/steerhouse_db_ca.
+  - name: Steerhouse database
+    uid: steerhouse-db
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: ${STEERHOUSE_DB_ADDRESS}
+    user: grafana_ro
+    editable: false
+    jsonData:
+      database: steerhouse
+      sslmode: verify-full
+      tlsConfigurationMethod: file-path
+      sslRootCertFile: /run/secrets/steerhouse_db_ca
+      postgresVersion: 1800
+      # The role's CONNECTION LIMIT is 10 (Grafana's default would allow 100).
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: $__file{/run/secrets/steerhouse_db_password}

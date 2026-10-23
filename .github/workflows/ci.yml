@@ -162,8 +162,11 @@ jobs:
             -v "$PWD/tests/fixtures/prometheus-auth/prometheus_password:/etc/grafana/secrets/prometheus_password:ro" \
             -v "$RUNNER_TEMP/grafana_admin_password:/run/secrets/grafana_admin_password:ro" \
             -v "$PWD/secrets.example/discord_webhook_url:/run/secrets/discord_webhook_url:ro" \
+            -v "$PWD/secrets.example/steerhouse_db_password:/run/secrets/steerhouse_db_password:ro" \
+            -v "$PWD/secrets.example/steerhouse_db_ca:/run/secrets/steerhouse_db_ca:ro" \
             -e GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password \
             -e LOKI_URL=http://loki:3100 \
+            -e STEERHOUSE_DB_ADDRESS=steerhouse-db:5432 \
             argus-grafana:ci
           api() { curl -fsS -u admin:ci "http://127.0.0.1:3000$1"; }
           # /api/org needs the admin login, which Grafana creates a moment after /api/health answers.
@@ -182,12 +185,14 @@ jobs:
           echo "dashboards $dashboards/$want_dashboards, alert rules $rules/$want_rules, datasources $datasources, contact points $contact_points"
           [ "$dashboards" -eq "$want_dashboards" ] || fail "only $dashboards of $want_dashboards dashboards loaded"
           [ "$rules" -eq "$want_rules" ] || fail "only $rules of $want_rules alert rules loaded"
-          [ "$datasources" = "loki,prometheus" ] || fail "unexpected datasources: $datasources"
+          [ "$datasources" = "loki,prometheus,steerhouse-db" ] || fail "unexpected datasources: $datasources"
           [ "$contact_points" = "Discord" ] || fail "unexpected contact points: $contact_points"
           webhook=$(api '/api/v1/provisioning/contact-points/export?decrypt=true&format=json' | jq -r '.contactPoints[0].receivers[0].settings.url')
           [ "$webhook" = "$(cat secrets.example/discord_webhook_url)" ] || fail "the contact point didn't read the webhook file: $webhook"
-          # The image removes the other bundled plugins; these two must survive it.
-          for plugin in prometheus loki; do
+          steerhouse_db=$(api /api/datasources/uid/steerhouse-db | jq -r '"\(.url) \(.secureJsonFields.password)"')
+          [ "$steerhouse_db" = "steerhouse-db:5432 true" ] || fail "the Steerhouse datasource didn't get its address or password file: $steerhouse_db"
+          # The image removes the other bundled plugins; these three must survive it.
+          for plugin in prometheus loki grafana-postgresql-datasource; do
             api "/api/plugins/$plugin/settings" > /dev/null || fail "datasource plugin $plugin is missing"
           done
           prom() { curl -sS -o /dev/null -w '%{http_code}' "$@" 'http://127.0.0.1:9090/api/v1/query?query=up'; }

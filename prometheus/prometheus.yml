@@ -162,6 +162,18 @@ scrape_configs:
       - regex: exported_job|exported_instance
         action: labeldrop
 
+  # Steerhouse (Ansible web UI): its backend serves /metrics on port 8002 only
+  # when METRICS_TOKEN is set there, and only to requests that send that token,
+  # read from secrets/steerhouse_metrics_token. The Steerhouse dashboards and
+  # alerts read this job (and Steerhouse's database, a Grafana datasource).
+  - job_name: steerhouse
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    authorization:
+      credentials_file: /etc/prometheus/secrets/steerhouse_metrics_token
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/steerhouse.json]
+
   # Proxmox VE through prometheus-pve-exporter (`proxmox` compose profile).
   # Each target is a node's API address, which its certificate must name. In a
   # cluster, give every node but one the label `cluster: "0"`, or each guest is

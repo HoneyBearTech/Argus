@@ -1686,3 +1686,183 @@ groups:
     annotations:
       summary: Deploys of {{ $labels.stack }} on {{ $labels.host }} have been paused for 2 hours (its checkout isn't on its branch), so merges don't reach it.
     isPaused: false
+# Steerhouse (Ansible web UI), from the example rules Steerhouse ships (grafana/provisioning/alerting/,
+# v0.10.1): trends only. Steerhouse's own notifications already report single events (a run failed, a
+# worker went offline, the queue is stuck, a login attack, an admin change), so these don't repeat them.
+# Its metrics not arriving at all (API down, wrong token, port not reachable) is "Monitoring target
+# down" (job steerhouse). Each links to the Steerhouse dashboard panel that shows it.
+- orgId: 1
+  name: Steerhouse
+  folder: Argus
+  interval: 1m
+  rules:
+  # Of the runs that ended in the last hour, more than 30 % failed or timed out (cancelled runs don't
+  # count). With no runs in the hour there is no ratio, so nothing fires.
+  - uid: argus-steerhouse-failure-ratio
+    title: Steerhouse runs failing more than usual
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 3600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: sum(increase(steerhouse_runs_finished_total{status=~"failed|timed_out"}[1h]))
+          / sum(increase(steerhouse_runs_finished_total{status=~"success|failed|timed_out"}[1h]))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0.3
+    noDataState: OK
+    execErrState: Error
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Steerhouse: {{ with $values.A }}{{ humanizePercentage .Value }}{{ end }} of the runs that ended in the last hour failed or timed out.'
+      __dashboardUid__: argus-steerhouse-overview
+      __panelId__: '12'
+    isPaused: false
+  # Failed sign-ins across all user names and addresses; Steerhouse itself reports a lockout or an
+  # attack on one name.
+  - uid: argus-steerhouse-signin-failures
+    title: Steerhouse failed sign-ins spiking
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 900
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: sum(increase(steerhouse_audit_events_total{action="auth.login", outcome="failure"}[15m]))
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 30
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Steerhouse: {{ with $values.A }}{{ humanize .Value }}{{ end }} failed sign-ins in 15 minutes (across all user names and addresses).'
+      __dashboardUid__: argus-steerhouse-security
+      __panelId__: '2'
+    isPaused: false
+  # The oldest notification in Steerhouse's outbox has waited over 15 minutes: a channel (mail,
+  # webhook) is failing or the sender stopped.
+  - uid: argus-steerhouse-notification-backlog
+    title: Steerhouse notifications not going out
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: max by (instance) (steerhouse_notification_outbox_oldest_age_seconds)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 900
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Steerhouse: a notification has waited {{ with $values.A }}{{ humanizeDuration .Value }}{{ end }} to be sent (see its delivery log).'
+      __dashboardUid__: argus-steerhouse-execution
+      __panelId__: '9'
+    isPaused: false
+  # Steerhouse's API answers, but can't read its own database. Steerhouse's example rule also fires
+  # when the metrics are missing (absent_over_time); here that is "Monitoring target down", so this
+  # rule stays quiet where Steerhouse isn't monitored.
+  - uid: argus-steerhouse-database-down
+    title: Steerhouse can't reach its database
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (instance) (steerhouse_db_up)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Steerhouse's API can't read its own database (its last read for the metrics failed for 5 minutes).
+      __dashboardUid__: argus-steerhouse-overview
+      __panelId__: '2'
+    isPaused: false
