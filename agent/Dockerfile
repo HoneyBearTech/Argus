@@ -1,6 +1,6 @@
 # Argus agent: Grafana Alloy with the Argus configuration baked in.
 # See "Adding a host" in the main README for how to run it.
-FROM grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
+FROM grafana/alloy:v1.21.1@sha256:4039c971193053a84e53dd9ed3e7d4561c069256b024631cd3498a353ed7ece8
 
 # Apply Ubuntu's security updates to the base image's packages. Alloy's image can lag behind them
 # (OpenSSL 3.0.13-0ubuntu3.16 at the time of writing), and the agent runs as root on every host.
