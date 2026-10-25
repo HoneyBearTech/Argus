@@ -10,6 +10,10 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- "Monitoring target down" leaves out a host's GPU exporter while that host says it booted on a GPU that isn't
+  NVIDIA's (`homelab_gpu_selected{vendor="intel"}` or `{vendor="none"}`, through the agent's textfile collector),
+  so a VM that fails over to a machine with an Intel GPU and stops its exporter there doesn't alert. The host's
+  other targets, an NVIDIA host and a host without the series alert as before.
 - The GitLab CI dashboard counts several runners: the Runners tile shows how many are up and how many are
   down (it read "Up" while any one answered), and the Runner jobs chart's concurrency limit is the runners'
   combined limit. Add one target per runner to `targets/gitlab_runner.json`.
