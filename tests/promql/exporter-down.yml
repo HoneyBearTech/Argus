@@ -1,0 +1,62 @@
+# "Monitoring target down" (argus-exporter-down). A host that can move between GPUs says which one it
+# booted with (homelab_gpu_selected, from its agent's textfile collector, so job="node"); while that isn't
+# NVIDIA, its stopped GPU exporter doesn't count. h1: on its NVIDIA GPU, exporter down. h2: on an Intel GPU,
+# exporter down, and its Plex exporter down too. h3: no marker, exporter down. h4: no GPU at all.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="gpu", host="h1", instance="h1:9835"}'
+        values: "0x15"
+      - series: 'homelab_gpu_selected{job="node", host="h1", instance="h1", vendor="nvidia"}'
+        values: "1x15"
+      - series: 'up{job="gpu", host="h2", instance="h2:9835"}'
+        values: "0x15"
+      - series: 'up{job="plex", host="h2", instance="h2:9000"}'
+        values: "0x15"
+      - series: 'homelab_gpu_selected{job="node", host="h2", instance="h2", vendor="intel"}'
+        values: "1x15"
+      - series: 'up{job="gpu", host="h3", instance="h3:9835"}'
+        values: "0x15"
+      - series: 'up{job="gpu", host="h4", instance="h4:9835"}'
+        values: "0x15"
+      - series: 'homelab_gpu_selected{job="node", host="h4", instance="h4", vendor="none"}'
+        values: "1x15"
+      # A target without a host label is never matched by a marker.
+      - series: 'up{job="pihole", instance="dns:9617"}'
+        values: "0x15"
+    promql_expr_test:
+      # Alerts: the NVIDIA host's exporter, the Intel host's other exporter, the host without a marker and
+      # the target without a host. Silent: the gpu targets of the Intel host and of the host without a GPU.
+      - rule: argus-exporter-down
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="up", job="gpu", host="h1", instance="h1:9835"}'
+            value: 0
+          - labels: '{__name__="up", job="plex", host="h2", instance="h2:9000"}'
+            value: 0
+          - labels: '{__name__="up", job="gpu", host="h3", instance="h3:9835"}'
+            value: 0
+          - labels: '{__name__="up", job="pihole", instance="dns:9617"}'
+            value: 0
+
+  # Failover and back: the host boots on its Intel GPU (marker intel, exporter stopped), then fails back to
+  # NVIDIA. The marker is rewritten to nvidia before the exporter starts, so an exporter that stays down
+  # alerts again; the old intel series goes stale with the rewritten file.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="gpu", host="h1", instance="h1:9835"}'
+        values: "0x30"
+      - series: 'homelab_gpu_selected{job="node", host="h1", instance="h1", vendor="intel"}'
+        values: "1x10 stale"
+      - series: 'homelab_gpu_selected{job="node", host="h1", instance="h1", vendor="nvidia"}'
+        values: "_x10 1x20"
+    promql_expr_test:
+      - rule: argus-exporter-down
+        eval_time: 10m
+        exp_samples: []
+      - rule: argus-exporter-down
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="up", job="gpu", host="h1", instance="h1:9835"}'
+            value: 0

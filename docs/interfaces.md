@@ -87,6 +87,11 @@ basic auth on servers; see [hwmon](hwmon.md)), `steerhouse_metrics_token` (Steer
   `homelab_pull_up_to_date` (1/0), `homelab_pull_last_deploy_timestamp_seconds` and
   `homelab_pull_last_deploy_duration_seconds`, each labelled `stack`; and `<stack>/deploys.log`, one line per
   attempt: `<time, 2006-01-02T15:04:05-0700> <stack> <ok|failed:<kind>> <old> -> <new> <subject>`.
+- **Selected GPU** (optional; read by the "Monitoring target down" alert): a host whose GPU can change, such as
+  a VM that fails over to a machine with another GPU, writes one series `homelab_gpu_selected{vendor} 1`, `vendor`
+  being `nvidia`, `intel` or `none`, to a `.prom` file in `HOMELAB_PULL_DIR`'s `metrics/` directory (the agent
+  adds `host`). While it isn't `nvidia`, a stopped GPU exporter on that host (its `gpu` target) doesn't alert;
+  without the series, it does.
 - **Alert notifications** are Grafana's Discord message format; each rule has a stable `uid`
   (`argus-*`), a `severity` label and a one-line summary.
 
