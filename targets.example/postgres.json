@@ -1,0 +1,3 @@
+[
+  {"targets": ["db.example:9187"], "labels": {"host": "db"}}
+]

@@ -174,6 +174,20 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/steerhouse.json]
 
+  # Shared database servers: postgres_exporter (port 9187) and mysqld_exporter (port 9104), running beside the
+  # PostgreSQL and MariaDB they watch. Give each target a `host` label (the database server's name): the
+  # Databases dashboard and the "Database server down" alert group by it. pg_up / mysql_up say whether the
+  # exporter could reach its engine at the last scrape.
+  - job_name: postgres
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/postgres.json]
+
+  - job_name: mysql
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/mysql.json]
+
   # Proxmox VE through prometheus-pve-exporter (`proxmox` compose profile).
   # Each target is a node's API address, which its certificate must name. In a
   # cluster, give every node but one the label `cluster: "0"`, or each guest is

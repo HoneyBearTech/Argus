@@ -167,6 +167,50 @@ groups:
       summary: Prometheus can't scrape {{ $labels.job }} at {{ $labels.instance }} — the dashboards relying on it are missing
         data.
     isPaused: false
+  # A shared database server: its engine as the exporter beside it sees it (pg_up / mysql_up), or the exporter
+  # itself (up: the whole server unreachable). Every app that keeps its data there fails with it, so this is
+  # critical and quick, unlike "Monitoring target down" (warning, 10 m), which also fires for the exporters.
+  - uid: argus-database-down
+    title: Database server down
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: min by (job, host) ({__name__=~"pg_up|mysql_up|up", job=~"postgres|mysql"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.job }} on {{ $labels.host }} is down, or its exporter can''t reach it — every app that keeps
+        its data there is failing.'
+      __dashboardUid__: argus-databases
+      __panelId__: '1'
+    isPaused: false
   - uid: argus-pve-quorum-lost
     title: Proxmox cluster without quorum
     condition: C

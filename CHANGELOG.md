@@ -25,6 +25,14 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
+- **Databases** dashboard (hosts folder) for shared PostgreSQL and MariaDB servers: whether each engine answers,
+  connections in use against `max_connections`, transactions and queries per second, database sizes, PostgreSQL's
+  cache hit ratio, MariaDB's buffer pool, deadlocks and refused logins. New scrape jobs `postgres`
+  (`targets/postgres.json`, postgres_exporter on port 9187) and `mysql` (`targets/mysql.json`, mysqld_exporter on
+  port 9104), each target with a `host` label.
+- Alert **Database server down** (Availability, critical): an engine its exporter can't reach (`pg_up` /
+  `mysql_up` 0), or the exporter itself unreachable, for 2 minutes. Every app that keeps its data there fails
+  with it, so it's quicker and louder than "Monitoring target down" (warning, 10 minutes), which fires as well.
 - Three Steerhouse dashboards (CI folder): **overview & runs**, **execution, queue & workers** and **security &
   access**, the dashboards [Steerhouse](https://github.com/HoneyBearTech/Steerhouse) (an Ansible web UI) ships,
   ported from v0.10.1 by [`scripts/port_steerhouse.py`](scripts/port_steerhouse.py) with Argus' datasource uids.
