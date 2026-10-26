@@ -11,6 +11,7 @@
 # Result: Debian's prometheus-ipmi-exporter running as the unprivileged `prometheus` user, reading the
 # server's own BMC through /dev/ipmi0 with four read-only FreeIPMI tools that sudo allows with their exact
 # arguments and nothing else, listening on <server-address>:9290 only, behind basic auth (user `argus`).
+# The service waits for the network at boot and keeps retrying until its address exists.
 # Safe to run again: it rewrites the same files and checks the sudo rules each time.
 set -euo pipefail
 
@@ -107,6 +108,26 @@ chk denied /usr/sbin/ipmi-chassis --chassis-control=power-down
 chk denied /usr/sbin/bmc-info --config-file /etc/evil
 chk denied /bin/sh
 echo "sudoers: 4 read commands allowed, 6 write/escalation probes denied"
+
+# Wait for the network, and keep retrying. The service listens on the server's own address, which a bridge (Proxmox'
+# vmbr0) may not have yet when the unit starts early in boot: "bind: cannot assign requested address". Debian's
+# unit has no network ordering and systemd's default start limit (5 starts in 10 s) gives up for good.
+DROPIN=/etc/systemd/system/prometheus-ipmi-exporter.service.d/10-argus-wait-for-network.conf
+install -d -m 755 "${DROPIN%/*}"
+cat > "$DROPIN" <<'EOF'
+# Argus: start once the network is up (ifupdown2's networking.service runs before network-online.target), and
+# retry every 5 s for as long as it takes rather than giving up after 5 fast failures.
+[Unit]
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Restart=on-failure
+RestartSec=5s
+EOF
+chmod 644 "$DROPIN"
+systemctl daemon-reload
 
 # 5. Start.
 systemctl enable prometheus-ipmi-exporter >/dev/null 2>&1

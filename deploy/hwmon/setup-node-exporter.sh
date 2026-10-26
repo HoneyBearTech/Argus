@@ -12,7 +12,8 @@
 # Result: Debian's prometheus-node-exporter running as the unprivileged `prometheus` user with the hwmon
 # collector only (the kernel drivers' hardware sensors under /sys/class/hwmon, which any user may read), listening
 # on <server-address>:9100 only, behind basic auth (user `argus`). No sudo, no textfile directory, no other
-# collectors. Safe to run again: it rewrites the same files each time.
+# collectors. The service waits for the network at boot and keeps retrying until its address exists. Safe to run
+# again: it rewrites the same files each time.
 set -euo pipefail
 
 LISTEN_IP=${1:?usage: $0 <listen-ip>  (bcrypt hash on stdin)}
@@ -54,6 +55,26 @@ else
   echo "ARGS=\"$ARGS\"" >> $DEFAULTS
 fi
 grep -qxF "ARGS=\"$ARGS\"" $DEFAULTS || { echo "couldn't set ARGS in $DEFAULTS" >&2; exit 1; }
+
+# Wait for the network, and keep retrying. The service listens on the server's own address, which a bridge (Proxmox'
+# vmbr0) may not have yet when the unit starts early in boot: "bind: cannot assign requested address". Debian's
+# unit has no network ordering and systemd's default start limit (5 starts in 10 s) gives up for good.
+DROPIN=/etc/systemd/system/prometheus-node-exporter.service.d/10-argus-wait-for-network.conf
+install -d -m 755 "${DROPIN%/*}"
+cat > "$DROPIN" <<'EOF'
+# Argus: start once the network is up (ifupdown2's networking.service runs before network-online.target), and
+# retry every 5 s for as long as it takes rather than giving up after 5 fast failures.
+[Unit]
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Restart=on-failure
+RestartSec=5s
+EOF
+chmod 644 "$DROPIN"
+systemctl daemon-reload
 
 # 3. Start, then check: active, listening on the one address only, and refusing scrapes without the password.
 systemctl enable prometheus-node-exporter >/dev/null 2>&1
