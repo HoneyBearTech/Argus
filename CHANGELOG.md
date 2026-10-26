@@ -139,6 +139,9 @@ Each release's notes on GitHub are its section here.
 
 ### Fixed
 
+- GPUs dashboard: an Intel card's temperature and power (hwmon) count only on a host whose Intel GPU exporter
+  lists it. A container on the GPU's server that sees the host's hwmon sensors (the Argus agent in an LXC) no
+  longer adds the card's power a second time or a second row to the Intel GPUs table.
 - The Grafana image kept only the Prometheus and Loki datasource plugins, so a PostgreSQL datasource couldn't
   work; it keeps Grafana's bundled PostgreSQL plugin too now (CI checks all three are there).
 - The IPMI and hwmon exporters set up by `deploy/ipmi/setup-ipmi-exporter.sh` and
