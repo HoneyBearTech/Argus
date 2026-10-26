@@ -1,6 +1,6 @@
 name: Image scan
 
-# Scans the five Argus images for known vulnerabilities with fixes available (Trivy, HIGH and
+# Scans the six Argus images for known vulnerabilities with fixes available (Trivy, HIGH and
 # CRITICAL) every week and when an image changes, and reports them to the repository's code
 # scanning alerts, where each is fixed or triaged as described in docs/dependencies.md.
 # Most findings come from the upstream images; they're fixed by bumping the pinned image once
@@ -33,6 +33,8 @@ jobs:
           - { image: argus-prometheus, context: ., dockerfile: images/prometheus/Dockerfile }
           - { image: argus-blackbox, context: ., dockerfile: images/blackbox/Dockerfile }
           - { image: argus-loki, context: ., dockerfile: images/loki/Dockerfile }
+          # amd64 only: Debian builds intel-gpu-tools for amd64 and i386.
+          - { image: argus-intel-gpu-exporter, context: ., dockerfile: images/intel-gpu-exporter/Dockerfile, platforms: linux/amd64 }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

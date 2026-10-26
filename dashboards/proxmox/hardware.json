@@ -1587,6 +1587,360 @@
       },
       "interval": "1m",
       "id": 15
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "Intel GPUs",
+      "description": "Every Intel GPU that Argus' Intel GPU exporter finds on a server's or host's PCI bus, and whether it reports load. Reporting: the server's own i915 driver has the GPU and intel_gpu_top reads it. Not reporting: i915 has it but intel_gpu_top can't read it (the Intel GPU not reporting alert). Not sampled: another driver has it; vfio-pci means it's passed through to a VM, which reports it under its own name when it runs the agent's intel-gpu profile.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max by (host, pci_slot, driver) (intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}) + on (host, pci_slot) group_left () max by (host, pci_slot) (intel_gpu_up{job=\"intel_gpu\", host=~\"$host\"})) or max by (host, pci_slot, driver) (intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}) * 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "No Intel GPU exporter reporting"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "State"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "2": {
+                        "text": "Reporting",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "Not reporting",
+                        "color": "red",
+                        "index": 1
+                      },
+                      "0": {
+                        "text": "Not sampled",
+                        "color": "blue",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Driver"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "vfio-pci": {
+                        "text": "vfio-pci (passed through to a VM)",
+                        "index": 0
+                      },
+                      "": {
+                        "text": "none",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Server",
+            "desc": false
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "host": 0,
+              "pci_slot": 1,
+              "driver": 2,
+              "Value": 3
+            },
+            "renameByName": {
+              "host": "Server",
+              "pci_slot": "GPU",
+              "driver": "Driver",
+              "Value": "State"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Intel GPU engine load",
+      "description": "How busy each Intel GPU's engines are, by intel_gpu_top (the i915 driver's counters): Render/3D (also tone mapping and filters), Video (decode and encode, Quick Sync: what Plex, Jellyfin and Tdarr use) and VideoEnhance (scaling and deinterlacing). The share of time busy over each interval, so short bursts aren't missed between scrapes. The card's power is on GPU power above.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 49,
+        "w": 16,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, pci_slot, engine) (rate(intel_gpu_engine_busy_seconds_total{job=\"intel_gpu\", host=~\"$host\", engine=~\"Render/3D|Video|VideoEnhance\"}[$__rate_interval]))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{pci_slot}} {{engine}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0,
+          "noValue": "No Intel GPU reporting",
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Intel GPU clock",
+      "description": "Each Intel GPU's actual clock, and the clock the driver asked for (dashed). An idle card sits at its lowest clock or in RC6; a card that gets less than it asks for is held back by power or temperature.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, pci_slot) (intel_gpu_frequency_hertz{job=\"intel_gpu\", host=~\"$host\", type=\"actual\"})",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{pci_slot}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, pci_slot) (intel_gpu_frequency_hertz{job=\"intel_gpu\", host=~\"$host\", type=\"requested\"})",
+          "refId": "B",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{pci_slot}} requested"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "hertz",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0,
+          "noValue": "No Intel GPU reporting"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Intel GPU idle (RC6)",
+      "description": "The share of time each Intel GPU spends in RC6, its low-power idle state. Near 100 % on a card with nothing to do; a card that never gets there is kept awake.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 57,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, pci_slot) (rate(intel_gpu_rc6_seconds_total{job=\"intel_gpu\", host=~\"$host\"}[$__rate_interval]))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} GPU {{pci_slot}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0,
+          "noValue": "No Intel GPU reporting",
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m"
     }
   ]
 }

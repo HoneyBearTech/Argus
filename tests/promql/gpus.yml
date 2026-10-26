@@ -87,3 +87,113 @@ tests:
         exp_samples:
           - labels: '{job="gpu", host="h1", instance="h1:9835", uuid="u1", name="Quadro P1000", index="0"}'
             value: 40
+
+  # NVIDIA and Intel GPUs together. n1: an NVIDIA GPU at 60 °C drawing 50 W. i1: a server whose i915 driver has an
+  # Intel card at 0000:43:00.0 (Intel GPU exporter, job intel_gpu; hwmon, job hwmon): Video busy half the time,
+  # 70 °C, 20 W (1200 J a minute). i2: a server whose Intel card is passed through to a VM: listed, not a GPU it
+  # reports.
+  - interval: 1m
+    input_series:
+      - series: 'nvidia_smi_gpu_info{job="gpu", host="n1", instance="n1:9835", uuid="u1", name="Quadro P1000", index="0", driver_version="580.178.04"}'
+        values: "1x15"
+      - series: 'nvidia_smi_temperature_gpu{job="gpu", host="n1", instance="n1:9835", uuid="u1"}'
+        values: "60x15"
+      - series: 'nvidia_smi_power_draw_watts{job="gpu", host="n1", instance="n1:9835", uuid="u1"}'
+        values: "50x15"
+      - series: 'intel_gpu_info{job="intel_gpu", host="i1", instance="i1:9836", pci_slot="0000:43:00.0", driver="i915"}'
+        values: "1x15"
+      - series: 'intel_gpu_up{job="intel_gpu", host="i1", instance="i1:9836", pci_slot="0000:43:00.0"}'
+        values: "1x15"
+      - series: 'intel_gpu_engine_busy_seconds_total{job="intel_gpu", host="i1", instance="i1:9836", pci_slot="0000:43:00.0", engine="Video"}'
+        values: "0+30x15"
+      - series: 'intel_gpu_engine_busy_seconds_total{job="intel_gpu", host="i1", instance="i1:9836", pci_slot="0000:43:00.0", engine="Blitter"}'
+        values: "0+60x15"
+      - series: 'intel_gpu_frequency_hertz{job="intel_gpu", host="i1", instance="i1:9836", pci_slot="0000:43:00.0", type="actual"}'
+        values: "2000000000x15"
+      - series: 'node_hwmon_chip_names{job="hwmon", host="i1", instance="i1:9100", chip="0000:42:01_0_0000:43:00_0", chip_name="i915"}'
+        values: "1x15"
+      - series: 'node_hwmon_temp_celsius{job="hwmon", host="i1", instance="i1:9100", chip="0000:42:01_0_0000:43:00_0", sensor="temp1"}'
+        values: "70x15"
+      - series: 'node_hwmon_energy_joule_total{job="hwmon", host="i1", instance="i1:9100", chip="0000:42:01_0_0000:43:00_0", sensor="energy1"}'
+        values: "0+1200x15"
+      - series: 'intel_gpu_info{job="intel_gpu", host="i2", instance="i2:9836", pci_slot="0000:43:00.0", driver="vfio-pci"}'
+        values: "1x15"
+    promql_expr_test:
+      # The passed-through card isn't counted.
+      - dashboard: argus-gpus
+        panel: 1
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 2
+      - dashboard: argus-gpus
+        panel: Hottest GPU
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 70
+      - dashboard: argus-gpus
+        panel: Power
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: "{}"
+            value: 70
+      - dashboard: argus-gpus
+        panel: Intel GPUs
+        ref_id: B
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="i1/0000:43:00.0"}'
+            value: 2
+          - labels: '{key="i2/0000:43:00.0"}'
+            value: 0
+      - dashboard: argus-gpus
+        panel: Intel GPUs
+        ref_id: C
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="i1/0000:43:00.0"}'
+            value: 50
+      - dashboard: argus-gpus
+        panel: Intel GPUs
+        ref_id: G
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="i1/0000:43:00.0"}'
+            value: 70
+      - dashboard: argus-gpus
+        panel: Intel GPUs
+        ref_id: H
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{key="i1/0000:43:00.0"}'
+            value: 20
+      - dashboard: argus-gpus
+        panel: Intel engines
+        vars: {host: ".*", __rate_interval: "2m"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{host="i1", pci_slot="0000:43:00.0", engine="Video"}'
+            value: 50
+      - dashboard: argus-gpus
+        panel: Intel temperature and power
+        vars: {host: ".*"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{host="i1", pci_slot="0000:43:00.0"}'
+            value: 70
+      - dashboard: argus-gpus
+        panel: Intel temperature and power
+        ref_id: B
+        vars: {host: ".*", __rate_interval: "2m"}
+        eval_time: 10m
+        exp_samples:
+          - labels: '{host="i1", pci_slot="0000:43:00.0"}'
+            value: 20

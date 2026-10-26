@@ -109,5 +109,34 @@ services:
     ports:
       - 9835:9835
 
+  # Intel GPU load (Render/3D, Video and VideoEnhance engines), clock and idle
+  # time, read through intel_gpu_top — only on a host whose own i915 driver
+  # has an Intel GPU, such as a VM the card is passed through to
+  # (COMPOSE_PROFILES=intel-gpu). Prometheus scrapes it (job `intel_gpu`,
+  # basic auth: the password's bcrypt hash in ARGUS_INTEL_GPU_PASSWORD_HASH,
+  # single-quoted in .env). The image is amd64-only (docs/intel-gpu.md).
+  intel-gpu-exporter:
+    image: ${ARGUS_INTEL_GPU_EXPORTER_IMAGE:-ghcr.io/honeybeartech/argus-intel-gpu-exporter:latest}
+    container_name: argus-intel-gpu-exporter
+    restart: unless-stopped
+    profiles: [intel-gpu]
+    # Root, but with no capability except PERFMON (Docker gives an added
+    # capability to root only), can't gain others, read-only filesystem.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      # intel_gpu_top reads the GPU's busy and idle counters (the i915 PMU)
+      # through perf_event_open(), which needs PERFMON; Docker's seccomp
+      # profile allows that call only with it. It reads the GPU through sysfs
+      # and opens no device file, so the container gets no /dev/dri.
+      - PERFMON
+    read_only: true
+    environment:
+      INTEL_GPU_EXPORTER_PASSWORD_HASH: ${ARGUS_INTEL_GPU_PASSWORD_HASH:-}
+    ports:
+      - 9836:9836
+
 volumes:
   agent_data:

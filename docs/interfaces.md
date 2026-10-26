@@ -16,6 +16,7 @@ what it accepts, and how it's configured. The trust placed in each is described 
 | GPU exporter | a host with an NVIDIA GPU, `:9835` (`gpu` profile of `agent/compose.yml`) | HTTP `/metrics`, no authentication | Prometheus (`targets/gpu.json`) |
 | IPMI exporter | each server whose hardware Argus reads, `<server address>:9290` (Debian's `prometheus-ipmi-exporter`, [`deploy/ipmi/`](../deploy/ipmi/)) | HTTP `/metrics`, basic auth (user `argus`, `secrets/ipmi_password`) | Prometheus (`targets/ipmi.json`) |
 | node_exporter (hwmon only) | a server without the agent whose add-in GPU Argus reads, `<server address>:9100` (Debian's `prometheus-node-exporter`, [`deploy/hwmon/`](../deploy/hwmon/)) | HTTP `/metrics`, basic auth (user `argus`, `secrets/hwmon_password`) | Prometheus (`targets/hwmon.json`) |
+| Intel GPU exporter | a server whose i915 driver has an Intel GPU, `<server address>:9836` ([`deploy/intelgpu/`](../deploy/intelgpu/)), or a host with the agent's `intel-gpu` profile, `:9836` | HTTP `/metrics`, basic auth (user `argus`, `secrets/intel_gpu_password`; the server or agent keeps only its bcrypt hash) | Prometheus (`targets/intel_gpu.json`) |
 | Agent | each host; Alloy's own UI on `127.0.0.1:12345` only | — (the agent accepts no connections from other machines) | — |
 
 Outbound connections:
@@ -42,7 +43,7 @@ Grafana (auto-deploy still falls back to `DISCORD_WEBHOOK_URL`).
 
 **Agent** (environment, or `agent/.env` from [`agent/.env.example`](../agent/.env.example)):
 `ARGUS_HOST` (the `host` label), `ARGUS_PROMETHEUS_URL`, `ARGUS_LOKI_URL` (all required);
-`ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `HOMELAB_PULL_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`, and/or `gpu`; `ARGUS_AGENT_IMAGE`. Host
+`ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one); `NPM_LOG_DIR`; `HOMELAB_PULL_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER` and `PLEX_TOKEN`, and/or `gpu`, and/or `intel-gpu` with `ARGUS_INTEL_GPU_PASSWORD_HASH` (and optionally `ARGUS_INTEL_GPU_EXPORTER_IMAGE`); `ARGUS_AGENT_IMAGE`. Host
 mounts (all read-only): `/` as `/rootfs`, `/sys`, `/run/udev`, `/dev/disk`, `/var/lib/docker`, the Docker
 socket, the containerd socket, `NPM_LOG_DIR` and `HOMELAB_PULL_DIR`; its own data is in a volume at `/var/lib/alloy/data`. It needs
 the host's PID and network namespaces and the `DAC_OVERRIDE` capability, not `--privileged`
@@ -69,7 +70,8 @@ keys as files mounted under `/run/secrets/` (`unifi_password`, `<app>_api_key`, 
 `/run/secrets/`); the CA certificate of Proxmox VE (`pve-ca.pem`); files Prometheus reads
 (`home_assistant_token`, `uptime_kuma_api_key`, `peanut_username` and `peanut_password`,
 `ipmi_password` (the IPMI exporters' basic auth; see [IPMI](ipmi.md)), `hwmon_password` (node_exporter's
-basic auth on servers; see [hwmon](hwmon.md)), `steerhouse_metrics_token` (Steerhouse's `METRICS_TOKEN`; see
+basic auth on servers; see [hwmon](hwmon.md)), `intel_gpu_password` (the Intel GPU exporters' basic auth; see
+[Intel GPU](intel-gpu.md)), `steerhouse_metrics_token` (Steerhouse's `METRICS_TOKEN`; see
 [Steerhouse](steerhouse.md)), `prometheus-web.yml`, `prometheus_password`); and `snmp-auth.yml`.
 
 ## Data contracts
@@ -90,8 +92,9 @@ basic auth on servers; see [hwmon](hwmon.md)), `steerhouse_metrics_token` (Steer
 - **Selected GPU** (optional; read by the "Monitoring target down" alert): a host whose GPU can change, such as
   a VM that fails over to a machine with another GPU, writes one series `homelab_gpu_selected{vendor} 1`, `vendor`
   being `nvidia`, `intel` or `none`, to a `.prom` file in `HOMELAB_PULL_DIR`'s `metrics/` directory (the agent
-  adds `host`). While it isn't `nvidia`, a stopped GPU exporter on that host (its `gpu` target) doesn't alert;
-  without the series, it does.
+  adds `host`). While it isn't `nvidia`, a stopped NVIDIA GPU exporter on that host (its `gpu` target)
+  doesn't alert, and while it isn't `intel`, a stopped Intel GPU exporter (its `intel_gpu` target); without the
+  series, they do.
 - **Alert notifications** are Grafana's Discord message format; each rule has a stable `uid`
   (`argus-*`), a `severity` label and a one-line summary.
 

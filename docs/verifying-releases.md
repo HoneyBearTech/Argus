@@ -23,6 +23,7 @@ version 0.7.1; substitute the one you run.
 ## The images
 
 ```sh
+# From the first release after 0.7.1, also argus-intel-gpu-exporter.
 for image in argus-grafana argus-prometheus argus-blackbox argus-loki argus-agent; do
   cosign verify "ghcr.io/honeybeartech/${image}:0.7.1" \
     --certificate-identity-regexp '^https://github\.com/HoneyBearTech/Argus/\.github/workflows/release\.yml@refs/tags/v' \

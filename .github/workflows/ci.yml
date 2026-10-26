@@ -130,6 +130,20 @@ jobs:
             docker build -t "argus-${image}:ci" -f "images/${image}/Dockerfile" .
           done
 
+      # The Intel GPU exporter's image (amd64 only). The runner has no Intel GPU, so it finds none and keeps
+      # answering: an empty intel_gpu_info, no intel_gpu_up. intel_gpu_top itself must be in the image.
+      - name: Intel GPU exporter image answers without a GPU
+        run: |
+          docker build -t argus-intel-gpu-exporter:ci -f images/intel-gpu-exporter/Dockerfile .
+          docker run --rm --entrypoint intel_gpu_top argus-intel-gpu-exporter:ci -h | head -1
+          docker run -d --name intel-gpu-exporter --read-only --cap-drop ALL --cap-add PERFMON \
+            --security-opt no-new-privileges:true -p 127.0.0.1:9836:9836 argus-intel-gpu-exporter:ci
+          for _ in $(seq 20); do curl -fsS http://127.0.0.1:9836/metrics -o metrics.txt && break; sleep 1; done
+          docker logs intel-gpu-exporter
+          docker rm -f intel-gpu-exporter
+          grep -x '# TYPE intel_gpu_up gauge' metrics.txt
+          ! grep -E '^intel_gpu_(up|info)\{' metrics.txt
+
       # Grafana refuses to start on an invalid provisioned alert rule, so start the image and
       # check that every dashboard, alert rule, datasource and the contact point loaded. Prometheus
       # requires a password here (tests/fixtures/prometheus-auth/), which Grafana and Prometheus'
@@ -215,5 +229,5 @@ jobs:
           docker compose config --quiet
           docker compose -f docker-compose.yml -f docker-compose.source.yml config --quiet
           ARGUS_PROXY_NETWORK=ci docker compose -f docker-compose.yml -f docker-compose.source.yml -f docker-compose.proxy.yml config --quiet
-          ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex config --quiet
+          ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex --profile intel-gpu config --quiet
           docker compose -f logs/compose.yml config --quiet

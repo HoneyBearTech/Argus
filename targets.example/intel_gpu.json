@@ -1,0 +1,10 @@
+[
+  {
+    "targets": ["server-1.example:9836"],
+    "labels": {"host": "server-1"}
+  },
+  {
+    "targets": ["gpu-vm.example:9836"],
+    "labels": {"host": "gpu-vm"}
+  }
+]

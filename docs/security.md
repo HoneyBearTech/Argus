@@ -31,7 +31,8 @@ Loki must not be reachable from outside it.
    without an admin password (`secrets/grafana_admin_password` missing, empty or unreadable).
 5. **Only three services listen on the network**: Grafana, Prometheus and Loki (plus, where enabled, the
    Plex exporter on a Plex host and the GPU exporter on a GPU host; both serve metrics only, without a
-   login; and the IPMI exporter on a server whose hardware Argus reads, behind basic auth). blackbox_exporter and the exporters are reachable only from the compose
+   login; and the IPMI exporter on a server whose hardware Argus reads, and the Intel GPU exporter, both
+   behind basic auth). blackbox_exporter and the exporters are reachable only from the compose
    network, and the agent accepts no connections from other machines.
 6. **TLS is verified by default** on every outgoing connection that uses it: web probes (an invalid or
    expired certificate fails the probe), the UniFi console (unless `UNIFI_VERIFY_SSL=false`), the Discord
@@ -118,6 +119,10 @@ Loki must not be reachable from outside it.
 - node_exporter on a server without the agent ([hwmon](hwmon.md)) runs only its hwmon collector, as an
   unprivileged user without sudo, so it serves hardware sensor readings and nothing about processes, file
   systems or the network. It uses basic auth without TLS too.
+- The Intel GPU exporter ([Intel GPU](intel-gpu.md)) runs on a server as a transient unprivileged user whose
+  only capability is `CAP_PERFMON`, which lets it read performance counters and change nothing; the server's
+  `perf_event_paranoid` stays as it is. It serves GPU load, clocks and PCI addresses, with basic auth without
+  TLS; the server keeps only the password's bcrypt hash.
 
 ## Hardening
 
@@ -125,7 +130,8 @@ What each container runs with. Every service in `docker-compose.yml`, `logs/comp
 `agent/compose.yml` drops all Linux capabilities (`cap_drop: [ALL]`), can't gain privileges through setuid
 binaries or file capabilities (`no-new-privileges:true`), and has a read-only root filesystem; it writes only
 to its volume and, where it needs one, a `/tmp` in memory. A capability may be added back only from Docker's
-default set, with the reason next to it in the compose file. `tests/test_configs.py` fails if a service breaks
+default set, with the reason next to it in the compose file; the one exception is the Intel GPU exporter's
+`PERFMON` (below). `tests/test_configs.py` fails if a service breaks
 any of this, and CI's boot test starts Grafana and Prometheus with these settings.
 
 | Service | Runs as | Capabilities added back | Read-only root | Writes | Why |
@@ -146,12 +152,28 @@ any of this, and CI's boot test starts Grafana and Prometheus with these setting
 | agent | root | `DAC_OVERRIDE` | yes | its data volume | [The agent's exceptions](#the-agents-exceptions) |
 | plex-exporter (agent's `plex` profile) | uid 65534 (compose; the image defaults to root) | none | yes | nothing | Needs no file |
 | gpu-exporter (agent's `gpu` profile) | uid 65534 (image) | none | yes | nothing | Runs `nvidia-smi`, which the NVIDIA runtime mounts in; the GPU's device files are open to every user |
+| intel-gpu-exporter (agent's `intel-gpu` profile) | root | `PERFMON` | yes | nothing | Runs `intel_gpu_top`, which reads the GPU's busy and idle counters (the i915 PMU) through `perf_event_open()`; [see below](#the-intel-gpu-exporters-perfmon) |
 
 Since no server container holds a capability, none can read another user's private file: everything in
 `secrets/` that a container mounts must be readable by its user, which means mode 644 (as the templates and
 `docs/interfaces.md` say). A file with mode 600 makes that service fail to read it; Grafana then refuses to
 start, unpoller logs `Reading UniFi Password File: … permission denied`. The env files in `secrets/` are read by
 the compose command, not by the containers, and can stay 600.
+
+### The Intel GPU exporter's PERFMON
+
+`intel_gpu_top` reads an Intel GPU's engine busy time, clocks and idle residency from the i915 driver's
+performance counters, which the kernel serves only through `perf_event_open()`. For counters that cover the
+whole system, as a GPU's do, the kernel requires `CAP_PERFMON` (or `CAP_SYS_ADMIN`), and Docker's seccomp
+profile allows the call only with one of them. `PERFMON` is the narrower one: it lets the process read
+performance counters and nothing else. It isn't in Docker's default set, so it's the one capability Argus adds
+beyond it, for this one optional container. Docker gives an added capability to root only, so the container
+runs as root with `PERFMON` as its only capability, `no-new-privileges` and a read-only filesystem. It opens no
+device file (the GPU is found through sysfs) and gets no `/dev/dri`. Lowering the host's
+`kernel.perf_event_paranoid` instead would open performance counters to every process on the host.
+
+On a server without the agent, the exporter runs as a systemd service ([docs/intel-gpu.md](intel-gpu.md)) with
+the same single capability, under a transient unprivileged user.
 
 ### The agent's exceptions
 
