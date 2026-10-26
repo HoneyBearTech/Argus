@@ -1,0 +1,55 @@
+# "Database server down" (argus-database-down). db1: both engines and exporters up. db2: PostgreSQL down while
+# its exporter answers (pg_up 0). db3: MariaDB's exporter unreachable (up 0; its mysql_up series stops, so
+# only up says so). db4: PostgreSQL missed one scrape at 5m and is back, so it doesn't alert at 10m.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="postgres", host="db1", instance="db1:9187"}'
+        values: "1x10"
+      - series: 'pg_up{job="postgres", host="db1", instance="db1:9187"}'
+        values: "1x10"
+      - series: 'up{job="mysql", host="db1", instance="db1:9104"}'
+        values: "1x10"
+      - series: 'mysql_up{job="mysql", host="db1", instance="db1:9104"}'
+        values: "1x10"
+      - series: 'up{job="postgres", host="db2", instance="db2:9187"}'
+        values: "1x10"
+      - series: 'pg_up{job="postgres", host="db2", instance="db2:9187"}'
+        values: "1x2 0x8"
+      - series: 'up{job="mysql", host="db3", instance="db3:9104"}'
+        values: "1x2 0x8"
+      - series: 'mysql_up{job="mysql", host="db3", instance="db3:9104"}'
+        values: "1x2"
+      - series: 'up{job="postgres", host="db4", instance="db4:9187"}'
+        values: "1x10"
+      - series: 'pg_up{job="postgres", host="db4", instance="db4:9187"}'
+        values: "1x4 0 1x5"
+    promql_expr_test:
+      # Before anything fails, nothing would alert.
+      - rule: argus-database-down
+        eval_time: 1m
+        exp_samples: []
+      # Ten minutes in: db2's engine and db3's exporter are down (db3's mysql_up is stale by then; its up is 0).
+      - rule: argus-database-down
+        eval_time: 10m
+        exp_samples:
+          - labels: '{job="postgres", host="db2"}'
+            value: 0
+          - labels: '{job="mysql", host="db3"}'
+            value: 0
+      # The measurement keeps the healthy servers too, at 1.
+      - rule: argus-database-down
+        measurement: true
+        eval_time: 10m
+        exp_samples:
+          - labels: '{job="postgres", host="db1"}'
+            value: 1
+          - labels: '{job="mysql", host="db1"}'
+            value: 1
+          - labels: '{job="postgres", host="db2"}'
+            value: 0
+          - labels: '{job="mysql", host="db3"}'
+            value: 0
+          - labels: '{job="postgres", host="db4"}'
+            value: 1
