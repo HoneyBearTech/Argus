@@ -83,7 +83,7 @@ services:
   # is fixed here.
   unpoller:
     <<: *hardened
-    image: ghcr.io/unpoller/unpoller:v5.7.0
+    image: ghcr.io/unpoller/unpoller:v5.8.3
     # The image runs as root; it only reads its password file.
     user: "65534:65534"
     restart: unless-stopped
