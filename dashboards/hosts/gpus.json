@@ -45,9 +45,9 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(nvidia_smi_gpu_info, host)",
+        "definition": "label_values({__name__=~\"nvidia_smi_gpu_info|intel_gpu_up\"}, host)",
         "query": {
-          "query": "label_values(nvidia_smi_gpu_info, host)",
+          "query": "label_values({__name__=~\"nvidia_smi_gpu_info|intel_gpu_up\"}, host)",
           "refId": "host"
         },
         "refresh": 2,
@@ -73,7 +73,7 @@
       "id": 1,
       "type": "stat",
       "title": "GPUs",
-      "description": "NVIDIA GPUs reporting through the GPU exporter.",
+      "description": "GPUs reporting: NVIDIA GPUs through the NVIDIA GPU exporter, and Intel GPUs on their machine's own i915 driver through the Intel GPU exporter.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -90,7 +90,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(nvidia_smi_gpu_info{job=\"gpu\", host=~\"$host\"})",
+          "expr": "count(nvidia_smi_gpu_info{job=\"gpu\", host=~\"$host\"} or intel_gpu_up{job=\"intel_gpu\", host=~\"$host\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -323,7 +323,7 @@
       "id": 5,
       "type": "stat",
       "title": "Hottest GPU",
-      "description": "The hottest GPU's core temperature. Orange from 80 \u00b0C, red from 85 \u00b0C (the alert).",
+      "description": "The hottest GPU's core temperature: NVIDIA's from nvidia-smi, Intel's from its driver's hardware sensors (hwmon). Orange from 80 \u00b0C, red from 85 \u00b0C (the alert).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -340,7 +340,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(nvidia_smi_temperature_gpu{job=\"gpu\", host=~\"$host\"})",
+          "expr": "max(nvidia_smi_temperature_gpu{job=\"gpu\", host=~\"$host\"} or node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -393,7 +393,7 @@
       "id": 6,
       "type": "stat",
       "title": "Power",
-      "description": "Power all GPUs draw together.",
+      "description": "Power all GPUs draw together: NVIDIA's from nvidia-smi, Intel's from its driver's energy counter (hwmon).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -410,7 +410,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(nvidia_smi_power_draw_watts{job=\"gpu\", host=~\"$host\"})",
+          "expr": "sum(nvidia_smi_power_draw_watts{job=\"gpu\", host=~\"$host\"} or rate(node_hwmon_energy_joule_total{host=~\"$host\"}[5m]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -1259,6 +1259,633 @@
           "refId": "B",
           "range": true,
           "legendFormat": "{{host}} #{{index}} W"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "30s"
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Intel GPUs",
+      "description": "Each Intel GPU now, from the Intel GPU exporter (intel_gpu_top), averaged over 5 minutes. Video: the Quick Sync engines that decode and encode a hardware transcode. Render/3D: tone mapping and filters. VideoEnhance: scaling and deinterlacing. A GPU on vfio-pci is passed through to a VM, which reports it under its own name; temperature and power come from the driver's hardware sensors (hwmon).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(max by (host, pci_slot, driver) (intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"pci_slot\")",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join((max by (host, pci_slot) (intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}) + on (host, pci_slot) max by (host, pci_slot) (intel_gpu_up{job=\"intel_gpu\", host=~\"$host\"})) or max by (host, pci_slot) (intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}) * 0, \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(100 * rate(intel_gpu_engine_busy_seconds_total{job=\"intel_gpu\", host=~\"$host\", engine=\"Video\"}[5m]), \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(100 * rate(intel_gpu_engine_busy_seconds_total{job=\"intel_gpu\", host=~\"$host\", engine=\"Render/3D\"}[5m]), \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(100 * rate(intel_gpu_engine_busy_seconds_total{job=\"intel_gpu\", host=~\"$host\", engine=\"VideoEnhance\"}[5m]), \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "refId": "E",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(intel_gpu_frequency_hertz{job=\"intel_gpu\", host=~\"$host\", type=\"actual\"}, \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "refId": "F",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(label_replace(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"), \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "refId": "G",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (key) (label_join(label_replace(rate(node_hwmon_energy_joule_total{host=~\"$host\"}[5m]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"), \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "refId": "H",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "No Intel GPUs reporting"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "State"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "2": {
+                        "text": "Reporting",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "Not reporting",
+                        "color": "red",
+                        "index": 1
+                      },
+                      "0": {
+                        "text": "Not sampled",
+                        "color": "blue",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Driver"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "vfio-pci": {
+                        "text": "vfio-pci (passed through to a VM)",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Video"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 95
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Render/3D"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 95
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VideoEnhance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 95
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Clock"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "hertz"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temperature"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Power"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "key",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "Time 5": true,
+              "Time 6": true,
+              "Time 7": true,
+              "Time 8": true,
+              "key": true,
+              "Value #A": true
+            },
+            "indexByName": {
+              "host": 0,
+              "pci_slot": 1,
+              "driver": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6,
+              "Value #F": 7,
+              "Value #G": 8,
+              "Value #H": 9
+            },
+            "renameByName": {
+              "host": "Host",
+              "pci_slot": "GPU",
+              "driver": "Driver",
+              "Value #B": "State",
+              "Value #C": "Video",
+              "Value #D": "Render/3D",
+              "Value #E": "VideoEnhance",
+              "Value #F": "Clock",
+              "Value #G": "Temperature",
+              "Value #H": "Power"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Intel engines",
+      "description": "How busy each Intel GPU's engines are: Video (Quick Sync decode and encode), Render/3D and VideoEnhance, as the share of each interval they were busy.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * max by (host, pci_slot, engine) (rate(intel_gpu_engine_busy_seconds_total{job=\"intel_gpu\", host=~\"$host\", engine=~\"Render/3D|Video|VideoEnhance\"}[$__rate_interval]))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} {{pci_slot}} {{engine}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "30s"
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Intel temperature and power",
+      "description": "Core temperature (\u00b0C) and power draw (W) per Intel GPU, from its driver's hardware sensors (hwmon): the server's driver, or a VM's when the card is passed through to it.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, pci_slot) (label_replace(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "{{host}} {{pci_slot}} \u00b0C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (host, pci_slot) (label_replace(rate(node_hwmon_energy_joule_total{host=~\"$host\"}[$__rate_interval]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "refId": "B",
+          "range": true,
+          "legendFormat": "{{host}} {{pci_slot}} W"
         }
       ],
       "fieldConfig": {

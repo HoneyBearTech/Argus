@@ -34,6 +34,9 @@ Each release's notes on GitHub are its section here.
   `argus-intel-gpu-exporter`, amd64 only; root with `PERFMON` only). New scrape job `intel_gpu`
   (`targets/intel_gpu.json`, `secrets/intel_gpu_password`), alert "Intel GPU not reporting" (a GPU on i915 that
   intel_gpu_top can't read for 10 minutes; a card passed through to a VM doesn't alert).
+- The **GPUs** dashboard shows Intel GPUs beside the NVIDIA ones: they count in the GPUs, Hottest GPU and Power
+  tiles, and an Intel GPUs table (state, Video, Render/3D and VideoEnhance busy, clock, temperature, power) and
+  engine and temperature/power charts follow the NVIDIA panels. Its Host list includes hosts with an Intel GPU.
 - "Monitoring target down" also leaves out a host's Intel GPU exporter while that host says it booted on a GPU that
   isn't Intel's (`homelab_gpu_selected`), as it does for the NVIDIA exporter.
 - **Databases** dashboard (hosts folder) for shared PostgreSQL and MariaDB servers: whether each engine answers,

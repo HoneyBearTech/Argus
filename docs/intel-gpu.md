@@ -1,6 +1,6 @@
 # Intel GPU load (intel_gpu_top)
 
-The **Server Hardware** dashboard's Intel GPU panels show how busy an Intel GPU is: the share of time its
+The **Server Hardware** and **GPUs** dashboards' Intel GPU panels show how busy an Intel GPU is: the share of time its
 Render/3D, Video (Quick Sync decode and encode) and VideoEnhance engines are busy, its clock and how much of the
 time it idles in RC6. Temperature, fan and power come from the driver's hardware sensors instead
 ([hwmon](hwmon.md)); this page is about load.
