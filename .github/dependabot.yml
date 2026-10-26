@@ -11,6 +11,7 @@ updates:
       - "/images/prometheus"
       - "/images/blackbox"
       - "/images/loki"
+      - "/images/intel-gpu-exporter"
     schedule:
       interval: "weekly"
 

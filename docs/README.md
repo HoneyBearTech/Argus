@@ -9,6 +9,7 @@ Start with the [README](../README.md) for what Argus is, its dashboards and aler
 | [Interfaces](interfaces.md) | Every port, push endpoint, environment variable, file and image Argus exposes or reads |
 | [Server hardware (IPMI)](ipmi.md) | Reading each server's BMC (temperatures, fans, power supplies, batteries) for the Server Hardware dashboard and alerts |
 | [Add-in GPUs on servers (hwmon)](hwmon.md) | Reading a server's add-in GPU (temperature, fan), which its BMC can't see, for the Server Hardware dashboard and the GPU hot alert |
+| [Intel GPU load](intel-gpu.md) | How busy an Intel GPU's engines are (intel_gpu_top), on a server or through the agent's `intel-gpu` profile |
 | [Steerhouse](steerhouse.md) | Connecting Steerhouse (Ansible web UI) for its three dashboards and alerts: metrics token, read-only database role over TLS, and re-porting its dashboards |
 | [Upgrading](upgrading.md) | Moving to a new release, and rolling back |
 | [Auto-deploy](auto-deploy.md) | Letting a server that runs from a checkout follow `main` by itself |

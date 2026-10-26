@@ -60,3 +60,38 @@ tests:
         exp_samples:
           - labels: '{__name__="up", job="gpu", host="h1", instance="h1:9835"}'
             value: 0
+
+  # The Intel GPU exporter of the agent's intel-gpu profile follows the same marker: it runs only while the
+  # host is on its Intel GPU. h1: on NVIDIA, its stopped Intel exporter is silent. h2: on Intel, its Intel
+  # exporter down alerts. h3: no marker. h4: no GPU at all, both exporters stopped. s1: a server's own
+  # exporter (deploy/intelgpu), which keeps running when its card is passed through, so it never needs this.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="intel_gpu", host="h1", instance="h1:9836"}'
+        values: "0x15"
+      - series: 'homelab_gpu_selected{job="node", host="h1", instance="h1", vendor="nvidia"}'
+        values: "1x15"
+      - series: 'up{job="intel_gpu", host="h2", instance="h2:9836"}'
+        values: "0x15"
+      - series: 'up{job="gpu", host="h2", instance="h2:9835"}'
+        values: "0x15"
+      - series: 'homelab_gpu_selected{job="node", host="h2", instance="h2", vendor="intel"}'
+        values: "1x15"
+      - series: 'up{job="intel_gpu", host="h3", instance="h3:9836"}'
+        values: "0x15"
+      - series: 'up{job="intel_gpu", host="h4", instance="h4:9836"}'
+        values: "0x15"
+      - series: 'up{job="gpu", host="h4", instance="h4:9835"}'
+        values: "0x15"
+      - series: 'homelab_gpu_selected{job="node", host="h4", instance="h4", vendor="none"}'
+        values: "1x15"
+      - series: 'up{job="intel_gpu", host="s1", instance="s1:9836"}'
+        values: "1x15"
+    promql_expr_test:
+      - rule: argus-exporter-down
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="up", job="intel_gpu", host="h2", instance="h2:9836"}'
+            value: 0
+          - labels: '{__name__="up", job="intel_gpu", host="h3", instance="h3:9836"}'
+            value: 0

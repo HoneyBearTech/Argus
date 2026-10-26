@@ -1,0 +1,98 @@
+# Intel GPU load from Argus' Intel GPU exporter (job intel_gpu): Server Hardware's Intel GPU panels and the
+# "Intel GPU not reporting" alert. s1: a server whose i915 driver has its card at 0000:43:00.0, transcoding:
+# Video busy half the time, Render/3D a tenth, the Blitter all the time (not a panel's engine), idle (RC6) 40 %.
+# s2: a server whose card is passed through to a VM (vfio-pci): listed, never sampled. s3: a card on i915 that
+# intel_gpu_top can't read. vm: the VM the card was passed through to, running the agent's intel-gpu profile.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'intel_gpu_info{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0", driver="i915"}'
+        values: "1x10"
+      - series: 'intel_gpu_up{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0"}'
+        values: "1x10"
+      - series: 'intel_gpu_engine_busy_seconds_total{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0", engine="Video"}'
+        values: "100+30x10"
+      - series: 'intel_gpu_engine_busy_seconds_total{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0", engine="Render/3D"}'
+        values: "100+6x10"
+      - series: 'intel_gpu_engine_busy_seconds_total{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0", engine="VideoEnhance"}'
+        values: "0x10"
+      - series: 'intel_gpu_engine_busy_seconds_total{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0", engine="Blitter"}'
+        values: "0+60x10"
+      - series: 'intel_gpu_rc6_seconds_total{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0"}'
+        values: "0+24x10"
+      - series: 'intel_gpu_frequency_hertz{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0", type="actual"}'
+        values: "1950000000x10"
+      - series: 'intel_gpu_frequency_hertz{job="intel_gpu", host="s1", instance="s1:9836", pci_slot="0000:43:00.0", type="requested"}'
+        values: "2000000000x10"
+      - series: 'intel_gpu_info{job="intel_gpu", host="s2", instance="s2:9836", pci_slot="0000:43:00.0", driver="vfio-pci"}'
+        values: "1x10"
+      - series: 'intel_gpu_info{job="intel_gpu", host="s3", instance="s3:9836", pci_slot="0000:03:00.0", driver="i915"}'
+        values: "1x10"
+      - series: 'intel_gpu_up{job="intel_gpu", host="s3", instance="s3:9836", pci_slot="0000:03:00.0"}'
+        values: "0x10"
+      - series: 'intel_gpu_info{job="intel_gpu", host="vm", instance="vm:9836", pci_slot="0000:00:10.0", driver="i915"}'
+        values: "1x10"
+      - series: 'intel_gpu_up{job="intel_gpu", host="vm", instance="vm:9836", pci_slot="0000:00:10.0"}'
+        values: "1x10"
+    promql_expr_test:
+      # Only the card intel_gpu_top can't read; never the one passed through to a VM.
+      - rule: argus-intel-gpu-not-reporting
+        eval_time: 5m
+        exp_samples:
+          - labels: '{host="s3", pci_slot="0000:03:00.0"}'
+            value: 1
+      - dashboard: argus-hardware
+        panel: Intel GPUs
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{host="s1", pci_slot="0000:43:00.0", driver="i915"}'
+            value: 2
+          - labels: '{host="s2", pci_slot="0000:43:00.0", driver="vfio-pci"}'
+            value: 0
+          - labels: '{host="s3", pci_slot="0000:03:00.0", driver="i915"}'
+            value: 1
+          - labels: '{host="vm", pci_slot="0000:00:10.0", driver="i915"}'
+            value: 2
+      - dashboard: argus-hardware
+        panel: Intel GPUs
+        vars: {host: "s2"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{host="s2", pci_slot="0000:43:00.0", driver="vfio-pci"}'
+            value: 0
+      # The share of time busy; the Blitter isn't shown.
+      - dashboard: argus-hardware
+        panel: Intel GPU engine load
+        vars: {host: ".*", __rate_interval: "2m"}
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s1", pci_slot="0000:43:00.0", engine="Video"}'
+            value: 0.5
+          - labels: '{host="s1", pci_slot="0000:43:00.0", engine="Render/3D"}'
+            value: 0.1
+          - labels: '{host="s1", pci_slot="0000:43:00.0", engine="VideoEnhance"}'
+            value: 0
+      - dashboard: argus-hardware
+        panel: Intel GPU clock
+        vars: {host: ".*"}
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s1", pci_slot="0000:43:00.0"}'
+            value: 1.95E+09
+      - dashboard: argus-hardware
+        panel: Intel GPU clock
+        ref_id: B
+        vars: {host: ".*"}
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s1", pci_slot="0000:43:00.0"}'
+            value: 2E+09
+      - dashboard: argus-hardware
+        panel: Intel GPU idle (RC6)
+        vars: {host: ".*", __rate_interval: "2m"}
+        eval_time: 6m
+        exp_samples:
+          - labels: '{host="s1", pci_slot="0000:43:00.0"}'
+            value: 0.4

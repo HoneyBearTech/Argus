@@ -25,6 +25,17 @@ Each release's notes on GitHub are its section here.
 
 ### Added
 
+- **Intel GPU load** on the Server Hardware dashboard: an Intel GPUs table (which GPU, which driver has it, whether
+  it reports; a card passed through to a VM shows as vfio-pci), the Render/3D, Video and VideoEnhance engines' busy
+  share, the clock and RC6 idle time, from Argus' own exporter around `intel_gpu_top`
+  ([docs/intel-gpu.md](docs/intel-gpu.md)). It runs as a systemd service on a server whose i915 driver has the card
+  ([`deploy/intelgpu/`](deploy/intelgpu/): an unprivileged user with `CAP_PERFMON` only, basic auth, waits for the
+  network at boot and keeps retrying) or as the agent's new `intel-gpu` profile on a host or VM (new image
+  `argus-intel-gpu-exporter`, amd64 only; root with `PERFMON` only). New scrape job `intel_gpu`
+  (`targets/intel_gpu.json`, `secrets/intel_gpu_password`), alert "Intel GPU not reporting" (a GPU on i915 that
+  intel_gpu_top can't read for 10 minutes; a card passed through to a VM doesn't alert).
+- "Monitoring target down" also leaves out a host's Intel GPU exporter while that host says it booted on a GPU that
+  isn't Intel's (`homelab_gpu_selected`), as it does for the NVIDIA exporter.
 - **Databases** dashboard (hosts folder) for shared PostgreSQL and MariaDB servers: whether each engine answers,
   connections in use against `max_connections`, transactions and queries per second, database sizes, PostgreSQL's
   cache hit ratio, MariaDB's buffer pool, deadlocks and refused logins. New scrape jobs `postgres`

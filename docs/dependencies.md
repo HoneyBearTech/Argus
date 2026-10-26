@@ -56,7 +56,7 @@ Released Argus images carry an SBOM listing every package in them ([verifying-re
 Known vulnerabilities are found by:
 
 - the weekly **image scan** ([`.github/workflows/scan.yml`](../.github/workflows/scan.yml)): Trivy scans
-  all five Argus images for HIGH and CRITICAL vulnerabilities that have a fix available, and reports each
+  all six Argus images for HIGH and CRITICAL vulnerabilities that have a fix available, and reports each
   one as a [code scanning alert](https://github.com/HoneyBearTech/Argus/security/code-scanning);
 - **Dependabot alerts** for the GitHub Actions and Python tools;
 - upstream security advisories for Grafana, Prometheus, Loki and Alloy, which the maintainer follows.

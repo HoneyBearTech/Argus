@@ -125,8 +125,9 @@ groups:
     isPaused: false
   # A host that can move between GPUs (an HA guest) says which one it booted with through its agent's
   # textfile collector: homelab_gpu_selected{vendor="nvidia"|"intel"|"none"} 1. While that isn't NVIDIA,
-  # its GPU exporter is stopped on purpose, so only that host's gpu target is left out; its other targets,
-  # and a host without the marker, alert as before.
+  # its NVIDIA GPU exporter is stopped on purpose, and while it isn't Intel, its Intel GPU exporter, so only
+  # that host's gpu or intel_gpu target is left out; its other targets, and a host without the marker, alert
+  # as before.
   - uid: argus-exporter-down
     title: Monitoring target down
     condition: C
@@ -138,8 +139,8 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: up{job!="node"} unless on (job, host) label_replace(homelab_gpu_selected{vendor!="nvidia"} == 1, "job",
-          "gpu", "", "")
+        expr: up{job!="node"} unless on (job, host) (label_replace(homelab_gpu_selected{vendor!="nvidia"} == 1, "job",
+          "gpu", "", "") or label_replace(homelab_gpu_selected{vendor!="intel"} == 1, "job", "intel_gpu", "", ""))
         instant: true
         range: false
         intervalMs: 15000
@@ -329,6 +330,47 @@ groups:
       severity: warning
     annotations:
       summary: 'The GPU exporter on {{ $labels.host }} reports no GPU (nvidia-smi fails; is the NVIDIA driver loaded?), so GPU transcoding there won''t work.'
+    isPaused: false
+  # The Intel GPU exporter finds a GPU on the host's own i915 driver but intel_gpu_top can't read it (no
+  # PERFMON, or a kernel that wants more). A GPU passed through to a VM (vfio-pci) has no intel_gpu_up, so
+  # it never fires for that; an exporter that's down is "Monitoring target down".
+  - uid: argus-intel-gpu-not-reporting
+    title: Intel GPU not reporting
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 1 - max by (host, pci_slot) (intel_gpu_up{job="intel_gpu"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'intel_gpu_top can''t read the Intel GPU {{ $labels.pci_slot }} on {{ $labels.host }} (see the exporter''s log), so its load isn''t reported.'
     isPaused: false
 - orgId: 1
   name: Capacity

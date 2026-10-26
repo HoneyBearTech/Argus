@@ -631,12 +631,68 @@ def test_gpu_panels_and_the_gpu_hot_alert_pick_the_same_hwmon_chips() -> None:
     alert = chips_re.findall(rules["argus-gpu-hot"]["data"][0]["model"]["expr"])
     assert alert == ['chip_name=~"i915|xe"']
     panels = json.loads((ROOT / "dashboards/proxmox/hardware.json").read_text())["panels"]
-    gpu_panels = [p for p in panels if "GPU" in p["title"]]
+    gpu_panels = [p for p in panels if "GPU" in p["title"] and "Intel GPU" not in p["title"]]
     assert [p["title"] for p in gpu_panels] == ["Hottest GPU", "GPU temperature", "GPU power", "GPU fan speed"]
     for panel in gpu_panels:
         for target in panel["targets"]:
             used = chips_re.findall(target["expr"])
             assert [s.replace(', host=~"$host"', "") for s in used] == alert, (panel["title"], target["refId"])
+
+
+def test_intel_gpu_job_scrapes_with_basic_auth_from_a_secret_file() -> None:
+    """The Intel GPU exporter asks for basic auth on servers and in the agent; the password is a file in secrets/."""
+    job = next(j for j in load("prometheus/prometheus.yml")["scrape_configs"] if j["job_name"] == "intel_gpu")
+    assert job["basic_auth"] == {"username": "argus", "password_file": "/etc/prometheus/secrets/intel_gpu_password"}
+    assert (ROOT / "secrets.example" / "intel_gpu_password").is_file()
+    assert job["file_sd_configs"] == [{"files": ["/etc/prometheus/targets/intel_gpu.json"]}]
+    targets = json.loads((ROOT / "targets.example" / "intel_gpu.json").read_text())
+    assert targets
+    assert all(t["labels"]["host"] for t in targets), "the dashboard and the alert name hosts by their host label"
+    assert all(t["targets"][0].endswith(":9836") for t in targets)
+
+
+def intel_gpu_unit() -> dict[str, dict[str, list[str]]]:
+    """The systemd unit deploy/intelgpu/setup-intel-gpu-exporter.sh writes, as {section: {key: [values]}}."""
+    text = (ROOT / "deploy/intelgpu/setup-intel-gpu-exporter.sh").read_text()
+    unit = re.search(r"cat > /etc/systemd/system/\$SERVICE\.service <<EOF\n(.*?)\nEOF\n", text, re.DOTALL)
+    assert unit, "the unit is written from a here-document"
+    sections: dict[str, dict[str, list[str]]] = {}
+    section = ""
+    for line in unit.group(1).splitlines():
+        if line.startswith("["):
+            section = line.strip("[]")
+            sections[section] = {}
+        elif "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            sections[section].setdefault(key, []).append(value)
+    return sections
+
+
+def test_intel_gpu_exporter_service_waits_for_the_network_and_keeps_retrying() -> None:
+    """The boot race the hwmon and IPMI exporters had: the node's address may not exist yet when the unit starts."""
+    unit = intel_gpu_unit()
+    assert unit["Unit"]["Wants"] == ["network-online.target"]
+    assert unit["Unit"]["After"] == ["network-online.target"]
+    assert unit["Unit"]["StartLimitIntervalSec"] == ["0"]
+    assert unit["Service"]["Restart"] == ["on-failure"]
+    assert unit["Service"]["RestartSec"] == ["5s"]
+
+
+def test_intel_gpu_exporter_service_is_unprivileged_but_for_perfmon() -> None:
+    """intel_gpu_top needs CAP_PERFMON for the i915 PMU and nothing else: no root, no devices, nothing writable."""
+    service = intel_gpu_unit()["Service"]
+    assert service["DynamicUser"] == ["yes"]
+    assert service["AmbientCapabilities"] == ["CAP_PERFMON"]
+    assert service["CapabilityBoundingSet"] == ["CAP_PERFMON"]
+    for key in ["NoNewPrivileges", "PrivateDevices", "PrivateTmp", "ProtectHome", "ProtectKernelTunables"]:
+        assert service[key] == ["yes"], key
+    assert service["ProtectSystem"] == ["strict"]
+    assert "User" not in service
+    # Listens on the address given only, with the password hash handed over as a systemd credential.
+    assert service["ExecStart"] == [
+        "/usr/bin/python3 -I /usr/local/lib/argus/intel_gpu_exporter.py --web.listen-address=${LISTEN_IP}:${PORT}"
+    ]
+    assert service["LoadCredential"] == ["password_hash:/etc/argus/intel-gpu-exporter.hash"]
 
 
 def test_steerhouse_job_sends_the_metrics_token_from_a_secret_file() -> None:
@@ -707,6 +763,9 @@ DOCKER_DEFAULT_CAPABILITIES = {
     "SETUID",
     "SYS_CHROOT",
 }
+# The one exception, documented in docs/security.md#the-intel-gpu-exporters-perfmon: intel_gpu_top reads the i915
+# PMU through perf_event_open(), which needs PERFMON (Docker's seccomp profile allows the call only with it).
+BEYOND_DEFAULT = {("agent/compose.yml", "intel-gpu-exporter"): {"PERFMON"}}
 SERVICES = [(path, name) for path in COMPOSE_FILES for name in load(path)["services"]]
 
 
@@ -721,7 +780,8 @@ def test_every_service_drops_all_capabilities_and_cannot_gain_privileges(path: s
     assert config.get("cap_drop") == ["ALL"], f"{path}: {name}"
     assert not config.get("privileged"), f"{path}: {name}"
     added = {c.upper().removeprefix("CAP_") for c in config.get("cap_add", [])}
-    assert added <= DOCKER_DEFAULT_CAPABILITIES, f"{path}: {name} adds {sorted(added - DOCKER_DEFAULT_CAPABILITIES)}"
+    allowed = DOCKER_DEFAULT_CAPABILITIES | BEYOND_DEFAULT.get((path, name), set())
+    assert added <= allowed, f"{path}: {name} adds {sorted(added - allowed)}"
 
 
 @pytest.mark.parametrize(("path", "name"), SERVICES)
@@ -730,11 +790,14 @@ def test_every_service_has_a_read_only_root_filesystem(path: str, name: str) -> 
     assert service(path, name).get("read_only") is True, f"{path}: {name}"
 
 
-def test_only_the_agent_gets_a_capability_back() -> None:
+def test_only_the_agent_and_the_intel_gpu_exporter_get_a_capability_back() -> None:
     """Adding one is a decision: document it in docs/security.md#hardening and list it here."""
     configs = {(path, name): service(path, name) for path, name in SERVICES}
     added = {key: config["cap_add"] for key, config in configs.items() if "cap_add" in config}
-    assert added == {("agent/compose.yml", "agent"): ["DAC_OVERRIDE"]}
+    assert added == {
+        ("agent/compose.yml", "agent"): ["DAC_OVERRIDE"],
+        ("agent/compose.yml", "intel-gpu-exporter"): ["PERFMON"],
+    }
 
 
 def test_only_the_agent_shares_the_hosts_namespaces_or_docker() -> None:
