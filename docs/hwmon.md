@@ -65,6 +65,11 @@ lists a `hwmonN` directory), plus `apache2-utils` (`htpasswd`) on the Argus serv
      every default collector on every address without a password;
    - writes `/etc/prometheus/node_exporter_web.yml` (basic auth, user `argus`, the bcrypt hash) and the service's
      arguments in `/etc/default/prometheus-node-exporter` (keeping the package's original as `….dist`);
+   - installs the systemd drop-in
+     `/etc/systemd/system/prometheus-node-exporter.service.d/10-argus-wait-for-network.conf`, so the service
+     starts after `network-online.target` and, should its address still be missing, retries every 5 s instead of
+     giving up after systemd's default five fast failures (a Proxmox bridge can get its address after Debian's
+     unit has started);
    - starts the service and checks that it listens on the given address only and refuses a scrape without the
      password;
    - lists the hwmon chips it will report, each with its device (a PCI card by its address).

@@ -57,6 +57,11 @@ Argus server.
    - writes `/etc/sudoers.d/prometheus-ipmi-exporter` and checks it: the four read commands are allowed, and
      clearing the event log, power control, power limits, another config file, extra arguments and a shell are
      refused (checked with `sudo -l`, so nothing is run);
+   - installs the systemd drop-in
+     `/etc/systemd/system/prometheus-ipmi-exporter.service.d/10-argus-wait-for-network.conf`, so the service
+     starts after `network-online.target` and, should its address still be missing, retries every 5 s instead of
+     giving up after systemd's default five fast failures (a Proxmox bridge can get its address after Debian's
+     unit has started);
    - starts the service.
 
    It can be run again at any time (after a reinstall, or to change the address).

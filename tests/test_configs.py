@@ -586,6 +586,44 @@ def test_hwmon_setup_runs_only_the_hwmon_collector_on_one_address_behind_auth() 
     assert "--no-install-recommends prometheus-node-exporter" in script
 
 
+@pytest.mark.parametrize(
+    ("script", "service"),
+    [
+        ("deploy/hwmon/setup-node-exporter.sh", "prometheus-node-exporter"),
+        ("deploy/ipmi/setup-ipmi-exporter.sh", "prometheus-ipmi-exporter"),
+    ],
+)
+def test_server_exporter_setup_waits_for_the_network_and_keeps_retrying(script: str, service: str) -> None:
+    """Regression test: after a reboot a Proxmox node's exporter started before vmbr0 had its address.
+
+    It failed to bind ("cannot assign requested address"), hit systemd's default start limit after five fast
+    restarts and stayed down until restarted by hand. The scripts install a drop-in that orders the service after
+    network-online.target and retries without a start limit, and reload systemd before restarting it.
+    """
+    text = (ROOT / script).read_text()
+    assert f"DROPIN=/etc/systemd/system/{service}.service.d/10-argus-wait-for-network.conf" in text
+    dropin = re.search(r"cat > \"\$DROPIN\" <<'EOF'\n(.*?)\nEOF\n", text, re.DOTALL)
+    assert dropin, "the drop-in is written from a quoted here-document"
+    sections: dict[str, dict[str, str]] = {}
+    section = ""
+    for line in dropin.group(1).splitlines():
+        if line.startswith("["):
+            section = line.strip("[]")
+            sections[section] = {}
+        elif "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            sections[section][key] = value
+    assert sections == {
+        "Unit": {
+            "Wants": "network-online.target",
+            "After": "network-online.target",
+            "StartLimitIntervalSec": "0",
+        },
+        "Service": {"Restart": "on-failure", "RestartSec": "5s"},
+    }
+    assert text.index("systemctl daemon-reload") < text.index(f"systemctl restart {service}")
+
+
 def test_gpu_panels_and_the_gpu_hot_alert_pick_the_same_hwmon_chips() -> None:
     """Server Hardware's GPU panels show exactly the cards the GPU hot alert watches: Intel's i915 and xe drivers."""
     rules = {r["uid"]: r for g in load("provisioning/alerting/rules.yaml")["groups"] for r in g["rules"]}

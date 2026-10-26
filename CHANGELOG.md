@@ -127,6 +127,12 @@ Each release's notes on GitHub are its section here.
 
 - The Grafana image kept only the Prometheus and Loki datasource plugins, so a PostgreSQL datasource couldn't
   work; it keeps Grafana's bundled PostgreSQL plugin too now (CI checks all three are there).
+- The IPMI and hwmon exporters set up by `deploy/ipmi/setup-ipmi-exporter.sh` and
+  `deploy/hwmon/setup-node-exporter.sh` could stay down after a server rebooted: Debian's units start before the
+  network, so the exporter couldn't bind to the server's address yet ("cannot assign requested address") and
+  systemd gave up after five fast restarts. The scripts now install a systemd drop-in that starts the service
+  after `network-online.target` and retries every 5 s without a start limit. Run the script again on each server
+  to add it.
 
 ### Upgrading
 
