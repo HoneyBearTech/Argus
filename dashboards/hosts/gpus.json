@@ -340,7 +340,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(nvidia_smi_temperature_gpu{job=\"gpu\", host=~\"$host\"} or node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"})",
+          "expr": "max(nvidia_smi_temperature_gpu{job=\"gpu\", host=~\"$host\"} or (node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"} and on (host) intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -410,7 +410,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(nvidia_smi_power_draw_watts{job=\"gpu\", host=~\"$host\"} or rate(node_hwmon_energy_joule_total{host=~\"$host\"}[5m]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"})",
+          "expr": "sum(nvidia_smi_power_draw_watts{job=\"gpu\", host=~\"$host\"} or (rate(node_hwmon_energy_joule_total{host=~\"$host\"}[5m]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"} and on (host) intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -1387,7 +1387,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(label_replace(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"), \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "expr": "max by (key) (label_join((label_replace(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\") and on (host, pci_slot) intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"pci_slot\"))",
           "refId": "G",
           "instant": true,
           "range": false,
@@ -1399,7 +1399,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(label_replace(rate(node_hwmon_energy_joule_total{host=~\"$host\"}[5m]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"), \"key\", \"/\", \"host\", \"pci_slot\"))",
+          "expr": "max by (key) (label_join((label_replace(rate(node_hwmon_energy_joule_total{host=~\"$host\"}[5m]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\") and on (host, pci_slot) intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}), \"key\", \"/\", \"host\", \"pci_slot\"))",
           "refId": "H",
           "instant": true,
           "range": false,
@@ -1872,7 +1872,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (host, pci_slot) (label_replace(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "expr": "max by (host, pci_slot) ((label_replace(node_hwmon_temp_celsius{host=~\"$host\"} * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\") and on (host, pci_slot) intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}))",
           "refId": "A",
           "range": true,
           "legendFormat": "{{host}} {{pci_slot}} \u00b0C"
@@ -1882,7 +1882,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (host, pci_slot) (label_replace(rate(node_hwmon_energy_joule_total{host=~\"$host\"}[$__rate_interval]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\"))",
+          "expr": "max by (host, pci_slot) ((label_replace(rate(node_hwmon_energy_joule_total{host=~\"$host\"}[$__rate_interval]) * on (job, host, chip) group_left node_hwmon_chip_names{chip_name=~\"i915|xe\", host=~\"$host\"}, \"pci_slot\", \"$1.$2\", \"chip\", \".*([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})_([0-9a-f])\") and on (host, pci_slot) intel_gpu_info{job=\"intel_gpu\", host=~\"$host\"}))",
           "refId": "B",
           "range": true,
           "legendFormat": "{{host}} {{pci_slot}} W"

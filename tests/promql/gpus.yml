@@ -91,9 +91,16 @@ tests:
   # NVIDIA and Intel GPUs together. n1: an NVIDIA GPU at 60 °C drawing 50 W. i1: a server whose i915 driver has an
   # Intel card at 0000:43:00.0 (Intel GPU exporter, job intel_gpu; hwmon, job hwmon): Video busy half the time,
   # 70 °C, 20 W (1200 J a minute). i2: a server whose Intel card is passed through to a VM: listed, not a GPU it
-  # reports.
+  # reports. c1: a container on i1 (the Argus agent in an LXC, job node) that sees the same card's hwmon sensors
+  # through the host's sysfs, but runs no Intel GPU exporter: not a second GPU, its power not counted twice.
   - interval: 1m
     input_series:
+      - series: 'node_hwmon_chip_names{job="node", host="c1", instance="c1", chip="0000:42:01_0_0000:43:00_0", chip_name="i915"}'
+        values: "1x15"
+      - series: 'node_hwmon_temp_celsius{job="node", host="c1", instance="c1", chip="0000:42:01_0_0000:43:00_0", sensor="temp1"}'
+        values: "80x15"
+      - series: 'node_hwmon_energy_joule_total{job="node", host="c1", instance="c1", chip="0000:42:01_0_0000:43:00_0", sensor="energy1"}'
+        values: "0+1200x15"
       - series: 'nvidia_smi_gpu_info{job="gpu", host="n1", instance="n1:9835", uuid="u1", name="Quadro P1000", index="0", driver_version="580.178.04"}'
         values: "1x15"
       - series: 'nvidia_smi_temperature_gpu{job="gpu", host="n1", instance="n1:9835", uuid="u1"}'
