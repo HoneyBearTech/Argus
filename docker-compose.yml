@@ -206,7 +206,7 @@ services:
 
   qbittorrent-exporter:
     <<: *hardened
-    image: ghcr.io/martabal/qbittorrent-exporter:v2.0.3
+    image: ghcr.io/martabal/qbittorrent-exporter:v2.0.4
     # The image runs as root; it only reads its password file.
     user: "65534:65534"
     restart: unless-stopped
