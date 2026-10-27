@@ -103,8 +103,8 @@ i915`), and `apache2-utils` (`htpasswd`) on the Argus server.
 ## Setting up a host or VM with the agent
 
 The agent's `intel-gpu` profile runs the same exporter as a container, from the
-`ghcr.io/honeybeartech/argus-intel-gpu-exporter` image (amd64 only; published from the first release after
-0.7.1). In the host's agent `.env`:
+`ghcr.io/honeybeartech/argus-intel-gpu-exporter` image (amd64 only; published since
+0.8.0). In the host's agent `.env`:
 
 ```sh
 COMPOSE_PROFILES=intel-gpu          # with the others, comma-separated
