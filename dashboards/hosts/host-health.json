@@ -973,7 +973,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (host) (rate(node_network_receive_bytes_total{device!~\"lo|veth.*|docker.*|br-.*|virbr.*|cali.*|flannel.*|tun.*|tailscale.*\", host=~\"$host\"}[$__rate_interval])) * 8",
+          "expr": "sum by (host) (rate(node_network_receive_bytes_total{device!~\"lo|veth.*|docker.*|br-.*|virbr.*|cali.*|flannel.*|cni.*|tun.*|tailscale.*\", host=~\"$host\"}[$__rate_interval])) * 8",
           "legendFormat": "{{host}} in",
           "refId": "A"
         },
@@ -982,7 +982,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (host) (rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|docker.*|br-.*|virbr.*|cali.*|flannel.*|tun.*|tailscale.*\", host=~\"$host\"}[$__rate_interval])) * 8",
+          "expr": "sum by (host) (rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|docker.*|br-.*|virbr.*|cali.*|flannel.*|cni.*|tun.*|tailscale.*\", host=~\"$host\"}[$__rate_interval])) * 8",
           "legendFormat": "{{host}} out",
           "refId": "B"
         }

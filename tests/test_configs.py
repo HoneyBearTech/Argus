@@ -254,8 +254,9 @@ def test_grafana_gets_only_the_prometheus_password() -> None:
     assert not [v for v in volumes if isinstance(v, str) and "secrets" in v]
 
 
-def test_agent_sends_the_prometheus_password() -> None:
-    config = (ROOT / "agent" / "config.alloy").read_text()
+@pytest.mark.parametrize("name", ["config.alloy", "kubernetes.alloy"])
+def test_agent_sends_the_prometheus_password(name: str) -> None:
+    config = (ROOT / "agent" / name).read_text()
     remote_write = re.search(r'prometheus\.remote_write "argus" \{.*?\n\}', config, re.DOTALL)
     assert remote_write
     assert re.search(
@@ -266,16 +267,18 @@ def test_agent_sends_the_prometheus_password() -> None:
     assert environment["ARGUS_PROMETHEUS_PASSWORD"] == "${ARGUS_PROMETHEUS_PASSWORD:-}"  # noqa: S105 - compose reference
 
 
-def redaction_patterns() -> list[str]:
-    """The agent's stage.replace expressions, unescaped from Alloy strings."""
-    config = (ROOT / "agent" / "config.alloy").read_text()
+def redaction_patterns(name: str = "config.alloy") -> list[str]:
+    """An agent config's stage.replace expressions, unescaped from Alloy strings."""
+    config = (ROOT / "agent" / name).read_text()
     return [json.loads(m) for m in re.findall(r'stage\.replace \{\s*expression = ("(?:[^"\\]|\\.)*")', config)]
 
 
 def test_agent_redacts_credentials_in_urls_of_every_log_pipeline() -> None:
-    """Every log pipeline (containers, NPM, deploys) carries the same redaction (secrets reached Loki, 2026-10-11)."""
+    """Every log pipeline (containers, NPM, deploys, Kubernetes pods) carries the same redaction (secrets reached
+    Loki, 2026-10-11)."""
     patterns = redaction_patterns()
     assert len(patterns) == 3
+    assert redaction_patterns("kubernetes.alloy") == patterns[:1]
     assert len(set(patterns)) == 1
 
 
@@ -824,3 +827,37 @@ def test_images_that_default_to_root_run_as_nobody() -> None:
     for name in ["pihole-exporter", "unpoller", "snmp-exporter", "qbittorrent-exporter"]:
         assert services[name]["user"] == "65534:65534", name
     assert service("agent/compose.yml", "plex-exporter")["user"] == "65534:65534"
+
+
+def test_image_ships_the_kubernetes_config() -> None:
+    """A DaemonSet runs the same image with `run /etc/alloy/kubernetes.alloy` (docs/kubernetes.md)."""
+    dockerfile = (ROOT / "agent" / "Dockerfile").read_text()
+    assert "COPY kubernetes.alloy /etc/alloy/kubernetes.alloy" in dockerfile
+    assert "/etc/alloy/kubernetes.alloy" in (ROOT / "docs" / "kubernetes.md").read_text()
+
+
+def test_kubernetes_agent_keeps_the_dashboards_labels() -> None:
+    """Nodes report as job node, containers as job cadvisor with a `name`, pod logs as job kubernetes, which the
+    Logs dashboard reads beside Docker's."""
+    config = (ROOT / "agent" / "kubernetes.alloy").read_text()
+    assert 'replacement  = "node"' in alloy_block(config, 'discovery.relabel "host"')
+    assert '"job"         = "cadvisor"' in alloy_block(config, 'prometheus.scrape "containers"')
+    assert 'target_label  = "name"' in alloy_block(config, 'prometheus.relabel "containers"')
+    pods = alloy_block(config, 'discovery.relabel "pod_logs"')
+    assert 'replacement  = "kubernetes"' in pods
+    assert 'target_label  = "container"' in pods
+    logs = (ROOT / "dashboards" / "hosts" / "logs.json").read_text()
+    assert 'job=\\"docker\\"' not in logs
+    assert 'job=~\\"docker|kubernetes\\"' in logs
+
+
+def test_kubernetes_agent_leaves_out_pod_volumes() -> None:
+    """Every pod volume is a mount on the node; listed as node disks they'd fill Host Health and "Disk almost full"."""
+    config = (ROOT / "agent" / "kubernetes.alloy").read_text()
+    exclude = re.search(r'mount_points_exclude = ("(?:[^"\\]|\\.)*")', config)
+    assert exclude
+    pattern = re.compile(json.loads(exclude[1]))
+    assert pattern.match("/var/lib/kubelet/pods/0a1b/volumes/kubernetes.io~csi/pvc-1/mount")
+    assert pattern.match("/run/k3s/containerd/io.containerd.grpc.v1.cri/sandboxes/0a1b/shm")
+    assert not pattern.match("/")
+    assert not pattern.match("/var/lib/longhorn")

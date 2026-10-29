@@ -8,7 +8,7 @@ name: Image scan
 on:
   push:
     branches: [main]
-    paths: ["images/**", "agent/Dockerfile", "agent/config.alloy", ".github/workflows/scan.yml"]
+    paths: ["images/**", "agent/Dockerfile", "agent/config.alloy", "agent/kubernetes.alloy", ".github/workflows/scan.yml"]
   schedule:
     - cron: "30 2 * * 1"
   workflow_dispatch:

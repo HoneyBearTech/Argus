@@ -79,7 +79,8 @@ basic auth on servers; see [hwmon](hwmon.md)), `intel_gpu_password` (the Intel G
 - **Datasource uids** `prometheus`, `loki` and `steerhouse-db` ([`provisioning/datasources/argus.yaml`](../provisioning/datasources/argus.yaml))
   and **dashboard uids** (`argus-*`) are stable: links and bookmarks to them survive upgrades.
 - **Labels**: host series carry `host` (= `ARGUS_HOST`) and `instance`; container series `host`, `name`;
-  logs `host`, `container`, `compose_project`, `job` (`docker`, `npm` or `homelab-pull`), for NPM `site`,
+  logs `host`, `container`, `compose_project`, `job` (`docker`, `kubernetes`, `npm` or `homelab-pull`; Kubernetes
+  pods also `namespace`, `pod`), for NPM `site`,
   `status`, `method`, and for deploys `stack`, `result`.
 - **Deploys** (what the Deploys dashboard reads from `HOMELAB_PULL_DIR`; homelab-pull 0.4.0 writes it, and any
   deploy tool can): `metrics/<stack>.prom`, Prometheus text format, rewritten after every run, with the

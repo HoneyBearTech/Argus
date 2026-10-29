@@ -156,6 +156,8 @@ Or copy `agent/compose.yml` and `agent/.env.example` (as `.env`) to the host and
 - **Intel GPUs** (Server Hardware dashboard): on a host or VM whose own i915 driver has an Intel GPU (amd64), add the `intel-gpu` profile with `ARGUS_INTEL_GPU_PASSWORD_HASH`, and list that host in the server's `targets/intel_gpu.json`. The exporter's only privilege is `PERFMON` ([docs/intel-gpu.md](docs/intel-gpu.md)). A host whose GPU can change switches it on only while it has the Intel GPU; with `homelab_gpu_selected` it doesn't alert while it's off.
 - **Plex** (Media Stack): on the Plex host (amd64), add the `plex` profile with `PLEX_SERVER` and `PLEX_TOKEN`, and list that host in the server's `targets/plex.json`.
 
+**Kubernetes nodes** run the same image as a DaemonSet with its second configuration, `kubernetes.alloy`: node metrics, container metrics from each node's kubelet and pod logs, under the same labels, with no container runtime socket ([docs/kubernetes.md](docs/kubernetes.md)).
+
 The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable from the host; those are the defaults. If Prometheus requires a password, add `-e ARGUS_PROMETHEUS_PASSWORD=...` (or set it in the agent's `.env`).
 
 ## Adding or changing a dashboard

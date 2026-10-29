@@ -196,6 +196,12 @@ checked by running the agent without it and comparing what reached Prometheus an
   files it reads (logs, mount points below private directories) can belong to anyone. Every host mount is
   read-only, so this lets it read, not change, them.
 
+On a Kubernetes node ([Kubernetes nodes](kubernetes.md)) the agent keeps the host network, host PID, the
+read-only host filesystem and root with `DAC_OVERRIDE`, for the same reasons, but gets **no container runtime
+socket**: container metrics come from the node's kubelet (its service account may only `get` `nodes/metrics`)
+and logs from the files in `/var/log/pods`, so a compromised agent can read the node, not run containers on it.
+Its service account can also list pods, to name their log files.
+
 It no longer runs `--privileged`: it has no other capability, no access to the host's devices, and Docker's
 default seccomp and AppArmor profiles apply. The one thing that costs is cAdvisor's `machine_*` metrics
 (the host's CPU count and memory size as cAdvisor sees them), which need `SYS_PTRACE`; Argus doesn't use them,

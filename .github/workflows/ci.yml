@@ -62,11 +62,13 @@ jobs:
           done
 
       # Same pinned image as agent/Dockerfile; bump both together.
-      - name: Agent config is valid and formatted (alloy fmt)
+      - name: Agent configs are valid and formatted (alloy fmt)
         run: |
-          docker run --rm -v "$PWD/agent/config.alloy:/etc/alloy/config.alloy:ro" \
-            grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f \
-            fmt /etc/alloy/config.alloy | diff -u agent/config.alloy -
+          for config in config.alloy kubernetes.alloy; do
+            docker run --rm -v "$PWD/agent/$config:/etc/alloy/$config:ro" \
+              grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f \
+              fmt "/etc/alloy/$config" | diff -u "agent/$config" -
+          done
 
       - name: Unit tests with coverage (pytest)
         run: |
