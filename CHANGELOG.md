@@ -8,6 +8,8 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-29
+
 ### Added
 
 - **Kubernetes nodes**: the agent image carries a second configuration, `/etc/alloy/kubernetes.alloy`, for a
@@ -23,6 +25,11 @@ Each release's notes on GitHub are its section here.
 - **Logs** dashboard: reads Kubernetes pod logs (`job="kubernetes"`) beside Docker container logs.
 - **Host Health**: network traffic leaves out CNI bridges (`cni*`) as it already did veth, flannel and Calico
   interfaces, so a Kubernetes node's pod traffic isn't counted twice.
+
+### Upgrading
+
+- Nothing to do on the server or on Docker hosts: their agent configuration is unchanged; `ARGUS_AGENT_IMAGE`
+  `0.9.0` works as `0.8.0` did. Kubernetes nodes: [docs/kubernetes.md](docs/kubernetes.md).
 
 ## [0.8.0] - 2026-10-27
 
@@ -614,7 +621,8 @@ shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 - No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
   Argus on a trusted network.
 
-[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/HoneyBearTech/Argus/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/HoneyBearTech/Argus/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/HoneyBearTech/Argus/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/HoneyBearTech/Argus/compare/v0.6.0...v0.7.0
