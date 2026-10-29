@@ -8,6 +8,22 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added
+
+- **Kubernetes nodes**: the agent image carries a second configuration, `/etc/alloy/kubernetes.alloy`, for a
+  DaemonSet on each node ([docs/kubernetes.md](docs/kubernetes.md)). Node metrics (`job="node"`), container metrics
+  from the node's kubelet (`job="cadvisor"`, `name` = `<namespace>/<container>`) and pod logs (`job="kubernetes"`,
+  `container` = `<namespace>/<container>`, plus `namespace` and `pod`) arrive under the labels the dashboards
+  already use, so nodes appear on Host Health, Docker Containers and Logs. It needs no container runtime socket:
+  RBAC `get` on `nodes/metrics` and `get`/`list`/`watch` on `pods`. Pod volumes and the runtime's own mounts aren't
+  listed as the node's disks.
+
+### Changed
+
+- **Logs** dashboard: reads Kubernetes pod logs (`job="kubernetes"`) beside Docker container logs.
+- **Host Health**: network traffic leaves out CNI bridges (`cni*`) as it already did veth, flannel and Calico
+  interfaces, so a Kubernetes node's pod traffic isn't counted twice.
+
 ## [0.8.0] - 2026-10-27
 
 ### Added

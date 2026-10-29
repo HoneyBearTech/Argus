@@ -1,0 +1,239 @@
+// Argus agent on a Kubernetes node: one pod per node (a DaemonSet, see
+// docs/kubernetes.md). Collects the node's metrics (embedded node_exporter),
+// per-container metrics (the kubelet's cAdvisor endpoint) and the logs of the
+// pods on this node, and pushes them to the Argus server with the same labels
+// as config.alloy, so the nodes appear on the same dashboards.
+//
+// Settings (environment variables):
+//   ARGUS_HOST            name this node reports as: the node's name (required)
+//   ARGUS_NODE_IP         the node's address, where its kubelet listens (required)
+//   ARGUS_PROMETHEUS_URL  Argus Prometheus, e.g. http://argus.lan:9090 (required)
+//   ARGUS_LOKI_URL        Argus Loki, e.g. http://argus.lan:3101 (required)
+//   ARGUS_PROMETHEUS_PASSWORD  password of Prometheus' `argus` user, if it
+//                         requires one (optional)
+// The pod's service account needs get on nodes/metrics (the kubelet) and
+// get/list/watch on pods (to name the log files).
+
+// ── Where everything goes ───────────────────────────────────────────────
+prometheus.remote_write "argus" {
+	endpoint {
+		url = sys.env("ARGUS_PROMETHEUS_URL") + "/api/v1/write"
+		// Sent always; a Prometheus without users ignores it.
+		basic_auth {
+			username = "argus"
+			password = sys.env("ARGUS_PROMETHEUS_PASSWORD")
+		}
+	}
+	external_labels = {
+		host = sys.env("ARGUS_HOST"),
+	}
+}
+
+loki.write "argus" {
+	endpoint {
+		url = sys.env("ARGUS_LOKI_URL") + "/loki/api/v1/push"
+	}
+	external_labels = {
+		host = sys.env("ARGUS_HOST"),
+	}
+}
+
+// ── Node metrics (node_exporter) ────────────────────────────────────────
+// The node's root filesystem is mounted at /rootfs; the pod shares the node's
+// PID and network namespaces, so /proc and /sys are the node's.
+prometheus.exporter.unix "host" {
+	rootfs_path = "/rootfs"
+	procfs_path = "/proc"
+	sysfs_path  = "/sys"
+
+	// The default list, plus the kubelet's pod volumes and the container
+	// runtime's own mounts: one per pod volume and container, which would
+	// list every pod's storage (and network shares) as the node's disks.
+	filesystem {
+		mount_points_exclude = "^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/kubelet/.+|run/containerd/.+|run/k3s/.+|var/lib/rancher/k3s/agent/containerd/.+)($|/)"
+	}
+}
+
+discovery.relabel "host" {
+	targets = prometheus.exporter.unix.host.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "node"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = sys.env("ARGUS_HOST")
+	}
+}
+
+prometheus.scrape "host" {
+	targets         = discovery.relabel.host.output
+	scrape_interval = "15s"
+	forward_to      = [prometheus.remote_write.argus.receiver]
+}
+
+// ── Container metrics (the kubelet's cAdvisor) ──────────────────────────
+// Only this node's kubelet, with the pod's own token. The kubelet's serving
+// certificate is checked against the cluster CA under the node's name.
+prometheus.scrape "containers" {
+	targets = [{
+		"__address__" = sys.env("ARGUS_NODE_IP") + ":10250",
+		"job"         = "cadvisor",
+		"instance"    = sys.env("ARGUS_HOST"),
+	}]
+	scheme            = "https"
+	metrics_path      = "/metrics/cadvisor"
+	bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+	tls_config {
+		ca_file     = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+		server_name = sys.env("ARGUS_HOST")
+	}
+	scrape_interval = "30s"
+	forward_to      = [prometheus.relabel.containers.receiver]
+}
+
+// The dashboards key containers by `name`. A container's is
+// <namespace>/<container>, the same across pod restarts and rollouts (`pod`
+// and the cgroup `id` keep the series of several replicas apart). The kubelet
+// counts network traffic per pod, on the pod's own series (container "" or
+// "POD"): those are kept as <namespace>/<pod> for their network counters only.
+prometheus.relabel "containers" {
+	// Cgroups that aren't a pod's (system services, the runtime itself) —
+	// but not the scrape's own `up` series, which has no pod either.
+	rule {
+		source_labels = ["__name__", "pod"]
+		regex         = "container_.*;"
+		action        = "drop"
+	}
+
+	// The same families the Docker agent leaves out (process counts, tasks,
+	// load), which the kubelet exports by default.
+	rule {
+		source_labels = ["__name__"]
+		regex         = "container_(processes|threads|threads_max|file_descriptors|sockets|ulimits_max|tasks_state|cpu_load_.+)"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__name__", "container"]
+		regex         = "container_.*;(|POD)"
+		target_label  = "__tmp_pod_level"
+		replacement   = "pod"
+	}
+
+	rule {
+		source_labels = ["__tmp_pod_level", "__name__"]
+		regex         = "pod;container_network_.+"
+		target_label  = "__tmp_pod_level"
+		replacement   = "network"
+	}
+
+	rule {
+		source_labels = ["__tmp_pod_level"]
+		regex         = "pod"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["namespace", "pod"]
+		regex         = "(.+);(.+)"
+		target_label  = "name"
+		replacement   = "$1/$2"
+	}
+
+	rule {
+		source_labels = ["__tmp_pod_level", "namespace", "container"]
+		regex         = ";(.+);(.+)"
+		target_label  = "name"
+		replacement   = "$1/$2"
+	}
+
+	rule {
+		regex  = "__tmp_pod_level"
+		action = "labeldrop"
+	}
+	forward_to = [prometheus.remote_write.argus.receiver]
+}
+
+// ── Pod logs ────────────────────────────────────────────────────────────
+// The kubelet writes every container's output to
+// /var/log/pods/<namespace>_<pod>_<uid>/<container>/<restart>.log (CRI format).
+discovery.kubernetes "pods" {
+	role = "pod"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + sys.env("ARGUS_HOST")
+	}
+}
+
+discovery.relabel "pod_logs" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "kubernetes"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		target_label  = "namespace"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "pod"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		target_label  = "__path__"
+		replacement   = "/rootfs/var/log/pods/*$1/*.log"
+	}
+}
+
+local.file_match "pods" {
+	path_targets = discovery.relabel.pod_logs.output
+}
+
+loki.source.file "pods" {
+	targets    = local.file_match.pods.targets
+	forward_to = [loki.process.pods.receiver]
+}
+
+loki.process "pods" {
+	// Timestamp, stream (stdout/stderr, as a label) and the line itself.
+	stage.cri { }
+
+	// The file's path names the pod's uid: nothing the dashboards use, and a
+	// new stream for every pod.
+	stage.label_drop {
+		values = ["filename"]
+	}
+
+	// On first start Alloy reads each container's whole log file; Loki
+	// rejects anything older than a week anyway, so only ship the last hour.
+	stage.drop {
+		older_than          = "1h"
+		drop_counter_reason = "too_old"
+	}
+
+	// Credentials in URLs (?apikey=, ?X-Plex-Token=, ?access_token=, …) would be
+	// stored in Loki for 30 days, readable by every Grafana user: keep the
+	// parameter, replace its value.
+	stage.replace {
+		expression = "(?i)[?&;](?:access_token|api_?key|x-plex-token|token|signature|password|passwd|secret|key)=([^&\\s\"';]+)"
+		replace    = "REDACTED"
+	}
+	forward_to = [loki.write.argus.receiver]
+}

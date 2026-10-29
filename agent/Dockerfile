@@ -10,6 +10,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY config.alloy /etc/alloy/config.alloy
+# The same agent on a Kubernetes node (a DaemonSet runs it with `run /etc/alloy/kubernetes.alloy`).
+COPY kubernetes.alloy /etc/alloy/kubernetes.alloy
 
 ENV ARGUS_HOST="" \
     ARGUS_PROMETHEUS_URL="" \
