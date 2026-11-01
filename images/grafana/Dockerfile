@@ -1,6 +1,6 @@
 # Argus Grafana: dashboards, datasources and alert rules baked in.
 # Build context: repository root.
-FROM grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+FROM grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
 
 # Plugins come only from this image. Grafana's background installer would otherwise download plugins
 # from grafana.com at every start into the data volume, where they override the bundled ones: code that
