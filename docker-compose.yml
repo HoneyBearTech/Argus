@@ -240,7 +240,7 @@ services:
   # Prometheus names the node to ask in each scrape (targets/pve.json).
   pve-exporter:
     <<: *hardened
-    image: prompve/prometheus-pve-exporter:3.10.1
+    image: prompve/prometheus-pve-exporter:3.10.2
     restart: unless-stopped
     profiles: [proxmox]
     command: [--config.file=/run/secrets/pve.yml]
