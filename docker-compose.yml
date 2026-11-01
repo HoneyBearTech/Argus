@@ -110,7 +110,7 @@ services:
   # enabled (COMPOSE_PROFILES=snmp in .env) and that file exists.
   snmp-exporter:
     <<: *hardened
-    image: prom/snmp-exporter:v0.30.1
+    image: prom/snmp-exporter:v0.31.0
     # The image runs as root; it only reads its configuration.
     user: "65534:65534"
     restart: unless-stopped
