@@ -10,6 +10,8 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Varken 3.5.0: nothing changes in what Varken does, exports or logs. Its code is checked with a wider set of
+  lint rules and three more of its modules have tests. Nothing to do when upgrading.
 - Varken 3.4.0: Varken no longer rewrites its `varken.ini`. A setting the file lacks (one a newer Varken added)
   takes its default, and one log line names it; comments in the file are kept. Nothing to do when upgrading.
 - Varken 3.3.0: a title with a character that can't be encoded no longer empties Varken's whole scrape, two
