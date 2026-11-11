@@ -8,6 +8,13 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Changed
+
+- Varken 3.3.0: a title with a character that can't be encoded no longer empties Varken's whole scrape, two
+  downloads of one episode no longer make a duplicate series (which Prometheus dropped), and a malformed entry in
+  a Sonarr, Radarr, Lidarr or Seerr reply no longer crashes that job. Its image runs Python 3.15. The metrics are
+  the same, so the dashboards and alerts are unchanged, and there is nothing to do when upgrading.
+
 ## [0.9.0] - 2026-10-29
 
 ### Added
