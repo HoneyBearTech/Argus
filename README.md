@@ -15,7 +15,7 @@
 Grafana dashboards as code for a homelab: version-controlled JSON dashboards and alert rules for Docker hosts and their logs, the Plex/arr media stack, reverse proxy traffic, DNS, the network and internet connection, NAS storage, UPS power, the smart home, GitLab CI, Steerhouse (an Ansible web UI), Tdarr, Plex's current streams (through Tautulli) and the Proxmox VE cluster — edited in VS Code, provisioned automatically, and shipped as Docker images with a one-container agent for each host.
 
 ## How it works
-Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP, the media apps, Tdarr, Tautulli (through Varken), GitLab CI and Proxmox run on one server from [`docker-compose.yml`](docker-compose.yml) (the optional ones behind Compose profiles, and Loki on another host if you prefer); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`.
+Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi, SNMP, the media apps, Tdarr, Tautulli (through Varken), GitLab CI and Proxmox run on one server from [`docker-compose.yml`](docker-compose.yml) (the optional ones behind Compose profiles, and Loki on another host if you prefer); an Argus agent on every monitored host pushes its metrics and logs there. Grafana loads every dashboard under [`dashboards/`](dashboards/) through file provisioning — each subfolder becomes a Grafana folder, and UI edits are blocked so this repo stays the source of truth. The same compose file runs production and a local sandbox; per-install settings come from a gitignored `.env`, while targets and credentials stay in gitignored `targets/` and `secrets/` directories.
 
 ```
 dashboards/          dashboard JSON, one folder per Grafana folder
@@ -29,7 +29,7 @@ targets.example/     placeholder scrape/probe targets; real ones go in targets/ 
 secrets.example/     placeholder credentials Prometheus scrapes with; real ones go in secrets/ (gitignored)
 scripts/             repo checks and the PromQL test builder, run in CI; the Steerhouse dashboard port
 tests/               unit tests (pytest) and PromQL tests (tests/promql/, run with promtool)
-docs/                user, security and project documentation
+docs/                setup, operations, architecture, security and project documentation
 ```
 
 ## Dashboards
@@ -90,11 +90,11 @@ Argus ships as images for amd64 and arm64 on GHCR (`ghcr.io/honeybeartech/argus-
 git clone --depth 1 https://github.com/HoneyBearTech/Argus.git && cd Argus
 cp .env.example .env              # set GRAFANA_ROOT_URL
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp secrets.example/* secrets/
-openssl rand -base64 24 > secrets/grafana_admin_password   # Grafana's admin password (user admin)
+openssl rand -base64 24 > secrets/grafana_admin_password   # required; keep this file private
 # put your real addresses in targets/ and credentials in secrets/ — delete what you don't use
 docker compose up -d
 ```
-Then run the agent on each host you want to watch (next section). Grafana is on port 3000; the home page is the Homelab Overview. Edits to `targets/*.json` are picked up by Prometheus without a restart.
+For a local trial, set `GRAFANA_BIND`, `PROMETHEUS_BIND` and `LOKI_BIND` in `.env` to `127.0.0.1:3000`, `127.0.0.1:9090` and `127.0.0.1:3101`. This keeps the services reachable only from the server itself. For agents on other hosts, configure binds and network access deliberately as described in [security requirements](docs/security.md). Then run the agent on each host you want to watch (next section). Grafana is on port 3000; the home page is the Homelab Overview. Edits to `targets/*.json` are picked up by Prometheus without a restart.
 
 Host Health, Docker Containers and Logs work with just the agents. Every other dashboard lights up as you connect the service it reads. `COMPOSE_PROFILES` starts as `loki`: add profiles to that list (`loki,snmp`) rather than replacing it, or Loki stops (unless it runs on another host, with `LOKI_URL` set):
 
@@ -170,6 +170,9 @@ The agent needs the server's Prometheus (9090) and Loki (3101) to be reachable f
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and pull request: linters for Python, YAML, workflows, Dockerfiles and the agent config; unit tests with a coverage floor; the dashboard and public-repo checks; `promtool check config` and the [PromQL tests](tests/promql/), which run the shipped alert rule and dashboard queries against synthetic series; the blackbox, Loki and Alloy config checks; it builds every image, starts Grafana to check that every dashboard, alert rule and datasource loads, and validates the compose files.
 
 Alongside it: [CodeQL](https://codeql.github.com/) analyses the Python checks and the workflows on every push and pull request and weekly, a weekly [Trivy](https://trivy.dev/) scan reports known vulnerabilities in the six images, [OpenSSF Scorecard](https://scorecard.dev/) scores the repo's supply-chain practices weekly (see the badge above), and Dependabot opens weekly PRs for the upstream images, GitHub Actions and the check tools. Image updates are merged by hand after a sandbox run. How dependencies are handled is in [docs/dependencies.md](docs/dependencies.md).
+
+## Operations
+For routine maintenance, see [upgrading](docs/upgrading.md), [release verification](docs/verifying-releases.md) and [security requirements](docs/security.md). For deployment setup, see [auto-deploy](docs/auto-deploy.md); for a service or port lookup, use [interfaces](docs/interfaces.md).
 
 ## Documentation
 [docs/](docs/README.md) has the [quick start](docs/quick-start.md), [architecture](docs/architecture.md), [interfaces](docs/interfaces.md), [upgrading](docs/upgrading.md), [security requirements](docs/security.md) and [assurance case](docs/assurance-case.md), [dependency policy](docs/dependencies.md) and [roadmap](docs/roadmap.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
