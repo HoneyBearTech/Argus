@@ -1,34 +1,50 @@
 # Quick start
 
-Run the Argus server and one agent on a single machine, and see host, container and service dashboards in
-about ten minutes. You need Docker with Compose v2.24 or later on Linux (amd64 or arm64); on macOS or
-Windows the server works, but the agent sees Docker Desktop's VM rather than your machine.
+Run the Argus server and one agent on a single machine, and see host, container
+and service dashboards in
+about ten minutes. You need Docker with Compose v2.24 or later on Linux (amd64
+or arm64); on macOS or
+Windows the server works, but the agent sees Docker Desktop's VM rather than
+your machine.
 
 ## 1. Start the server
 
 ```sh
 git clone --depth 1 https://github.com/HoneyBearTech/Argus.git && cd Argus
+chmod 700 .                     # keep the checkout private on the host
 cp .env.example .env
-mkdir -p targets secrets && cp targets.example/*.json targets/ && cp secrets.example/* secrets/
+mkdir -p targets secrets && cp targets.example/*.json targets/ && cp \
+  secrets.example/* secrets/
 ```
 
-Create a private password file for Grafana's `admin` user at `secrets/grafana_admin_password`. Grafana
-won't start while that required file is empty. For example, generate a random password without printing it:
+Create a password file for Grafana's `admin` user at
+`secrets/grafana_admin_password`. Grafana won't start while that required file
+is empty or unreadable. Generate a random password without printing it:
 
 ```sh
-umask 077 && openssl rand -base64 24 > secrets/grafana_admin_password
+(umask 077 && openssl rand -base64 24 > secrets/grafana_admin_password)
+chmod 644 secrets/grafana_admin_password
 ```
 
-Edit `.env` and set these three binds for a local-only trial:
-`GRAFANA_BIND=127.0.0.1:3000`, `PROMETHEUS_BIND=127.0.0.1:9090`, `LOKI_BIND=127.0.0.1:3101`.
+Keep the checkout directory accessible only to your host account
+(`chmod 700 .` above). Credential files mounted into containers need mode 644 because
+services run as unprivileged users; Docker mounts them directly, without the
+checkout's parent directory. Keep `secrets/` itself traversable for Prometheus'
+directory mount. See [container permissions](security.md#hardening).
 
-`COMPOSE_PROFILES=loki` is already set, so Loki (the log store) starts too. Then:
+Edit `.env` and set these three binds for a local-only trial:
+`GRAFANA_BIND=127.0.0.1:3000`, `PROMETHEUS_BIND=127.0.0.1:9090`,
+`LOKI_BIND=127.0.0.1:3101`.
+
+`COMPOSE_PROFILES=loki` is already set, so Loki (the log store) starts too.
+Then:
 
 ```sh
 docker compose up -d
 ```
 
-Open <http://localhost:3000> and sign in as `admin`. The home page is the Homelab Overview; it's empty
+Open <http://localhost:3000> and sign in as `admin`. The home page is the
+Homelab Overview; it's empty
 until there's something to watch.
 
 ## 2. Watch some services
@@ -38,13 +54,31 @@ the name and group the dashboards show:
 
 ```json
 [
-  { "targets": ["https://example.com"], "labels": { "service": "example", "group": "trial" } },
-  { "targets": ["https://grafana.com"], "labels": { "service": "grafana.com", "group": "trial" } }
+  {
+    "targets": [
+      "https://example.com"
+    ],
+    "labels": {
+      "service": "example",
+      "group": "trial"
+    }
+  },
+  {
+    "targets": [
+      "https://grafana.com"
+    ],
+    "labels": {
+      "service": "grafana.com",
+      "group": "trial"
+    }
+  }
 ]
 ```
 
-Prometheus picks the change up within a minute; the Overview shows each service as up or down, with its
-response time and certificate expiry. Delete the other files in `targets/` that you don't use; they only
+Prometheus picks the change up within a minute; the Overview shows each service
+as up or down, with its
+response time and certificate expiry. Delete the other files in `targets/` that
+you don't use; they only
 contain placeholders.
 
 ## 3. Add the agent
@@ -58,30 +92,44 @@ docker run -d --name argus-agent --restart unless-stopped \
   -e ARGUS_HOST=$(hostname) \
   -e ARGUS_PROMETHEUS_URL=http://127.0.0.1:9090 \
   -e ARGUS_LOKI_URL=http://127.0.0.1:3101 \
-  -v /:/rootfs:ro,rslave -v /sys:/sys:ro -v /run/udev:/run/udev:ro -v /dev/disk:/dev/disk:ro \
-  -v /var/lib/docker:/var/lib/docker:ro -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -v /run/containerd:/run/containerd:ro -v argus-agent-data:/var/lib/alloy/data \
+  -v /:/rootfs:ro,rslave -v /sys:/sys:ro -v /run/udev:/run/udev:ro -v \
+    /dev/disk:/dev/disk:ro \
+  -v /var/lib/docker:/var/lib/docker:ro -v \
+    /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /run/containerd:/run/containerd:ro -v \
+    argus-agent-data:/var/lib/alloy/data \
   ghcr.io/honeybeartech/argus-agent:latest
 ```
 
-Within a minute, **Host Health** shows the machine's CPU, memory, disks and network, **Docker
-Containers** shows every container (including Argus itself), and **Logs** lets you search their output.
+Within a minute, **Host Health** shows the machine's CPU, memory, disks and
+network, **Docker
+Containers** shows every container (including Argus itself), and **Logs** lets
+you search their output.
 
 ## What next
 
-- Add more hosts: run the same agent on each, setting `ARGUS_HOST`, `ARGUS_PROMETHEUS_URL` and
-  `ARGUS_LOKI_URL` in its `.env` to the host name and reachable server endpoints. Configure server binds
-  and firewall access for those agents deliberately; see [Adding a host](../README.md#adding-a-host) and
-  [security requirements](security.md).
-- Light up the other dashboards (Pi-hole, UniFi, NAS, Home Assistant, media apps, UPS) by adding their
-  targets and credentials; the README's [table](../README.md#running-it) lists what each needs.
-- Send alerts to Discord by putting the channel's webhook URL in `secrets/discord_webhook_url` and running
+- Add more hosts: run the same agent on each, setting `ARGUS_HOST`,
+  `ARGUS_PROMETHEUS_URL` and `ARGUS_LOKI_URL` in its `.env` to the host name
+  and reachable server endpoints. Configure server binds and firewall access
+  for those agents deliberately; see [Adding a host](../README.md#adding-a-host)
+  and [security requirements](security.md).
+- Light up the other dashboards (Pi-hole, UniFi, NAS, Home Assistant, media
+  apps, UPS) by adding their
+  targets and credentials; the README's [list](../README.md#running-it) lists
+  what each needs.
+- Send alerts to Discord by putting the channel's webhook URL in
+  `secrets/discord_webhook_url` and running
   `docker compose restart grafana`.
-- Read [security.md](security.md) before running Argus anywhere but your own trusted network, and
-  [require a password for Prometheus](security.md#requiring-a-password-for-prometheus) once agents on other
+- Read [security.md](security.md) before running Argus anywhere but your own
+  trusted network, and
+  [require a password for Prometheus](security.md#requiring-a-password-for-prometheus)
+  once agents on other
   hosts push to it.
-- Pin `ARGUS_VERSION` in `.env` to a release and [verify it](verifying-releases.md).
-- For upgrades, rollbacks and security guidance, see [upgrading](upgrading.md) and [security requirements](security.md).
+- Pin `ARGUS_VERSION` in `.env` to a release and
+  [verify it](verifying-releases.md).
+- For upgrades, rollbacks and security guidance, see [upgrading](upgrading.md)
+  and [security requirements](security.md).
 
-To remove everything: `docker rm -f argus-agent && docker compose down -v` (the `-v` deletes the stored
+To remove everything: `docker rm -f argus-agent && docker compose down -v` (the
+`-v` deletes the stored
 metrics, logs and Grafana settings).

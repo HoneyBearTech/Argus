@@ -2,634 +2,1038 @@
 
 All notable changes to Argus are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
-[Semantic Versioning](https://semver.org/). Before 1.0.0, a minor version may include changes that need
-steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.md](docs/upgrading.md).
+[Semantic Versioning](https://semver.org/). Before 1.0.0, a minor version may
+include changes that need
+steps when upgrading; those are listed under "Upgrading" and in
+[docs/upgrading.md](docs/upgrading.md).
 Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
 ### Changed
 
-- Varken 3.5.0: nothing changes in what Varken does, exports or logs. Its code is checked with a wider set of
-  lint rules and three more of its modules have tests. Nothing to do when upgrading.
-- Varken 3.4.0: Varken no longer rewrites its `varken.ini`. A setting the file lacks (one a newer Varken added)
-  takes its default, and one log line names it; comments in the file are kept. Nothing to do when upgrading.
-- Varken 3.3.0: a title with a character that can't be encoded no longer empties Varken's whole scrape, two
-  downloads of one episode no longer make a duplicate series (which Prometheus dropped), and a malformed entry in
-  a Sonarr, Radarr, Lidarr or Seerr reply no longer crashes that job. Its image runs Python 3.15. The metrics are
-  the same, so the dashboards and alerts are unchanged, and there is nothing to do when upgrading.
+- Varken 3.5.0: nothing changes in what Varken does, exports or logs. Its code
+  is checked with a wider set of
+  lint rules and three more of its modules have tests. Nothing to do when
+  upgrading.
+- Varken 3.4.0: Varken no longer rewrites its `varken.ini`. A setting the file
+  lacks (one a newer Varken added)
+  takes its default, and one log line names it; comments in the file are kept.
+  Nothing to do when upgrading.
+- Varken 3.3.0: a title with a character that can't be encoded no longer empties
+  Varken's whole scrape, two
+  downloads of one episode no longer make a duplicate series (which Prometheus
+  dropped), and a malformed entry in
+  a Sonarr, Radarr, Lidarr or Seerr reply no longer crashes that job. Its image
+  runs Python 3.15. The metrics are
+  the same, so the dashboards and alerts are unchanged, and there is nothing to
+  do when upgrading.
 
 ## [0.9.0] - 2026-10-29
 
 ### Added
 
-- **Kubernetes nodes**: the agent image carries a second configuration, `/etc/alloy/kubernetes.alloy`, for a
-  DaemonSet on each node ([docs/kubernetes.md](docs/kubernetes.md)). Node metrics (`job="node"`), container metrics
-  from the node's kubelet (`job="cadvisor"`, `name` = `<namespace>/<container>`) and pod logs (`job="kubernetes"`,
-  `container` = `<namespace>/<container>`, plus `namespace` and `pod`) arrive under the labels the dashboards
-  already use, so nodes appear on Host Health, Docker Containers and Logs. It needs no container runtime socket:
-  RBAC `get` on `nodes/metrics` and `get`/`list`/`watch` on `pods`. Pod volumes and the runtime's own mounts aren't
+- **Kubernetes nodes**: the agent image carries a second configuration,
+  `/etc/alloy/kubernetes.alloy`, for a
+  DaemonSet on each node ([docs/kubernetes.md](docs/kubernetes.md)). Node
+  metrics (`job="node"`), container metrics
+  from the node's kubelet (`job="cadvisor"`, `name` = `<namespace>/<container>`)
+  and pod logs (`job="kubernetes"`,
+  `container` = `<namespace>/<container>`, plus `namespace` and `pod`) arrive
+  under the labels the dashboards
+  already use, so nodes appear on Host Health, Docker Containers and Logs. It
+  needs no container runtime socket:
+  RBAC `get` on `nodes/metrics` and `get`/`list`/`watch` on `pods`. Pod volumes
+  and the runtime's own mounts aren't
   listed as the node's disks.
 
-### Changed
+### Changed (0.9.0)
 
-- **Logs** dashboard: reads Kubernetes pod logs (`job="kubernetes"`) beside Docker container logs.
-- **Host Health**: network traffic leaves out CNI bridges (`cni*`) as it already did veth, flannel and Calico
+- **Logs** dashboard: reads Kubernetes pod logs (`job="kubernetes"`) beside
+  Docker container logs.
+- **Host Health**: network traffic leaves out CNI bridges (`cni*`) as it already
+  did veth, flannel and Calico
   interfaces, so a Kubernetes node's pod traffic isn't counted twice.
 
 ### Upgrading
 
-- Nothing to do on the server or on Docker hosts: their agent configuration is unchanged; `ARGUS_AGENT_IMAGE`
-  `0.9.0` works as `0.8.0` did. Kubernetes nodes: [docs/kubernetes.md](docs/kubernetes.md).
+- Nothing to do on the server or on Docker hosts: their agent configuration is
+  unchanged; `ARGUS_AGENT_IMAGE`
+  `0.9.0` works as `0.8.0` did. Kubernetes nodes:
+  [docs/kubernetes.md](docs/kubernetes.md).
 
 ## [0.8.0] - 2026-10-27
 
-### Added
+### Added (0.8.0)
 
-- **Intel GPU load** on the Server Hardware dashboard: an Intel GPUs table (which GPU, which driver has it, whether
-  it reports; a card passed through to a VM shows as vfio-pci), the Render/3D, Video and VideoEnhance engines' busy
-  share, the clock and RC6 idle time, from Argus' own exporter around `intel_gpu_top`
-  ([docs/intel-gpu.md](docs/intel-gpu.md)). It runs as a systemd service on a server whose i915 driver has the card
-  ([`deploy/intelgpu/`](deploy/intelgpu/): an unprivileged user with `CAP_PERFMON` only, basic auth, waits for the
-  network at boot and keeps retrying) or as the agent's new `intel-gpu` profile on a host or VM (new image
-  `argus-intel-gpu-exporter`, amd64 only; root with `PERFMON` only). New scrape job `intel_gpu`
-  (`targets/intel_gpu.json`, `secrets/intel_gpu_password`), alert "Intel GPU not reporting" (a GPU on i915 that
-  intel_gpu_top can't read for 10 minutes; a card passed through to a VM doesn't alert).
-- The **GPUs** dashboard shows Intel GPUs beside the NVIDIA ones: they count in the GPUs, Hottest GPU and Power
-  tiles, and an Intel GPUs table (state, Video, Render/3D and VideoEnhance busy, clock, temperature, power) and
-  engine and temperature/power charts follow the NVIDIA panels. Its Host list includes hosts with an Intel GPU.
-- "Monitoring target down" also leaves out a host's Intel GPU exporter while that host says it booted on a GPU that
+- **Intel GPU load** on the Server Hardware dashboard: an Intel GPUs table
+  (which GPU, which driver has it, whether
+  it reports; a card passed through to a VM shows as vfio-pci), the Render/3D,
+  Video and VideoEnhance engines' busy
+  share, the clock and RC6 idle time, from Argus' own exporter around
+  `intel_gpu_top`
+  ([docs/intel-gpu.md](docs/intel-gpu.md)). It runs as a systemd service on a
+  server whose i915 driver has the card
+  ([`deploy/intelgpu/`](deploy/intelgpu/): an unprivileged user with
+  `CAP_PERFMON` only, basic auth, waits for the
+  network at boot and keeps retrying) or as the agent's new `intel-gpu` profile
+  on a host or VM (new image
+  `argus-intel-gpu-exporter`, amd64 only; root with `PERFMON` only). New scrape
+  job `intel_gpu`
+  (`targets/intel_gpu.json`, `secrets/intel_gpu_password`), alert "Intel GPU not
+  reporting" (a GPU on i915 that
+  intel_gpu_top can't read for 10 minutes; a card passed through to a VM doesn't
+  alert).
+- The **GPUs** dashboard shows Intel GPUs beside the NVIDIA ones: they count in
+  the GPUs, Hottest GPU and Power
+  tiles, and an Intel GPUs table (state, Video, Render/3D and VideoEnhance busy,
+  clock, temperature, power) and
+  engine and temperature/power charts follow the NVIDIA panels. Its Host list
+  includes hosts with an Intel GPU.
+- "Monitoring target down" also leaves out a host's Intel GPU exporter while
+  that host says it booted on a GPU that
   isn't Intel's (`homelab_gpu_selected`), as it does for the NVIDIA exporter.
-- **Databases** dashboard (hosts folder) for shared PostgreSQL and MariaDB servers: whether each engine answers,
-  connections in use against `max_connections`, transactions and queries per second, database sizes, PostgreSQL's
-  cache hit ratio, MariaDB's buffer pool, deadlocks and refused logins. New scrape jobs `postgres`
-  (`targets/postgres.json`, postgres_exporter on port 9187) and `mysql` (`targets/mysql.json`, mysqld_exporter on
+- **Databases** dashboard (hosts folder) for shared PostgreSQL and MariaDB
+  servers: whether each engine answers,
+  connections in use against `max_connections`, transactions and queries per
+  second, database sizes, PostgreSQL's
+  cache hit ratio, MariaDB's buffer pool, deadlocks and refused logins. New
+  scrape jobs `postgres`
+  (`targets/postgres.json`, postgres_exporter on port 9187) and `mysql`
+  (`targets/mysql.json`, mysqld_exporter on
   port 9104), each target with a `host` label.
-- Alert **Database server down** (Availability, critical): an engine its exporter can't reach (`pg_up` /
-  `mysql_up` 0), or the exporter itself unreachable, for 2 minutes. Every app that keeps its data there fails
-  with it, so it's quicker and louder than "Monitoring target down" (warning, 10 minutes), which fires as well.
-- Three Steerhouse dashboards (CI folder): **overview & runs**, **execution, queue & workers** and **security &
-  access**, the dashboards [Steerhouse](https://github.com/HoneyBearTech/Steerhouse) (an Ansible web UI) ships,
-  ported from v0.10.1 by [`scripts/port_steerhouse.py`](scripts/port_steerhouse.py) with Argus' datasource uids.
-  They read Steerhouse's metrics (new `steerhouse` scrape job: `targets/steerhouse.json`, the backend's port 8002,
-  with Steerhouse's `METRICS_TOKEN` in `secrets/steerhouse_metrics_token`) and its database through a new
-  PostgreSQL datasource (uid `steerhouse-db`): the read-only `grafana_ro` role, at most 5 connections, TLS with
-  `verify-full` against `secrets/steerhouse_db_ca`, its password in `secrets/steerhouse_db_password`, the address
-  in `STEERHOUSE_DB_ADDRESS` (`.env`). See [docs/steerhouse.md](docs/steerhouse.md).
-- Alerts (new Steerhouse group, from Steerhouse's example rules): runs failing more than usual (> 30 % of the
-  last hour's runs, for 15 minutes), failed sign-ins spiking (> 30 in 15 minutes), notifications not going out
-  (one waiting > 15 minutes) and Steerhouse unable to read its database (5 minutes). Each links to its panel.
-- Server Hardware dashboard: add-in GPUs that the BMC can't see (Intel cards on the `i915` or `xe` driver) —
-  the hottest GPU, each card's temperature, power draw (with its power limit) and fan speed, named by the card's
-  PCI address. New `hwmon` scrape job for [node_exporter](https://github.com/prometheus/node_exporter) running on
-  the server with only its hwmon collector (`targets/hwmon.json` with a `host` label, basic auth with
-  `secrets/hwmon_password`), and [`deploy/hwmon/setup-node-exporter.sh`](deploy/hwmon/setup-node-exporter.sh) to
-  set one up: Debian's package as an unprivileged user, without its recommended root timers, on the server's
-  address only. A card passed through to a VM is read by the VM's agent instead. See [docs/hwmon.md](docs/hwmon.md).
-- The GPU hot alert (85 °C for 10 minutes) covers those Intel GPUs too, not only NVIDIA's.
-- Server Hardware dashboard (Proxmox folder, linked from Proxmox VE): each server's BMC — sensors not in their
-  normal state, temperatures, fans, live power draw, BMC firmware and BIOS versions, and how full the BMC's
-  event log is. New `ipmi` scrape job for [prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter)
-  running on each server and reading its own BMC (`targets/ipmi.json` with a `host` label, basic auth with
-  `secrets/ipmi_password`), and [`deploy/ipmi/setup-ipmi-exporter.sh`](deploy/ipmi/setup-ipmi-exporter.sh) to set
-  one up: Debian's package as an unprivileged user, four read-only FreeIPMI command lines allowed through sudo
+- Alert **Database server down** (Availability, critical): an engine its
+  exporter can't reach (`pg_up` /
+  `mysql_up` 0), or the exporter itself unreachable, for 2 minutes. Every app
+  that keeps its data there fails
+  with it, so it's quicker and louder than "Monitoring target down" (warning, 10
+  minutes), which fires as well.
+- Three Steerhouse dashboards (CI folder): **overview & runs**, **execution,
+  queue & workers** and **security &
+  access**, the dashboards
+  [Steerhouse](https://github.com/HoneyBearTech/Steerhouse) (an Ansible web UI)
+  ships,
+  ported from v0.10.1 by
+  [`scripts/port_steerhouse.py`](scripts/port_steerhouse.py) with Argus'
+  datasource uids.
+  They read Steerhouse's metrics (new `steerhouse` scrape job:
+  `targets/steerhouse.json`, the backend's port 8002,
+  with Steerhouse's `METRICS_TOKEN` in `secrets/steerhouse_metrics_token`) and
+  its database through a new
+  PostgreSQL datasource (uid `steerhouse-db`): the read-only `grafana_ro` role,
+  at most 5 connections, TLS with
+  `verify-full` against `secrets/steerhouse_db_ca`, its password in
+  `secrets/steerhouse_db_password`, the address
+  in `STEERHOUSE_DB_ADDRESS` (`.env`). See
+  [docs/steerhouse.md](docs/steerhouse.md).
+- Alerts (new Steerhouse group, from Steerhouse's example rules): runs failing
+  more than usual (> 30 % of the
+  last hour's runs, for 15 minutes), failed sign-ins spiking (> 30 in 15
+  minutes), notifications not going out
+  (one waiting > 15 minutes) and Steerhouse unable to read its database (5
+  minutes). Each links to its panel.
+- Server Hardware dashboard: add-in GPUs that the BMC can't see (Intel cards on
+  the `i915` or `xe` driver) —
+  the hottest GPU, each card's temperature, power draw (with its power limit)
+  and fan speed, named by the card's
+  PCI address. New `hwmon` scrape job for
+  [node_exporter](https://github.com/prometheus/node_exporter) running on
+  the server with only its hwmon collector (`targets/hwmon.json` with a `host`
+  label, basic auth with
+  `secrets/hwmon_password`), and
+  [`deploy/hwmon/setup-node-exporter.sh`](deploy/hwmon/setup-node-exporter.sh)
+  to
+  set one up: Debian's package as an unprivileged user, without its recommended
+  root timers, on the server's
+  address only. A card passed through to a VM is read by the VM's agent instead.
+  See [docs/hwmon.md](docs/hwmon.md).
+- The GPU hot alert (85 °C for 10 minutes) covers those Intel GPUs too, not only
+  NVIDIA's.
+- Server Hardware dashboard (Proxmox folder, linked from Proxmox VE): each
+  server's BMC — sensors not in their
+  normal state, temperatures, fans, live power draw, BMC firmware and BIOS
+  versions, and how full the BMC's
+  event log is. New `ipmi` scrape job for
+  [prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter)
+  running on each server and reading its own BMC (`targets/ipmi.json` with a
+  `host` label, basic auth with
+  `secrets/ipmi_password`), and
+  [`deploy/ipmi/setup-ipmi-exporter.sh`](deploy/ipmi/setup-ipmi-exporter.sh) to
+  set
+  one up: Debian's package as an unprivileged user, four read-only FreeIPMI
+  command lines allowed through sudo
   and nothing else. See [docs/ipmi.md](docs/ipmi.md).
-- Alerts (Power and hardware): Hardware sensor critical (5 min) and Hardware sensor warning (15 min) — empty
-  slots (Entity Presence) and Supermicro's PatternN LED sensors don't count — BMC not answering (10 min) and
+- Alerts (Power and hardware): Hardware sensor critical (5 min) and Hardware
+  sensor warning (15 min) — empty
+  slots (Entity Presence) and Supermicro's PatternN LED sensors don't count —
+  BMC not answering (10 min) and
   BMC event log full (< 1 KiB left; a full log records no new hardware events).
-- Varken [Classic] dashboard (Media folder): the Varken dashboard in the original "Varken [Official]" look —
-  solid-coloured tiles, rows coloured by status, a Server Popularity heat strip, a dark US map and week-long pies.
-  Generated by Varken's `dashboard/make_dashboard.py --argus`, like the Varken dashboard.
-- `.gitlab-ci.yml` for the copy of the repository on the maintainer's self-hosted GitLab. GitHub stays the
-  project's home and its Actions the required check; on GitLab a scheduled job mirrors `main` and the tags from
-  GitHub (fast-forward only, with a project access token in a masked, protected CI/CD variable), and every
-  commit that arrives gets the checks that need no Docker daemon: ruff, yamllint, the unit tests with the
-  coverage floor, the dashboard and public-repo check, actionlint, hadolint, the `alloy fmt` diff, promtool's
-  config check and PromQL tests, blackbox_exporter's config check and the compose files.
-- Tautulli dashboard (Media folder): what's playing on Plex now and how it's delivered (streams, transcodes vs
-  direct play/stream, bandwidth on the LAN and WAN, sessions by quality and platform), library sizes, and Varken's
-  own health, CPU and logs. The data comes from [Varken](https://github.com/HoneyBearTech/Varken) 2.0.0's
-  Prometheus output, which reads Tautulli's API: compose service `varken` behind the `varken` profile, Tautulli's
-  address in `secrets/varken.env` and its API key in `secrets/tautulli_api_key`, target `targets/varken.json`, job
+- Varken [Classic] dashboard (Media folder): the Varken dashboard in the
+  original "Varken [Official]" look —
+  solid-coloured tiles, rows coloured by status, a Server Popularity heat strip,
+  a dark US map and week-long pies.
+  Generated by Varken's `dashboard/make_dashboard.py --argus`, like the Varken
+  dashboard.
+- `.gitlab-ci.yml` for the copy of the repository on the maintainer's
+  self-hosted GitLab. GitHub stays the
+  project's home and its Actions the required check; on GitLab a scheduled job
+  mirrors `main` and the tags from
+  GitHub (fast-forward only, with a project access token in a masked, protected
+  CI/CD variable), and every
+  commit that arrives gets the checks that need no Docker daemon: ruff,
+  yamllint, the unit tests with the
+  coverage floor, the dashboard and public-repo check, actionlint, hadolint, the
+  `alloy fmt` diff, promtool's
+  config check and PromQL tests, blackbox_exporter's config check and the
+  compose files.
+- Tautulli dashboard (Media folder): what's playing on Plex now and how it's
+  delivered (streams, transcodes vs
+  direct play/stream, bandwidth on the LAN and WAN, sessions by quality and
+  platform), library sizes, and Varken's
+  own health, CPU and logs. The data comes from
+  [Varken](https://github.com/HoneyBearTech/Varken) 2.0.0's
+  Prometheus output, which reads Tautulli's API: compose service `varken` behind
+  the `varken` profile, Tautulli's
+  address in `secrets/varken.env` and its API key in `secrets/tautulli_api_key`,
+  target `targets/varken.json`, job
   `varken`.
-- Varken dashboard (Media folder): the original Varken dashboard ported to Prometheus, from Varken 2.1.0: the
-  Tautulli numbers, libraries, who is watching what (Users Online) and where (map), Sonarr's and Radarr's queues
+- Varken dashboard (Media folder): the original Varken dashboard ported to
+  Prometheus, from Varken 2.1.0: the
+  Tautulli numbers, libraries, who is watching what (Users Online) and where
+  (map), Sonarr's and Radarr's queues
   and missing items. It is generated by Varken's `dashboard/make_dashboard.py`.
-- Alerts: Tautulli unreachable (Varken can't read it for 10 minutes) and Tautulli data stale (no successful read
-  for 10 minutes while Varken still reports it up, i.e. a hanging request). Both warnings.
-- NAS / Storage: an SSD cache row for Synology NAS units with an SSD cache. It shows the read hit rate, both
-  DSM's own figure and the last hour's, and where reads are served (from the cache, missed, or sequential:
-  sent straight to the disks, as for streaming a film), plus a table of each cache with the volume device it
-  caches. Data comes from SYNOLOGY-FLASHCACHE-MIB, which the snmp-exporter image's bundled `synology` module
-  doesn't walk, through a new module in [`snmp/synology-flashcache.yml`](snmp/synology-flashcache.yml),
-  loaded next to the bundled one. Add `synology_flashcache` to a Synology's `module` list in
-  `targets/snmp.json`; a NAS without a cache reports nothing. CI now dry-runs the snmp-exporter configuration.
+- Alerts: Tautulli unreachable (Varken can't read it for 10 minutes) and
+  Tautulli data stale (no successful read
+  for 10 minutes while Varken still reports it up, i.e. a hanging request). Both
+  warnings.
+- NAS / Storage: an SSD cache row for Synology NAS units with an SSD cache. It
+  shows the read hit rate, both
+  DSM's own figure and the last hour's, and where reads are served (from the
+  cache, missed, or sequential:
+  sent straight to the disks, as for streaming a film), plus a table of each
+  cache with the volume device it
+  caches. Data comes from SYNOLOGY-FLASHCACHE-MIB, which the snmp-exporter
+  image's bundled `synology` module
+  doesn't walk, through a new module in
+  [`snmp/synology-flashcache.yml`](snmp/synology-flashcache.yml),
+  loaded next to the bundled one. Add `synology_flashcache` to a Synology's
+  `module` list in
+  `targets/snmp.json`; a NAS without a cache reports nothing. CI now dry-runs
+  the snmp-exporter configuration.
 
-### Changed
+### Changed (0.8.0)
 
-- "Monitoring target down" leaves out a host's GPU exporter while that host says it booted on a GPU that isn't
-  NVIDIA's (`homelab_gpu_selected{vendor="intel"}` or `{vendor="none"}`, through the agent's textfile collector),
-  so a VM that fails over to a machine with an Intel GPU and stops its exporter there doesn't alert. The host's
+- "Monitoring target down" leaves out a host's GPU exporter while that host says
+  it booted on a GPU that isn't
+  NVIDIA's (`homelab_gpu_selected{vendor="intel"}` or `{vendor="none"}`, through
+  the agent's textfile collector),
+  so a VM that fails over to a machine with an Intel GPU and stops its exporter
+  there doesn't alert. The host's
   other targets, an NVIDIA host and a host without the series alert as before.
-- The GitLab CI dashboard counts several runners: the Runners tile shows how many are up and how many are
-  down (it read "Up" while any one answered), and the Runner jobs chart's concurrency limit is the runners'
+- The GitLab CI dashboard counts several runners: the Runners tile shows how
+  many are up and how many are
+  down (it read "Up" while any one answered), and the Runner jobs chart's
+  concurrency limit is the runners'
   combined limit. Add one target per runner to `targets/gitlab_runner.json`.
-- The Varken dashboards' Device Types and Stream Types pies cover the time range, so they no longer go blank when
-  nobody is watching; the classic copy's Server Popularity strip asks for few enough points for Grafana to draw it.
-- Varken 3.2.0 with its Lidarr module on: the Varken and Varken [Classic] dashboards show Lidarr's queue and its
-  missing and upcoming albums. Lidarr's address goes in `secrets/varken.env` (`VRKN_LIDARR_1_URL`); the key is
+- The Varken dashboards' Device Types and Stream Types pies cover the time
+  range, so they no longer go blank when
+  nobody is watching; the classic copy's Server Popularity strip asks for few
+  enough points for Grafana to draw it.
+- Varken 3.2.0 with its Lidarr module on: the Varken and Varken [Classic]
+  dashboards show Lidarr's queue and its
+  missing and upcoming albums. Lidarr's address goes in `secrets/varken.env`
+  (`VRKN_LIDARR_1_URL`); the key is
   exportarr's `lidarr_api_key` secret.
-- Varken 3.1.0: a GeoLite2 download is installed only if it matches the SHA-256 MaxMind publishes beside it.
-- Varken 3.0.0 with its Seerr module on: the Varken dashboard shows Seerr's requests (pending, processing,
-  available, declined), issues and the requests still waiting, where it had Ombi's. Seerr's API key is the new
-  `seerr_api_key` secret, its address `VRKN_SEERR_1_URL` in `secrets/varken.env`. Seerr's key acts as its admin;
+- Varken 3.1.0: a GeoLite2 download is installed only if it matches the SHA-256
+  MaxMind publishes beside it.
+- Varken 3.0.0 with its Seerr module on: the Varken dashboard shows Seerr's
+  requests (pending, processing,
+  available, declined), issues and the requests still waiting, where it had
+  Ombi's. Seerr's API key is the new
+  `seerr_api_key` secret, its address `VRKN_SEERR_1_URL` in
+  `secrets/varken.env`. Seerr's key acts as its admin;
   Varken only reads.
-- Docs: the agent's `gpu` profile needs **Docker Engine 29.2 or later** and NVIDIA Container Toolkit 1.18 or later
-  (README, "NVIDIA GPUs"). From 29.2 Docker serves the exporter's `driver: nvidia` reservation through CDI; on an
-  older Engine it uses NVIDIA's runtime hook, and the exporter loses the GPU at every `systemctl daemon-reload`
-  (apt and unattended-upgrades run one), so "GPU not reporting" fires until the container is restarted. The README
-  gives a check (`sudo systemctl daemon-reload`, then `docker exec argus-gpu-exporter nvidia-smi -L`).
+- Docs: the agent's `gpu` profile needs **Docker Engine 29.2 or later** and
+  NVIDIA Container Toolkit 1.18 or later
+  (README, "NVIDIA GPUs"). From 29.2 Docker serves the exporter's
+  `driver: nvidia` reservation through CDI; on an
+  older Engine it uses NVIDIA's runtime hook, and the exporter loses the GPU at
+  every `systemctl daemon-reload`
+  (apt and unattended-upgrades run one), so "GPU not reporting" fires until the
+  container is restarted. The README
+  gives a check (`sudo systemctl daemon-reload`, then
+  `docker exec argus-gpu-exporter nvidia-smi -L`).
   `agent/compose.yml` changes only in a comment.
-- The Varken dashboard's Sonarr and Radarr tables say which instance each row is from (HD or 4K).
-- Varken 2.2.1: an upgrade that adds a setting no longer logs an ERROR (which Argus counted), and a successful
+- The Varken dashboard's Sonarr and Radarr tables say which instance each row is
+  from (HD or 4K).
+- Varken 2.2.1: an upgrade that adds a setting no longer logs an ERROR (which
+  Argus counted), and a successful
   GeoLite2 download is logged.
-- Varken 2.2.0 with GeoIP on, for the Varken dashboard's viewer map: the MaxMind license key is the new
-  `maxmind_license_key` secret and the account ID goes in `secrets/varken.env` (`VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`).
-  Varken downloads the GeoLite2 database into its config folder; with GeoIP on, it contacts MaxMind about monthly.
+- Varken 2.2.0 with GeoIP on, for the Varken dashboard's viewer map: the MaxMind
+  license key is the new
+  `maxmind_license_key` secret and the account ID goes in `secrets/varken.env`
+  (`VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`).
+  Varken downloads the GeoLite2 database into its config folder; with GeoIP on,
+  it contacts MaxMind about monthly.
 - The Varken dashboard has no Ombi or SickChill panels: Argus runs neither.
-- Varken also reads Sonarr, Sonarr 4K, Radarr and Radarr 4K (servers 1 and 2 of each), with exportarr's API-key
-  secrets, for the Varken dashboard's queue, upcoming and missing panels. Their addresses go in
+- Varken also reads Sonarr, Sonarr 4K, Radarr and Radarr 4K (servers 1 and 2 of
+  each), with exportarr's API-key
+  secrets, for the Varken dashboard's queue, upcoming and missing panels. Their
+  addresses go in
   `secrets/varken.env` (see `secrets.example/varken.env`).
-- Varken 2.1.0, with `stream_details` on: Prometheus now holds who watches what, on which player and (with
-  GeoIP on) from which city, for the Varken dashboard. Restrict who can query Prometheus and open the Media
+- Varken 2.1.0, with `stream_details` on: Prometheus now holds who watches what,
+  on which player and (with
+  GeoIP on) from which city, for the Varken dashboard. Restrict who can query
+  Prometheus and open the Media
   dashboards accordingly.
-- Varken keeps its data in `CONFIG_ROOT/varken/config` (new `.env` setting `CONFIG_ROOT`, default `/srv/config`;
-  the directory must belong to uid 1000) instead of a named Docker volume, which `docker volume prune` would
+- Varken keeps its data in `CONFIG_ROOT/varken/config` (new `.env` setting
+  `CONFIG_ROOT`, default `/srv/config`;
+  the directory must belong to uid 1000) instead of a named Docker volume, which
+  `docker volume prune` would
   delete while the container is stopped.
 
 ### Fixed
 
-- GPUs dashboard: an Intel card's temperature and power (hwmon) count only on a host whose Intel GPU exporter
-  lists it. A container on the GPU's server that sees the host's hwmon sensors (the Argus agent in an LXC) no
-  longer adds the card's power a second time or a second row to the Intel GPUs table.
-- The Grafana image kept only the Prometheus and Loki datasource plugins, so a PostgreSQL datasource couldn't
-  work; it keeps Grafana's bundled PostgreSQL plugin too now (CI checks all three are there).
-- The IPMI and hwmon exporters set up by `deploy/ipmi/setup-ipmi-exporter.sh` and
-  `deploy/hwmon/setup-node-exporter.sh` could stay down after a server rebooted: Debian's units start before the
-  network, so the exporter couldn't bind to the server's address yet ("cannot assign requested address") and
-  systemd gave up after five fast restarts. The scripts now install a systemd drop-in that starts the service
-  after `network-online.target` and retries every 5 s without a start limit. Run the script again on each server
+- GPUs dashboard: an Intel card's temperature and power (hwmon) count only on a
+  host whose Intel GPU exporter
+  lists it. A container on the GPU's server that sees the host's hwmon sensors
+  (the Argus agent in an LXC) no
+  longer adds the card's power a second time or a second row to the Intel GPUs
+  table.
+- The Grafana image kept only the Prometheus and Loki datasource plugins, so a
+  PostgreSQL datasource couldn't
+  work; it keeps Grafana's bundled PostgreSQL plugin too now (CI checks all
+  three are there).
+- The IPMI and hwmon exporters set up by `deploy/ipmi/setup-ipmi-exporter.sh`
+  and
+  `deploy/hwmon/setup-node-exporter.sh` could stay down after a server rebooted:
+  Debian's units start before the
+  network, so the exporter couldn't bind to the server's address yet ("cannot
+  assign requested address") and
+  systemd gave up after five fast restarts. The scripts now install a systemd
+  drop-in that starts the service
+  after `network-online.target` and retries every 5 s without a start limit. Run
+  the script again on each server
   to add it.
 
-### Upgrading
+### Upgrading (0.8.0)
 
-- Set `CONFIG_ROOT` in `.env` (see `.env.example`; default `/srv/config`): `docker-compose.yml` now refuses to
+- Set `CONFIG_ROOT` in `.env` (see `.env.example`; default `/srv/config`):
+  `docker-compose.yml` now refuses to
   run without it, even where the `varken` profile is off.
-- Grafana now needs `secrets/steerhouse_db_password` and `secrets/steerhouse_db_ca` to start, even without
+- Grafana now needs `secrets/steerhouse_db_password` and
+  `secrets/steerhouse_db_ca` to start, even without
   Steerhouse: copy their templates before `docker compose up -d`
-  (`cp -n secrets.example/steerhouse_db_password secrets.example/steerhouse_db_ca secrets/`; mode 644).
-- Optional pieces each need their own files before you turn them on, listed in their docs: Varken
-  (`secrets/varken.env`, `tautulli_api_key`, and for its extra modules `seerr_api_key`, `maxmind_license_key`),
-  Steerhouse ([docs/steerhouse.md](docs/steerhouse.md)), add-in GPUs ([docs/hwmon.md](docs/hwmon.md)), Intel GPU
-  load ([docs/intel-gpu.md](docs/intel-gpu.md): `secrets/intel_gpu_password`, `targets/intel_gpu.json`), BMCs
-  ([docs/ipmi.md](docs/ipmi.md)) and databases (`targets/postgres.json`, `targets/mysql.json`).
-- Servers set up with `deploy/ipmi/` or `deploy/hwmon/` before this release: run the script again to add the
+  (mode 644):
+
+  ```sh
+  cp -n secrets.example/steerhouse_db_password \
+    secrets.example/steerhouse_db_ca secrets/
+  ```
+
+- Optional pieces each need their own files before you turn them on, listed in
+  their docs: Varken
+  (`secrets/varken.env`, `tautulli_api_key`, and for its extra modules
+  `seerr_api_key`, `maxmind_license_key`),
+  Steerhouse ([docs/steerhouse.md](docs/steerhouse.md)), add-in GPUs
+  ([docs/hwmon.md](docs/hwmon.md)), Intel GPU
+  load ([docs/intel-gpu.md](docs/intel-gpu.md): `secrets/intel_gpu_password`,
+  `targets/intel_gpu.json`), BMCs
+  ([docs/ipmi.md](docs/ipmi.md)) and databases (`targets/postgres.json`,
+  `targets/mysql.json`).
+- Servers set up with `deploy/ipmi/` or `deploy/hwmon/` before this release: run
+  the script again to add the
   network-wait drop-in (see Fixed).
-- Agents: copy the new `agent/compose.yml` and `agent/.env.example`, set `ARGUS_AGENT_IMAGE` to `0.8.0` and run
-  `docker compose up -d`. For Intel GPU load on a host or VM that owns an Intel GPU, add `intel-gpu` to
+- Agents: copy the new `agent/compose.yml` and `agent/.env.example`, set
+  `ARGUS_AGENT_IMAGE` to `0.8.0` and run
+  `docker compose up -d`. For Intel GPU load on a host or VM that owns an Intel
+  GPU, add `intel-gpu` to
   `COMPOSE_PROFILES` with `ARGUS_INTEL_GPU_PASSWORD_HASH` (amd64 only).
 
 ## [0.7.1] - 2026-10-15
 
-### Changed
+### Changed (0.7.1)
 
-- The agent no longer ships the Docker socket proxy's log lines for autoheal's answered health checks and pings
-  (`GET /containers/json?filters={"health":["unhealthy"],…}` and `GET /_ping` with status 200): about 8.5k
-  lines a day per host that runs autoheal. Every other request it logs, refused ones (403) included, still
+- The agent no longer ships the Docker socket proxy's log lines for autoheal's
+  answered health checks and pings
+  (`GET /containers/json?filters={"health":["unhealthy"],…}` and `GET /_ping`
+  with status 200): about 8.5k
+  lines a day per host that runs autoheal. Every other request it logs, refused
+  ones (403) included, still
   reaches Loki.
 
-### Fixed
+### Fixed (0.7.1)
 
-- Agents on hosts without homelab-pull logged `failed to read textfile collector directory` on every scrape
-  (and reported `node_textfile_scrape_error 1`): 0.7.0 pointed node_exporter's textfile collector at
-  `metrics/` inside `HOMELAB_PULL_DIR`, which doesn't exist in the empty fallback directory. The metrics
-  directory now has its own mount, `${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics`, which Docker creates
+- Agents on hosts without homelab-pull logged
+  `failed to read textfile collector directory` on every scrape
+  (and reported `node_textfile_scrape_error 1`): 0.7.0 pointed node_exporter's
+  textfile collector at
+  `metrics/` inside `HOMELAB_PULL_DIR`, which doesn't exist in the empty
+  fallback directory. The metrics
+  directory now has its own mount,
+  `${HOMELAB_PULL_DIR:-./no-homelab-pull}/metrics`, which Docker creates
   empty where homelab-pull isn't installed.
 
-### Upgrading
+### Upgrading (0.7.1)
 
-- Agents: copy the new `agent/compose.yml` (it mounts homelab-pull's `metrics/` on its own), set
-  `ARGUS_AGENT_IMAGE` to `0.7.1` and run `docker compose up -d`. On a 0.7.0 agent without homelab-pull,
-  `sudo mkdir -p no-homelab-pull/metrics` in the agent's directory stops the errors until then.
+- Agents: copy the new `agent/compose.yml` (it mounts homelab-pull's `metrics/`
+  on its own), set
+  `ARGUS_AGENT_IMAGE` to `0.7.1` and run `docker compose up -d`. On a 0.7.0
+  agent without homelab-pull,
+  `sudo mkdir -p no-homelab-pull/metrics` in the agent's directory stops the
+  errors until then.
 
 ## [0.7.0] - 2026-10-15
 
-### Added
+### Added (0.7.0)
 
-- Proxmox VE dashboard: cluster quorum and QDevice status, which nodes are online, per-node CPU and memory, how much memory the running guests are allocated and how many
-  vCPUs they have per logical CPU (overcommit), guests that are set to start at boot but aren't running,
-  storage space with days until full, and a table of every VM and container. Data comes from the Proxmox API
-  through [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) 3.10.1, behind
-  the new `proxmox` compose profile: a read-only API token (`PVEAuditor`) in `secrets/pve.yml`, the cluster's CA
-  certificate in `secrets/pve-ca.pem` (the exporter verifies the node's certificate), and each node's address
+- Proxmox VE dashboard: cluster quorum and QDevice status, which nodes are
+  online, per-node CPU and memory, how much memory the running guests are
+  allocated and how many
+  vCPUs they have per logical CPU (overcommit), guests that are set to start at
+  boot but aren't running,
+  storage space with days until full, and a table of every VM and container.
+  Data comes from the Proxmox API
+  through
+  [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter)
+  3.10.1, behind
+  the new `proxmox` compose profile: a read-only API token (`PVEAuditor`) in
+  `secrets/pve.yml`, the cluster's CA
+  certificate in `secrets/pve-ca.pem` (the exporter verifies the node's
+  certificate), and each node's address
   in `targets/pve.json`.
-- Alerts: a Proxmox node using more than 90 % of its memory, a Proxmox node whose running guests are allocated more
-  than its memory (both warnings), a Proxmox node without cluster quorum (critical) and a Proxmox QDevice
+- Alerts: a Proxmox node using more than 90 % of its memory, a Proxmox node
+  whose running guests are allocated more
+  than its memory (both warnings), a Proxmox node without cluster quorum
+  (critical) and a Proxmox QDevice
   disconnected for 5 minutes. A
-  new scrape job, `pve_quorum`, asks every node in `targets/pve.json` for its own view of quorum and of its
-  QDevice, so the alerts still work when the node the dashboard reads the cluster from is the one that's down;
+  new scrape job, `pve_quorum`, asks every node in `targets/pve.json` for its
+  own view of quorum and of its
+  QDevice, so the alerts still work when the node the dashboard reads the
+  cluster from is the one that's down;
   the dashboard's Quorum and QDevice stats show the worst view.
-- Tdarr dashboard: whether Tdarr is up and its version, files, the transcode and health-check queues, files whose
-  transcode or health check failed, space saved (in total and per library), what each worker is doing (file,
-  progress, speed, ETA), each node's workers against its limits, transcodes and health checks finished per hour,
-  the libraries' video codecs and resolutions, and the Tdarr container's CPU, memory and logged errors. A Library
+- Tdarr dashboard: whether Tdarr is up and its version, files, the transcode and
+  health-check queues, files whose
+  transcode or health check failed, space saved (in total and per library), what
+  each worker is doing (file,
+  progress, speed, ETA), each node's workers against its limits, transcodes and
+  health checks finished per hour,
+  the libraries' video codecs and resolutions, and the Tdarr container's CPU,
+  memory and logged errors. A Library
   filter narrows it. Data comes from Tdarr's API through
-  [tdarr-exporter](https://github.com/homeylab/tdarr-exporter) 3.1.0, behind the new `tdarr` compose profile:
-  Tdarr's URL in `secrets/tdarr.env`, the exporter in `targets/tdarr.json` (scrape job `tdarr`).
-- GPUs dashboard: for hosts with an NVIDIA GPU, how busy each GPU's video encoder and decoder (the engines
-  hardware transcodes use), compute engines and memory are, open encoding sessions, memory used,
+  [tdarr-exporter](https://github.com/homeylab/tdarr-exporter) 3.1.0, behind the
+  new `tdarr` compose profile:
+  Tdarr's URL in `secrets/tdarr.env`, the exporter in `targets/tdarr.json`
+  (scrape job `tdarr`).
+- GPUs dashboard: for hosts with an NVIDIA GPU, how busy each GPU's video
+  encoder and decoder (the engines
+  hardware transcodes use), compute engines and memory are, open encoding
+  sessions, memory used,
   temperature and power, per GPU and over time. Data comes from
-  [nvidia_gpu_exporter](https://github.com/utkuozdemir/nvidia_gpu_exporter) 1.15.1 (nvidia-smi), the new
-  `gpu` profile of `agent/compose.yml` (needs the NVIDIA Container Toolkit), which Prometheus scrapes from
-  `targets/gpu.json` (job `gpu`, keeping the ~10 metric families the dashboard and alerts use).
-- Alerts: GPU exporter reporting no GPU (nvidia-smi failing, e.g. the driver not loaded after an update) and
+  [nvidia_gpu_exporter](https://github.com/utkuozdemir/nvidia_gpu_exporter)
+  1.15.1 (nvidia-smi), the new
+  `gpu` profile of `agent/compose.yml` (needs the NVIDIA Container Toolkit),
+  which Prometheus scrapes from
+  `targets/gpu.json` (job `gpu`, keeping the ~10 metric families the dashboard
+  and alerts use).
+- Alerts: GPU exporter reporting no GPU (nvidia-smi failing, e.g. the driver not
+  loaded after an update) and
   GPU above 85 °C for 10 minutes (both warnings).
-- Deploys dashboard: for hosts deployed by homelab-pull (a pull-based deploy agent that deploys one Docker
-  Compose stack from its git branch; 0.4.0 or later), whether every stack runs what its branch points at,
-  failing and paused deploys, agents that stopped running, deploys and failed attempts per day, each stack's
-  deploy duration, and the deploy log. Deploy markers (successful and failed) on Host Health and Docker
-  Containers line up a restart or a CPU jump with the merge that caused it. The Argus agent reads
-  homelab-pull's state directory, set as `HOMELAB_PULL_DIR` in its `.env` and mounted read-only: the metrics
-  files through its node_exporter's textfile collector (`homelab_pull_*`, labels `host` and `stack`), and each
-  stack's `deploys.log` into Loki (`job="homelab-pull"`, labels `stack` and `result`; on its first start the
+- Deploys dashboard: for hosts deployed by homelab-pull (a pull-based deploy
+  agent that deploys one Docker
+  Compose stack from its git branch; 0.4.0 or later), whether every stack runs
+  what its branch points at,
+  failing and paused deploys, agents that stopped running, deploys and failed
+  attempts per day, each stack's
+  deploy duration, and the deploy log. Deploy markers (successful and failed) on
+  Host Health and Docker
+  Containers line up a restart or a CPU jump with the merge that caused it. The
+  Argus agent reads
+  homelab-pull's state directory, set as `HOMELAB_PULL_DIR` in its `.env` and
+  mounted read-only: the metrics
+  files through its node_exporter's textfile collector (`homelab_pull_*`, labels
+  `host` and `stack`), and each
+  stack's `deploys.log` into Loki (`job="homelab-pull"`, labels `stack` and
+  `result`; on its first start the
   last 6 days of history).
-- Alerts (new group "Deploys", warnings): a deploy agent that hasn't finished a run for 50 minutes, a deploy
-  failing for 15 minutes (with the commit and how it failed), every run of an agent failing for 15 minutes
+- Alerts (new group "Deploys", warnings): a deploy agent that hasn't finished a
+  run for 50 minutes, a deploy
+  failing for 15 minutes (with the commit and how it failed), every run of an
+  agent failing for 15 minutes
   (the fetch or its settings), and deploys paused for 2 hours.
-- Alerts: Tdarr reported new transcode or health-check errors in the last hour, and Tdarr has files queued but
+- Alerts: Tdarr reported new transcode or health-check errors in the last hour,
+  and Tdarr has files queued but
   finished no transcode or health check in a day (both warnings).
 
-### Changed
+### Changed (0.7.0)
 
-- README: the setup table now says to add a profile to `COMPOSE_PROFILES` (`loki,snmp`) instead of setting
-  `COMPOSE_PROFILES=snmp`, which would have replaced the default `loki` and stopped Loki; the summary and "How it
-  works" now name the GitLab CI, ESXi/vCenter, Proxmox and internet dashboards and their exporters. `.env.example`
-  no longer asks for a `secrets/gitlab.env` (the exporter has read only `secrets/gitlab.yml` since #61).
-- Web services are probed once a minute instead of every 15 seconds. Nothing between blackbox_exporter and the
-  DNS server caches, so every probe, and every redirect it follows, was a fresh A + AAAA lookup: with a few dozen
-  URLs that came to tens of thousands of queries an hour, and a busy DNS server log. The "Service down" alert
-  still pages after 5 minutes of failed probes; a service now counts as having been up once it has passed more
+- README: the setup table now says to add a profile to `COMPOSE_PROFILES`
+  (`loki,snmp`) instead of setting
+  `COMPOSE_PROFILES=snmp`, which would have replaced the default `loki` and
+  stopped Loki; the summary and "How it
+  works" now name the GitLab CI, ESXi/vCenter, Proxmox and internet dashboards
+  and their exporters. `.env.example`
+  no longer asks for a `secrets/gitlab.env` (the exporter has read only
+  `secrets/gitlab.yml` since #61).
+- Web services are probed once a minute instead of every 15 seconds. Nothing
+  between blackbox_exporter and the
+  DNS server caches, so every probe, and every redirect it follows, was a fresh
+  A + AAAA lookup: with a few dozen
+  URLs that came to tens of thousands of queries an hour, and a busy DNS server
+  log. The "Service down" alert
+  still pages after 5 minutes of failed probes; a service now counts as having
+  been up once it has passed more
   than an hour of probes in the last week (60 probes, was 240 at the old rate).
-- Grafana's admin password now comes from `secrets/grafana_admin_password` and the alerting webhook from
-  `secrets/discord_webhook_url` (compose secrets) instead of `GF_SECURITY_ADMIN_PASSWORD` and
-  `DISCORD_WEBHOOK_URL` in `.env`. Grafana refuses to start while the password file is missing, empty or
-  unreadable (it would otherwise fall back to `admin`/`admin`). Auto-deploy posts its notices to the same
+- Grafana's admin password now comes from `secrets/grafana_admin_password` and
+  the alerting webhook from
+  `secrets/discord_webhook_url` (compose secrets) instead of
+  `GF_SECURITY_ADMIN_PASSWORD` and
+  `DISCORD_WEBHOOK_URL` in `.env`. Grafana refuses to start while the password
+  file is missing, empty or
+  unreadable (it would otherwise fall back to `admin`/`admin`). Auto-deploy
+  posts its notices to the same
   webhook file, falling back to `DISCORD_WEBHOOK_URL` in `.env`.
-- The agent's `docker run` command (README, quick start) changed: no `--privileged`, but
-  `--read-only --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt no-new-privileges:true` and a data volume
+- The agent's `docker run` command (README, quick start) changed: no
+  `--privileged`, but
+  `--read-only --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt no-new-privileges:true`
+  and a data volume
   (`-v argus-agent-data:/var/lib/alloy/data`).
 
-### Fixed
+### Fixed (0.7.0)
 
-- A file from `secrets/` that a service mounts (`pve-ca.pem`, `vsphere-ca.pem`, `snmp-auth.yml`, `gitlab.yml`,
-  and Prometheus' `secrets/` directory) no longer turns into an empty, root-owned directory when it's missing at
-  start-up: compose now refuses to start that service (`bind source path does not exist`) until the file is there.
-- "NAS storage pool degraded" (critical) fired for every RAID status code above 10, so Synology's routine work
-  (a scheduled data scrub, mounting a cache, converting a pool) paged as a degraded or crashed pool. It now fires
+- A file from `secrets/` that a service mounts (`pve-ca.pem`, `vsphere-ca.pem`,
+  `snmp-auth.yml`, `gitlab.yml`,
+  and Prometheus' `secrets/` directory) no longer turns into an empty,
+  root-owned directory when it's missing at
+  start-up: compose now refuses to start that service
+  (`bind source path does not exist`) until the file is there.
+- "NAS storage pool degraded" (critical) fired for every RAID status code above
+  10, so Synology's routine work
+  (a scheduled data scrub, mounting a cache, converting a pool) paged as a
+  degraded or crashed pool. It now fires
   only for Degraded (11) and Crashed (12).
-- NAS / Storage: the Storage pools table uses SNMP's names, which aren't DSM's (a pool with a single volume is
-  listed only as that volume, so SNMP's "Storage Pool 1" can be DSM's Storage Pool 2; SSD caches aren't listed).
-  It now has a Type column (volume or storage pool), its name column reads "Name (SNMP)", and its description
+- NAS / Storage: the Storage pools table uses SNMP's names, which aren't DSM's
+  (a pool with a single volume is
+  listed only as that volume, so SNMP's "Storage Pool 1" can be DSM's Storage
+  Pool 2; SSD caches aren't listed).
+  It now has a Type column (volume or storage pool), its name column reads "Name
+  (SNMP)", and its description
   explains the difference.
 
 ### Security
 
-- Every container drops all Linux capabilities, can't gain privileges (`no-new-privileges`) and has a
-  read-only root filesystem, writing only its volume and, for Grafana and the Proxmox exporter, `/tmp` in
-  memory; the exporters whose images default to root (Pi-hole, UniFi, SNMP, qBittorrent, Plex) run as uid
-  65534. This covers `docker-compose.yml`, `logs/compose.yml` and `agent/compose.yml`; `tests/test_configs.py`
-  fails if a service loses it or adds a capability outside Docker's default set, and CI starts Grafana and
+- Every container drops all Linux capabilities, can't gain privileges
+  (`no-new-privileges`) and has a
+  read-only root filesystem, writing only its volume and, for Grafana and the
+  Proxmox exporter, `/tmp` in
+  memory; the exporters whose images default to root (Pi-hole, UniFi, SNMP,
+  qBittorrent, Plex) run as uid
+  65534. This covers `docker-compose.yml`, `logs/compose.yml` and
+         `agent/compose.yml`; `tests/test_configs.py`
+  fails if a service loses it or adds a capability outside Docker's default set,
+  and CI starts Grafana and
   Prometheus hardened. What each service runs with is in
   [docs/security.md](docs/security.md#hardening).
-- The agent no longer runs privileged. It keeps the host's network and PID namespaces, the read-only host
-  mounts and the Docker socket, which it needs to report on the host, and gets one capability,
-  `DAC_OVERRIDE`. Host and container metrics and logs are unchanged; only cAdvisor's `machine_*` metrics
+- The agent no longer runs privileged. It keeps the host's network and PID
+  namespaces, the read-only host
+  mounts and the Docker socket, which it needs to report on the host, and gets
+  one capability,
+  `DAC_OVERRIDE`. Host and container metrics and logs are unchanged; only
+  cAdvisor's `machine_*` metrics
   (unused by Argus) are gone.
-- Grafana's admin password and the Discord webhook no longer show in `docker inspect` or Portainer's
-  container view. The Pi-hole and Plex exporters' credentials still do: those images read them only from the
+- Grafana's admin password and the Discord webhook no longer show in
+  `docker inspect` or Portainer's
+  container view. The Pi-hole and Plex exporters' credentials still do: those
+  images read them only from the
   environment.
 
-### Upgrading
+### Upgrading (0.7.0)
 
-- **Before upgrading the server**, create two files in `secrets/` (compose refuses to start Grafana without
+- **Before upgrading the server**, create two files in `secrets/` (compose
+  refuses to start Grafana without
   them), readable by the containers (mode 644):
 
   ```sh
-  grep '^GF_SECURITY_ADMIN_PASSWORD=' .env | cut -d= -f2- | tr -d '\n' > secrets/grafana_admin_password
-  grep '^DISCORD_WEBHOOK_URL=' .env | cut -d= -f2- | tr -d '\n' > secrets/discord_webhook_url
+  grep '^GF_SECURITY_ADMIN_PASSWORD=' .env | cut -d= -f2- | tr -d '\n' > \
+    secrets/grafana_admin_password
+  grep '^DISCORD_WEBHOOK_URL=' .env | cut -d= -f2- | tr -d '\n' > \
+    secrets/discord_webhook_url
   chmod 644 secrets/grafana_admin_password secrets/discord_webhook_url
   ```
 
-  If a value is quoted in `.env`, remove the quotes from the file. Without a Discord webhook, copy
-  `secrets.example/discord_webhook_url` instead (with an empty file Grafana rejects the contact point and
-  doesn't start). The password matters only when Grafana creates its database, so an existing
-  install keeps its current admin password whatever the file says; to change it, update the file and run
-  `docker compose exec -T grafana grafana cli admin reset-admin-password --password-from-stdin < secrets/grafana_admin_password`.
-  Once upgraded, delete both lines from `.env` (auto-deploy reads the webhook file first).
-- Every file in `secrets/` that a container mounts must be readable by the container's user, mode 644 (no
-  container keeps the capability that let root read other users' files). Check with
-  `ls -l secrets/` and `chmod 644` any credential file that isn't (`unifi_password` and `qbittorrent_password`
+  If a value is quoted in `.env`, remove the quotes from the file. Without a
+  Discord webhook, copy
+  `secrets.example/discord_webhook_url` instead (with an empty file Grafana
+  rejects the contact point and
+  doesn't start). The password matters only when Grafana creates its database,
+  so an existing
+  install keeps its current admin password whatever the file says; to change it,
+  update the file and run
+
+  ```sh
+  docker compose exec -T grafana grafana cli admin reset-admin-password \
+    --password-from-stdin < secrets/grafana_admin_password
+  ```
+
+  Once upgraded, delete both lines from `.env` (auto-deploy reads the webhook
+  file first).
+- Every file in `secrets/` that a container mounts must be readable by the
+  container's user, mode 644 (no
+  container keeps the capability that let root read other users' files). Check
+  with
+  `ls -l secrets/` and `chmod 644` any credential file that isn't
+  (`unifi_password` and `qbittorrent_password`
   were read by root until now); the `*.env` files can stay 600.
-- Agents: copy the new `agent/compose.yml`, set `ARGUS_AGENT_IMAGE` to `0.7.0` and run `docker compose up -d`, or re-run the README's
-  `docker run` command (it now needs `-v argus-agent-data:/var/lib/alloy/data`). The agent's existing data
-  volume is kept as it is. On a host that homelab-pull deploys, also set `HOMELAB_PULL_DIR` in the agent's
-  `.env` (its state directory, e.g. `/home/<user>/.local/state/homelab-pull`); elsewhere leave it unset. On a
-  host with an NVIDIA GPU, add `gpu` to the agent's `COMPOSE_PROFILES` and list the host in the server's
+- Agents: copy the new `agent/compose.yml`, set `ARGUS_AGENT_IMAGE` to `0.7.0`
+  and run `docker compose up -d`, or re-run the README's
+  `docker run` command (it now needs `-v argus-agent-data:/var/lib/alloy/data`).
+  The agent's existing data
+  volume is kept as it is. On a host that homelab-pull deploys, also set
+  `HOMELAB_PULL_DIR` in the agent's
+  `.env` (its state directory, e.g. `/home/<user>/.local/state/homelab-pull`);
+  elsewhere leave it unset. On a
+  host with an NVIDIA GPU, add `gpu` to the agent's `COMPOSE_PROFILES` and list
+  the host in the server's
   `targets/gpu.json`.
 
-- In `targets/blackbox_http.json`, list the URL each service ends on (its login page, for example) rather than
-  one that redirects there: each redirect is another DNS lookup and request per probe.
-- If one of those paths is already a directory (Docker created it while the file was missing), the service
-  keeps running without its file. Check with `ls -ld secrets/*.pem secrets/*.yml`, then replace the directory
-  with the file (`sudo rmdir secrets/<name>`, it's owned by root) and recreate the service.
-- Exporter credentials moved out of the env files into their own files in `secrets/` (templates in
-  `secrets.example/`): `<app>_api_key` for each exportarr instance, `qbittorrent_password`, `unifi_password`,
-  `vsphere_password` (written **without** a trailing newline, e.g. `printf '%s' '…' > secrets/vsphere_password`:
-  Telegraf keeps it as part of the password), and the GitLab token as `token:` under `gitlab:` in
-  `secrets/gitlab.yml` (`secrets/gitlab.env` is no longer read). Before upgrading, create the files for the
-  services you run from the values in your env files; the old variables can stay until you've upgraded and
-  are ignored or overridden afterwards. Then delete them from the env files and run
-  `docker compose up -d --force-recreate` for those services: compose doesn't recreate a container when only an
-  env file's contents change. A service whose file is missing doesn't start (`bind source path does not exist`).
+- In `targets/blackbox_http.json`, list the URL each service ends on (its login
+  page, for example) rather than
+  one that redirects there: each redirect is another DNS lookup and request per
+  probe.
+- If one of those paths is already a directory (Docker created it while the file
+  was missing), the service
+  keeps running without its file. Check with
+  `ls -ld secrets/*.pem secrets/*.yml`, then replace the directory
+  with the file (`sudo rmdir secrets/<name>`, it's owned by root) and recreate
+  the service.
+- Exporter credentials moved out of the env files into their own files in
+  `secrets/` (templates in
+  `secrets.example/`): `<app>_api_key` for each exportarr instance,
+  `qbittorrent_password`, `unifi_password`,
+  `vsphere_password` (written **without** a trailing newline, e.g.
+  `printf '%s' '…' > secrets/vsphere_password`:
+  Telegraf keeps it as part of the password), and the GitLab token as `token:`
+  under `gitlab:` in
+  `secrets/gitlab.yml` (`secrets/gitlab.env` is no longer read). Before
+  upgrading, create the files for the
+  services you run from the values in your env files; the old variables can stay
+  until you've upgraded and
+  are ignored or overridden afterwards. Then delete them from the env files and
+  run
+  `docker compose up -d --force-recreate` for those services: compose doesn't
+  recreate a container when only an
+  env file's contents change. A service whose file is missing doesn't start
+  (`bind source path does not exist`).
 
-### Security
+### Security (0.7.0)
 
-- Grafana 13.2.3 → **13.2.4**: fixes CVE-2026-15577, CVE-2026-33374, CVE-2026-93294 and CVE-2026-95502 in
-  Grafana, and CVE-2026-84445 (gRPC-Go) in its bundled Prometheus datasource plugin. docs/dependencies.md's
-  current findings are updated: the Go standard library and `x/net` denial-of-service fixes (CVE-2026-78667,
-  -78669, -97031) wait for upstream builds, and aren't reachable from outside Argus' trusted network.
-- Exporter passwords, API keys and tokens no longer sit in the containers' environment, where `docker inspect`
-  and Portainer's container view show them: exportarr, qbittorrent-exporter, unpoller and Telegraf read them
-  from compose secrets (files under `/run/secrets/`, one per service), gitlab-ci-pipelines-exporter from its
-  config file. The Pi-hole exporter can't read a file and keeps its passwords in `pihole-exporter.env`.
+- Grafana 13.2.3 → **13.2.4**: fixes CVE-2026-15577, CVE-2026-33374,
+  CVE-2026-93294 and CVE-2026-95502 in
+  Grafana, and CVE-2026-84445 (gRPC-Go) in its bundled Prometheus datasource
+  plugin. docs/dependencies.md's
+  current findings are updated: the Go standard library and `x/net`
+  denial-of-service fixes (CVE-2026-78667,
+  -78669, -97031) wait for upstream builds, and aren't reachable from outside
+  Argus' trusted network.
+- Exporter passwords, API keys and tokens no longer sit in the containers'
+  environment, where `docker inspect`
+  and Portainer's container view show them: exportarr, qbittorrent-exporter,
+  unpoller and Telegraf read them
+  from compose secrets (files under `/run/secrets/`, one per service),
+  gitlab-ci-pipelines-exporter from its
+  config file. The Pi-hole exporter can't read a file and keeps its passwords in
+  `pihole-exporter.env`.
 
 ### Removed
 
-- The ESXi / vCenter dashboard and everything behind it: the `vsphere` compose profile and its Telegraf service
-  (`vsphere/telegraf.conf`), the `vsphere` scrape job, `targets.example/vsphere.json`, the `vsphere.env` and
-  `vsphere_password` templates, and their tests. The homelab moved from ESXi to Proxmox VE (2026-10-12), which the
-  Proxmox VE dashboard covers. On an install that still runs it: drop `vsphere` from `COMPOSE_PROFILES`, and delete
+- The ESXi / vCenter dashboard and everything behind it: the `vsphere` compose
+  profile and its Telegraf service
+  (`vsphere/telegraf.conf`), the `vsphere` scrape job,
+  `targets.example/vsphere.json`, the `vsphere.env` and
+  `vsphere_password` templates, and their tests. The homelab moved from ESXi to
+  Proxmox VE (2026-10-12), which the
+  Proxmox VE dashboard covers. On an install that still runs it: drop `vsphere`
+  from `COMPOSE_PROFILES`, and delete
   `targets/vsphere.json` and `secrets/vsphere*`.
 
 ## [0.6.0] - 2026-10-11
 
-### Upgrading
+### Upgrading (0.6.0)
 
 - Before upgrading the server, copy `secrets.example/prometheus_password` and
-  `secrets.example/prometheus-web.yml` into `secrets/` (or put a random password in the first, see
-  [docs/security.md](docs/security.md#requiring-a-password-for-prometheus)). Without the password file
-  `docker compose up` refuses to start Grafana, and without the web configuration Prometheus doesn't start.
-  The example web configuration requires no password, so nothing else changes until you add one.
-- Agents: copy the new `agent/compose.yml` and set `ARGUS_AGENT_IMAGE` to `0.6.0`, then `docker compose up -d`.
-  The compose file passes the new optional `ARGUS_PROMETHEUS_PASSWORD` (see `agent/.env.example`); set it on
-  every agent before Prometheus starts requiring a password. Older agents keep working until then.
+  `secrets.example/prometheus-web.yml` into `secrets/` (or put a random password
+  in the first, see
+  [docs/security.md](docs/security.md#requiring-a-password-for-prometheus)).
+  Without the password file
+  `docker compose up` refuses to start Grafana, and without the web
+  configuration Prometheus doesn't start.
+  The example web configuration requires no password, so nothing else changes
+  until you add one.
+- Agents: copy the new `agent/compose.yml` and set `ARGUS_AGENT_IMAGE` to
+  `0.6.0`, then `docker compose up -d`.
+  The compose file passes the new optional `ARGUS_PROMETHEUS_PASSWORD` (see
+  `agent/.env.example`); set it on
+  every agent before Prometheus starts requiring a password. Older agents keep
+  working until then.
 
-### Security
+### Security (0.6.0)
 
-- The agent no longer ships credentials found in URLs to Loki: in container and Nginx Proxy Manager logs it
-  replaces the values of `apikey`, `api_key`, `access_token`, `token`, `X-Plex-Token`, `key`, `signature`,
-  `password`, `passwd` and `secret` parameters with `REDACTED`. Before this, the *arr apps' API keys (which
-  they pass to each other as `?apikey=`), Radarr's and Sonarr's web UI keys (`access_token=`) and Plex tokens
-  were stored in Loki for 30 days and readable by every Grafana user. Lines already in Loki keep them until
+- The agent no longer ships credentials found in URLs to Loki: in container and
+  Nginx Proxy Manager logs it
+  replaces the values of `apikey`, `api_key`, `access_token`, `token`,
+  `X-Plex-Token`, `key`, `signature`,
+  `password`, `passwd` and `secret` parameters with `REDACTED`. Before this, the
+  *arr apps' API keys (which
+  they pass to each other as `?apikey=`), Radarr's and Sonarr's web UI keys
+  (`access_token=`) and Plex tokens
+  were stored in Loki for 30 days and readable by every Grafana user. Lines
+  already in Loki keep them until
   they expire; rotate keys you consider exposed.
-- Prometheus can require a password: list its `argus` user's bcrypt hash in `secrets/prometheus-web.yml`
-  (Prometheus' `--web.config.file`), and nobody can push to it or query it without the password in
-  `secrets/prometheus_password`. Grafana's datasource reads that file, Prometheus' scrape of itself and
-  auto-deploy's health check send it, and the agent sends `ARGUS_PROMETHEUS_PASSWORD`. Every client sends it
-  whether or not it's required, so it can be rolled out before Prometheus starts asking for it. CI starts
-  Prometheus with a password and checks that it refuses requests without it and that Grafana and the
+- Prometheus can require a password: list its `argus` user's bcrypt hash in
+  `secrets/prometheus-web.yml`
+  (Prometheus' `--web.config.file`), and nobody can push to it or query it
+  without the password in
+  `secrets/prometheus_password`. Grafana's datasource reads that file,
+  Prometheus' scrape of itself and
+  auto-deploy's health check send it, and the agent sends
+  `ARGUS_PROMETHEUS_PASSWORD`. Every client sends it
+  whether or not it's required, so it can be rolled out before Prometheus starts
+  asking for it. CI starts
+  Prometheus with a password and checks that it refuses requests without it and
+  that Grafana and the
   self-scrape get through.
 
-### Added
+### Added (0.6.0)
 
-- ESXi / vCenter dashboard: per-host CPU and memory, how much memory the running VMs are granted and how many
-  vCPUs they have per logical CPU (overcommit), CPU ready time per vCPU, datastore space with provisioned share
-  and days until full, and a table of running VMs. Data comes from vCenter through Telegraf's vSphere input,
-  behind the new `vsphere` compose profile: a read-only vCenter account and the vCenter URL in
-  `secrets/vsphere.env`, vCenter's CA certificate in `secrets/vsphere-ca.pem` (Telegraf verifies vCenter's
+- ESXi / vCenter dashboard: per-host CPU and memory, how much memory the running
+  VMs are granted and how many
+  vCPUs they have per logical CPU (overcommit), CPU ready time per vCPU,
+  datastore space with provisioned share
+  and days until full, and a table of running VMs. Data comes from vCenter
+  through Telegraf's vSphere input,
+  behind the new `vsphere` compose profile: a read-only vCenter account and the
+  vCenter URL in
+  `secrets/vsphere.env`, vCenter's CA certificate in `secrets/vsphere-ca.pem`
+  (Telegraf verifies vCenter's
   certificate), and the collector in `targets/vsphere.json`.
-- `docker-compose.proxy.yml`: puts Grafana on a reverse proxy's Docker network (`ARGUS_PROXY_NETWORK`) as
-  `argus-grafana`, for a proxy such as Nginx Proxy Manager running on the same host. With
-  `GRAFANA_BIND=127.0.0.1:3000`, Grafana's plain-HTTP port is then no longer open to the network.
+- `docker-compose.proxy.yml`: puts Grafana on a reverse proxy's Docker network
+  (`ARGUS_PROXY_NETWORK`) as
+  `argus-grafana`, for a proxy such as Nginx Proxy Manager running on the same
+  host. With
+  `GRAFANA_BIND=127.0.0.1:3000`, Grafana's plain-HTTP port is then no longer
+  open to the network.
 
-### Fixed
+### Fixed (0.6.0)
 
-- "NAS storage pool almost full" and the NAS dashboard's used, free and "Full in" columns look at volumes only.
-  Synology lists storage pools and SSD caches in the same table, and a pool given entirely to its volumes reports
-  no free space, so adding a second storage pool raised a false alert at 100 %. Pools and caches still show their
-  status, and "NAS storage pool degraded" still covers them. The "Pool used" panel is now "Volume used".
+- "NAS storage pool almost full" and the NAS dashboard's used, free and "Full
+  in" columns look at volumes only.
+  Synology lists storage pools and SSD caches in the same table, and a pool
+  given entirely to its volumes reports
+  no free space, so adding a second storage pool raised a false alert at 100 %.
+  Pools and caches still show their
+  status, and "NAS storage pool degraded" still covers them. The "Pool used"
+  panel is now "Volume used".
 
 ## [0.5.1] - 2026-10-09
 
-### Security
+### Security (0.5.1)
 
-- `argus-blackbox` is built on blackbox_exporter v0.29.0 (Go 1.27.1): the image's fixable HIGH findings go
-  from 43 (`golang.org/x/crypto`, `golang.org/x/net`, gRPC and Go standard library, in v0.28.0) to 2 (Go
-  standard library). See [docs/dependencies.md](docs/dependencies.md#current-findings).
+- `argus-blackbox` is built on blackbox_exporter v0.29.0 (Go 1.27.1): the
+  image's fixable HIGH findings go
+  from 43 (`golang.org/x/crypto`, `golang.org/x/net`, gRPC and Go standard
+  library, in v0.28.0) to 2 (Go
+  standard library). See
+  [docs/dependencies.md](docs/dependencies.md#current-findings).
 
 ## [0.5.0] - 2026-10-09
 
-### Upgrading
+### Upgrading (0.5.0)
 
-- The agent is unchanged since 0.4.1; agents can stay on `0.4.1` or move to `0.5.0`.
-- PeaNUT 6 puts its metrics behind its login. Before upgrading PeaNUT, put that login in `secrets/peanut_username`
-  and `secrets/peanut_password` (templates in `secrets.example/`); PeaNUT 5 ignores the credentials, so this can be
-  done first. Prometheus reads the files on every scrape. Without them the UPS dashboard stays empty.
+- The agent is unchanged since 0.4.1; agents can stay on `0.4.1` or move to
+  `0.5.0`.
+- PeaNUT 6 puts its metrics behind its login. Before upgrading PeaNUT, put that
+  login in `secrets/peanut_username`
+  and `secrets/peanut_password` (templates in `secrets.example/`); PeaNUT 5
+  ignores the credentials, so this can be
+  done first. Prometheus reads the files on every scrape. Without them the UPS
+  dashboard stays empty.
 
-### Added
+### Added (0.5.0)
 
-- Alerts "Internet much slower than usual" (the gateway's latest download or upload speed test is under half
-  its 14-day median) and "No internet speed test in 8 days". The first compares with the line's own history,
-  not the plan speed set in UniFi, which a gateway's speed test often can't reach.
-- GitLab CI dashboard: a **Runner** row (jobs started and running against the concurrency limit, runner
-  errors, failed requests to GitLab) from GitLab Runner's metrics endpoint, and a **GitLab server** row
-  (component status, request rate and p95 latency, Puma capacity, Sidekiq backlog and failures, memory)
-  from a subset of GitLab's bundled Prometheus, read through `/federate`. Both are new scrape jobs
-  (`gitlab_runner`, `gitlab_server`) with targets in `targets/`; see the README for the GitLab settings.
-- Alerts "GitLab component down" and "GitLab pipeline failing" (latest pipeline on a watched branch).
+- Alerts "Internet much slower than usual" (the gateway's latest download or
+  upload speed test is under half
+  its 14-day median) and "No internet speed test in 8 days". The first compares
+  with the line's own history,
+  not the plan speed set in UniFi, which a gateway's speed test often can't
+  reach.
+- GitLab CI dashboard: a **Runner** row (jobs started and running against the
+  concurrency limit, runner
+  errors, failed requests to GitLab) from GitLab Runner's metrics endpoint, and
+  a **GitLab server** row
+  (component status, request rate and p95 latency, Puma capacity, Sidekiq
+  backlog and failures, memory)
+  from a subset of GitLab's bundled Prometheus, read through `/federate`. Both
+  are new scrape jobs
+  (`gitlab_runner`, `gitlab_server`) with targets in `targets/`; see the README
+  for the GitLab settings.
+- Alerts "GitLab component down" and "GitLab pipeline failing" (latest pipeline
+  on a watched branch).
 
-### Changed
+### Changed (0.5.0)
 
-- Internet / ISP: the "Download vs plan" and "Upload vs plan" tiles are now "… vs usual": the latest test against
-  its own 14-day median, coloured like the "Internet much slower than usual" alert, with the share of the plan
-  speed beside it, uncoloured. A gateway's speed test often can't reach a multi-gigabit plan, so the plan-based
+- Internet / ISP: the "Download vs plan" and "Upload vs plan" tiles are now "…
+  vs usual": the latest test against
+  its own 14-day median, coloured like the "Internet much slower than usual"
+  alert, with the share of the plan
+  speed beside it, uncoloured. A gateway's speed test often can't reach a
+  multi-gigabit plan, so the plan-based
   colour was permanently red.
-- The `peanut` scrape job authenticates with basic auth from `secrets/peanut_username` and
+- The `peanut` scrape job authenticates with basic auth from
+  `secrets/peanut_username` and
   `secrets/peanut_password`, for PeaNUT 6.
 
 ## [0.4.1] - 2026-10-09
 
-### Fixed
+### Fixed (0.4.1)
 
 - The agent still counted GitLab Runner's short-lived `cache-init` containers
-  (`runner-<hash>-cache-<hash>-…`) as containers; they're now skipped like the other job containers.
-- [docs/verifying-releases.md](docs/verifying-releases.md) asked for cosign 2.0 or later, but release
-  images are signed with cosign 3, whose signatures cosign 2 can't find. It now says 3.0 or later.
+  (`runner-<hash>-cache-<hash>-…`) as containers; they're now skipped like the
+  other job containers.
+- [docs/verifying-releases.md](docs/verifying-releases.md) asked for cosign 2.0
+  or later, but release
+  images are signed with cosign 3, whose signatures cosign 2 can't find. It now
+  says 3.0 or later.
 
 ## [0.4.0] - 2026-10-09
 
-### Upgrading
+### Upgrading (0.4.0)
 
-- Agents: copy the new `agent/compose.yml` to each host (it mounts `/run/containerd`, see Fixed) and set
-  `ARGUS_AGENT_IMAGE` to `0.4.0`, then `docker compose up -d`. On a host that runs GitLab Runner with the
-  Docker executor, upgrade the agent before (or instead of) running 0.3.0 or earlier there: older agents
+- Agents: copy the new `agent/compose.yml` to each host (it mounts
+  `/run/containerd`, see Fixed) and set
+  `ARGUS_AGENT_IMAGE` to `0.4.0`, then `docker compose up -d`. On a host that
+  runs GitLab Runner with the
+  Docker executor, upgrade the agent before (or instead of) running 0.3.0 or
+  earlier there: older agents
   ship CI job output to Loki.
 
-### Added
+### Added (0.4.0)
 
-- GitLab CI dashboard: the latest pipeline on each branch and tag, a status history, pipeline and job
-  durations, how long jobs wait for a runner, and the latest run of every job with its failure reason. It
-  reads GitLab's API through [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter),
-  behind the new `gitlab` compose profile: put GitLab's URL in `secrets/gitlab.yml`, a `read_api` token in
-  `secrets/gitlab.env` (templates in `secrets.example/`) and the exporter in `targets/gitlab.json`.
+- GitLab CI dashboard: the latest pipeline on each branch and tag, a status
+  history, pipeline and job
+  durations, how long jobs wait for a runner, and the latest run of every job
+  with its failure reason. It
+  reads GitLab's API through
+  [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter),
+  behind the new `gitlab` compose profile: put GitLab's URL in
+  `secrets/gitlab.yml`, a `read_api` token in
+  `secrets/gitlab.env` (templates in `secrets.example/`) and the exporter in
+  `targets/gitlab.json`.
 
-### Security
+### Security (0.4.0)
 
-- The agent no longer reads the logs of GitLab Runner's CI job containers (Docker executor). Docker keeps
-  their raw output, without the masking GitLab applies to secrets in job logs, so masked CI variables a job
-  printed could reach Loki. Those containers are also left out of container metrics, where each job would
-  have added a short-lived container. Takes effect when the agent runs the new image.
+- The agent no longer reads the logs of GitLab Runner's CI job containers
+  (Docker executor). Docker keeps
+  their raw output, without the masking GitLab applies to secrets in job logs,
+  so masked CI variables a job
+  printed could reach Loki. Those containers are also left out of container
+  metrics, where each job would
+  have added a short-lived container. Takes effect when the agent runs the new
+  image.
 
-### Fixed
+### Fixed (0.4.0)
 
-- The agent showed no container metrics on hosts whose Docker uses the containerd image store, the default
-  for new installs since Docker 29: cAdvisor couldn't reach containerd. `agent/compose.yml` now mounts
+- The agent showed no container metrics on hosts whose Docker uses the
+  containerd image store, the default
+  for new installs since Docker 29: cAdvisor couldn't reach containerd.
+  `agent/compose.yml` now mounts
   `/run/containerd` read-only; if you run the agent with `docker run`, add
   `-v /run/containerd:/run/containerd:ro`.
-- Auto-deploy's health check crashed instead of reporting "not answering" when something other than an
+- Auto-deploy's health check crashed instead of reporting "not answering" when
+  something other than an
   HTTP server answered on Grafana's or Prometheus' port.
 
 ## [0.3.0] - 2026-10-05
 
-### Upgrading
+### Upgrading (0.3.0)
 
-- Grafana now runs only the plugins in the image: the Prometheus and Loki datasources and Grafana's
-  built-in panels. It no longer downloads plugins from grafana.com at start-up, so the Explore
-  "Drilldown" apps (metrics, logs, traces, profiles) and the Advisor app are gone. Plugins earlier
-  versions downloaded into the `grafana_data` volume are ignored; to reclaim the space, run
+- Grafana now runs only the plugins in the image: the Prometheus and Loki
+  datasources and Grafana's
+  built-in panels. It no longer downloads plugins from grafana.com at start-up,
+  so the Explore
+  "Drilldown" apps (metrics, logs, traces, profiles) and the Advisor app are
+  gone. Plugins earlier
+  versions downloaded into the `grafana_data` volume are ignored; to reclaim the
+  space, run
   `docker compose exec grafana sh -c 'rm -rf /var/lib/grafana/plugins/*'`.
 
-### Added
+### Added (0.3.0)
 
-- Internet / ISP dashboard: the UniFi gateway's speed tests over time against the plan speeds set in UniFi,
-  how long ago the last test ran, latency and connectivity drops. It needs nothing beyond unpoller. The
-  gateway measures from the edge of the network, so the results aren't capped by a server's network card.
-- Optional auto-deploy for servers that run from a checkout: a systemd timer ([deploy/systemd/](deploy/systemd/))
-  runs `scripts/auto_deploy.py`, which fast-forwards to `main` once its CI check has passed, rebuilds, restarts
-  what reads a changed config, and rolls back if Grafana or Prometheus don't come back. Deploys and
-  rollbacks are posted to Discord. See [docs/auto-deploy.md](docs/auto-deploy.md).
+- Internet / ISP dashboard: the UniFi gateway's speed tests over time against
+  the plan speeds set in UniFi,
+  how long ago the last test ran, latency and connectivity drops. It needs
+  nothing beyond unpoller. The
+  gateway measures from the edge of the network, so the results aren't capped by
+  a server's network card.
+- Optional auto-deploy for servers that run from a checkout: a systemd timer
+  ([deploy/systemd/](deploy/systemd/))
+  runs `scripts/auto_deploy.py`, which fast-forwards to `main` once its CI check
+  has passed, rebuilds, restarts
+  what reads a changed config, and rolls back if Grafana or Prometheus don't
+  come back. Deploys and
+  rollbacks are posted to Discord. See
+  [docs/auto-deploy.md](docs/auto-deploy.md).
 
-### Changed
+### Changed (0.3.0)
 
-- `argus-grafana` keeps only the Prometheus and Loki datasource plugins (removing Grafana's other
-  bundled ones), turns off Grafana's plugin preinstaller and reads plugins from a directory inside the
-  image (`GF_PATHS_PLUGINS`), so what runs is what was signed and scanned. Adding a datasource of another
+- `argus-grafana` keeps only the Prometheus and Loki datasource plugins
+  (removing Grafana's other
+  bundled ones), turns off Grafana's plugin preinstaller and reads plugins from
+  a directory inside the
+  image (`GF_PATHS_PLUGINS`), so what runs is what was signed and scanned.
+  Adding a datasource of another
   type now means extending the image.
-- Release images are built without a build cache. The cache was written per release tag, where no later
-  release could read it, and filled 1.6 GB of the repository's Actions storage per release.
+- Release images are built without a build cache. The cache was written per
+  release tag, where no later
+  release could read it, and filled 1.6 GB of the repository's Actions storage
+  per release.
 
-### Security
+### Security (0.3.0)
 
-- `argus-agent` applies Ubuntu's security updates to its base image, fixing CVE-2026-84782 (OpenSSL,
-  HIGH), which Grafana Alloy v1.20.1's image still contains. The agent runs as root on every host, so
+- `argus-agent` applies Ubuntu's security updates to its base image, fixing
+  CVE-2026-84782 (OpenSSL,
+  HIGH), which Grafana Alloy v1.20.1's image still contains. The agent runs as
+  root on every host, so
   upgrade the agents.
-- `argus-grafana` drops seven of Grafana's eight HIGH findings (gRPC and Tempo libraries in bundled plugins
-  Argus doesn't use) by removing those plugins. Before 0.3.0, Grafana also downloaded 18 plugins from
-  grafana.com at start-up into its data volume, where they took precedence over the image's own copies,
-  so the datasource code that ran was neither signed by the release nor covered by the image scan. The remaining one, CVE-2026-84445 in the Prometheus
+- `argus-grafana` drops seven of Grafana's eight HIGH findings (gRPC and Tempo
+  libraries in bundled plugins
+  Argus doesn't use) by removing those plugins. Before 0.3.0, Grafana also
+  downloaded 18 plugins from
+  grafana.com at start-up into its data volume, where they took precedence over
+  the image's own copies,
+  so the datasource code that ran was neither signed by the release nor covered
+  by the image scan. The remaining one, CVE-2026-84445 in the Prometheus
   plugin, is waiting on a Grafana release; see
   [docs/dependencies.md](docs/dependencies.md#current-findings).
 
 ## [0.2.0] - 2026-10-05
 
-### Upgrading
+### Upgrading (0.2.0)
 
-- unpoller now verifies the UniFi console's TLS certificate. If your console still uses its factory
-  self-signed certificate, set `UNIFI_VERIFY_SSL=false` in `.env` before upgrading, or the Network /
+- unpoller now verifies the UniFi console's TLS certificate. If your console
+  still uses its factory
+  self-signed certificate, set `UNIFI_VERIFY_SSL=false` in `.env` before
+  upgrading, or the Network /
   UniFi dashboard goes empty.
 
-### Added
+### Added (0.2.0)
 
-- Releases are signed: every image is signed keylessly with cosign (Sigstore) and carries an SBOM and SLSA
-  provenance, and each GitHub Release has a source archive, the image digests, a signed `SHA256SUMS` and
-  SLSA build provenance. Version tags are signed with the maintainer's SSH key. How to check:
+- Releases are signed: every image is signed keylessly with cosign (Sigstore)
+  and carries an SBOM and SLSA
+  provenance, and each GitHub Release has a source archive, the image digests, a
+  signed `SHA256SUMS` and
+  SLSA build provenance. Version tags are signed with the maintainer's SSH key.
+  How to check:
   [docs/verifying-releases.md](docs/verifying-releases.md).
-- Release notes come from this changelog, with repository links pointing at the release's tag.
-- CI now starts the Grafana image and checks that every dashboard, alert rule, datasource and the contact
-  point loads, so an invalid alert rule fails the pull request instead of the server.
-- PromQL tests: the shipped alert rule and dashboard queries run against synthetic series with
-  `promtool test rules` ([tests/promql/](tests/promql/)), including regression tests for the false alerts
+- Release notes come from this changelog, with repository links pointing at the
+  release's tag.
+- CI now starts the Grafana image and checks that every dashboard, alert rule,
+  datasource and the contact
+  point loads, so an invalid alert rule fails the pull request instead of the
+  server.
+- PromQL tests: the shipped alert rule and dashboard queries run against
+  synthetic series with
+  `promtool test rules` ([tests/promql/](tests/promql/)), including regression
+  tests for the false alerts
   fixed in 0.1.0.
-- Unit tests for the repo checks, with a coverage floor, and linting for Python (ruff), YAML (yamllint),
-  workflows (actionlint), Dockerfiles (hadolint) and the agent config (`alloy fmt`), all in CI.
-- A weekly vulnerability scan of the five images (Trivy), reported to code scanning.
+- Unit tests for the repo checks, with a coverage floor, and linting for Python
+  (ruff), YAML (yamllint),
+  workflows (actionlint), Dockerfiles (hadolint) and the agent config
+  (`alloy fmt`), all in CI.
+- A weekly vulnerability scan of the five images (Trivy), reported to code
+  scanning.
 - Project documentation: [governance](GOVERNANCE.md), [support](SUPPORT.md), the
-  [code of conduct](CODE_OF_CONDUCT.md), and in [docs/](docs/README.md) a quick start, architecture,
-  interfaces, security requirements, assurance case, dependency policy, roadmap and upgrade guide.
-- Contributions need a Developer Certificate of Origin sign-off, checked on every pull request.
-- An MIT [license](LICENSE), a [security policy](SECURITY.md) for reporting vulnerabilities, and a
+  [code of conduct](CODE_OF_CONDUCT.md), and in [docs/](docs/README.md) a quick
+  start, architecture,
+  interfaces, security requirements, assurance case, dependency policy, roadmap
+  and upgrade guide.
+- Contributions need a Developer Certificate of Origin sign-off, checked on
+  every pull request.
+- An MIT [license](LICENSE), a [security policy](SECURITY.md) for reporting
+  vulnerabilities, and a
   [contributing guide](CONTRIBUTING.md).
 
-### Changed
+### Changed (0.2.0)
 
-- Grafana 13.2.2 → 13.2.3 and Prometheus v3.14.0 → v3.15.0 in the `argus-grafana` and `argus-prometheus`
+- Grafana 13.2.2 → 13.2.3 and Prometheus v3.14.0 → v3.15.0 in the
+  `argus-grafana` and `argus-prometheus`
   images.
-- Every upstream base image is pinned by digest as well as version tag, so a re-pushed upstream tag can't
+- Every upstream base image is pinned by digest as well as version tag, so a
+  re-pushed upstream tag can't
   change what an Argus release builds from.
-- `UNIFI_VERIFY_SSL` (default `true`) controls unpoller's certificate check, which used to be off.
-- `check_dashboards.py` also checks that dashboards keep Grafana's 2-space JSON format (`--fix` rewrites
+- `UNIFI_VERIFY_SSL` (default `true`) controls unpoller's certificate check,
+  which used to be off.
+- `check_dashboards.py` also checks that dashboards keep Grafana's 2-space JSON
+  format (`--fix` rewrites
   them).
-- The `argus-blackbox` image runs as an unprivileged user (65534) instead of root; Argus' HTTP and DNS
+- The `argus-blackbox` image runs as an unprivileged user (65534) instead of
+  root; Argus' HTTP and DNS
   probes don't need root.
 - `agent/config.alloy` is formatted with `alloy fmt` (whitespace only).
 
-### Security
+### Security (0.2.0)
 
-- No vulnerabilities in Argus itself. The new weekly image scan reports upstream Go standard library,
-  `golang.org/x/net`, `golang.org/x/crypto` and gRPC vulnerabilities in blackbox_exporter v0.28.0, the
+- No vulnerabilities in Argus itself. The new weekly image scan reports upstream
+  Go standard library,
+  `golang.org/x/net`, `golang.org/x/crypto` and gRPC vulnerabilities in
+  blackbox_exporter v0.28.0, the
   latest upstream release; the assessment and plan are in
-  [docs/dependencies.md](docs/dependencies.md#current-findings). The blackbox image now runs unprivileged,
+  [docs/dependencies.md](docs/dependencies.md#current-findings). The blackbox
+  image now runs unprivileged,
   and unpoller now verifies the UniFi console's certificate by default.
 
 ## [0.1.0] - 2026-10-04
 
-First published release: Grafana dashboards, alert rules and a per-host agent for monitoring a homelab,
+First published release: Grafana dashboards, alert rules and a per-host agent
+for monitoring a homelab,
 shipped as Docker images for amd64 and arm64 on GHCR and Docker Hub.
 
-### Added
+### Added (0.1.0)
 
-- Images `argus-grafana` (Grafana 13.2.2 with every dashboard, datasource and alert rule baked in),
-  `argus-prometheus` (Prometheus v3.14.0 with the scrape config; accepts pushes from agents),
-  `argus-blackbox` (blackbox_exporter v0.28.0 with the HTTP and DNS probe modules), `argus-loki` (Loki
-  3.7.8, single process, 30-day retention) and `argus-agent` (Grafana Alloy with embedded node_exporter
+- Images `argus-grafana` (Grafana 13.2.2 with every dashboard, datasource and
+  alert rule baked in),
+  `argus-prometheus` (Prometheus v3.14.0 with the scrape config; accepts pushes
+  from agents),
+  `argus-blackbox` (blackbox_exporter v0.28.0 with the HTTP and DNS probe
+  modules), `argus-loki` (Loki
+  3.7.8, single process, 30-day retention) and `argus-agent` (Grafana Alloy with
+  embedded node_exporter
   and cAdvisor; pushes host metrics, container metrics and container logs).
-- 11 dashboards: Homelab Overview, DNS / Pi-hole, Host Health, Docker Containers, Logs, Network / UniFi,
-  Reverse Proxy Traffic, NAS / Storage, Smart Home, Media Stack (including Plex), UPS / Power.
-- 19 alert rules with a Discord contact point: availability, capacity, power and hardware, network,
+- 11 dashboards: Homelab Overview, DNS / Pi-hole, Host Health, Docker
+  Containers, Logs, Network / UniFi,
+  Reverse Proxy Traffic, NAS / Storage, Smart Home, Media Stack (including
+  Plex), UPS / Power.
+- 19 alert rules with a Discord contact point: availability, capacity, power and
+  hardware, network,
   containers, logs.
-- Push-model agent: one container per host, outbound connections only, no per-host server config.
+- Push-model agent: one container per host, outbound connections only, no
+  per-host server config.
 
-### Fixed
+### Fixed (0.1.0)
 
-- A 403 answer no longer counts as a service being up: a reverse proxy's access list answers 403 without
+- A 403 answer no longer counts as a service being up: a reverse proxy's access
+  list answers 403 without
   reaching the service (#3).
-- "Service down" fired on a single failed probe and for services that had never really been up; "Disk
-  almost full" fired for network shares already covered by the NAS pool rule (#15).
-- Host Health's "Load per core" failed while a host briefly had two load series (#17).
+- "Service down" fired on a single failed probe and for services that had never
+  really been up; "Disk
+  almost full" fired for network shares already covered by the NAS pool rule
+  (#15).
+- Host Health's "Load per core" failed while a host briefly had two load series
+  (#17).
 
-### Security
+### Security (0.1.0)
 
-- No vulnerabilities fixed in this release. Prometheus and Loki accept pushes without authentication; run
+- No vulnerabilities fixed in this release. Prometheus and Loki accept pushes
+  without authentication; run
   Argus on a trusted network.
 
 [Unreleased]: https://github.com/HoneyBearTech/Argus/compare/v0.9.0...HEAD
