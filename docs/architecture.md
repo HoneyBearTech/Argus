@@ -1,98 +1,224 @@
 # Architecture
 
-Argus is monitoring for a home lab, built from standard open-source components (Grafana, Prometheus,
-Loki, blackbox_exporter, Grafana Alloy and a set of exporters) and the configuration that ties them
-together: dashboards, alert rules, scrape jobs, probe modules and the agent pipeline. Argus writes no
-server code of its own; what it ships is that configuration, baked into images, plus the checks and tests
+Argus is monitoring for a home lab, built from standard open-source components
+(Grafana, Prometheus,
+Loki, blackbox_exporter, Grafana Alloy and a set of exporters) and the
+configuration that ties them
+together: dashboards, alert rules, scrape jobs, probe modules and the agent
+pipeline. Argus writes no
+server code of its own; what it ships is that configuration, baked into images,
+plus the checks and tests
 that keep it correct.
 
 ## Components
 
-```
- monitored host (one per host)                    Argus server (one host)
-┌───────────────────────────────┐   push   ┌────────────────────────────────────────────────┐
-│ argus-agent (Grafana Alloy)   │─────────▶│ Prometheus :9090  ◀── scrapes ── exporters     │
-│  ├ node_exporter (host)       │ metrics  │   │  remote-write        (Pi-hole, UniFi, SNMP, │
-│  ├ cAdvisor (containers)      │          │   │  receiver             media apps, …)       │
-│  └ Docker / NPM log tailing   │─────────▶│ Loki :3101 (or on another host)                 │
-└───────────────────────────────┘   logs   │   │        blackbox_exporter ── probes ──▶ URLs, │
-                                           │   ▼                                    DNS      │
-                                           │ Grafana :3000 ── dashboards, alert rules        │
-                                           └──────────────────────┬─────────────────────────┘
-                                                                  ▼ alerts
-                                                           Discord webhook
+```text
+Monitored host (one per host)
+  argus-agent (Grafana Alloy)
+    ├ node_exporter (host)
+    ├ cAdvisor (containers)
+    └ Docker / NPM log tailing
+
+Argus server (one host)
+  Prometheus :9090 (remote-write receiver)
+    ◀── metrics push ── argus-agent
+    └── scrapes ──▶ exporters (Pi-hole, UniFi, SNMP, media apps, …)
+  Loki :3101 (or on another host)
+    ◀── logs push ── argus-agent
+  blackbox_exporter ── probes ──▶ URLs, DNS
+  Grafana :3000 (dashboards, alert rules)
+    ◀── metrics ── Prometheus
+    ◀── logs ── Loki
+    └── alerts ──▶ Discord webhook
 ```
 
-| Component | Image | Role |
-| --- | --- | --- |
-| **Argus agent** | `argus-agent` (Grafana Alloy + [`agent/config.alloy`](../agent/config.alloy)) | One container per monitored host. Embedded node_exporter and cAdvisor collect host and container metrics, which it **pushes** to Prometheus (remote write); it tails Docker container logs and, where configured, Nginx Proxy Manager access logs and homelab-pull's deploy logs, and pushes them to Loki; where homelab-pull runs, its node_exporter also reads homelab-pull's metrics files (textfile collector). It only makes outbound connections. On a Kubernetes node the same image runs as a DaemonSet with [`agent/kubernetes.alloy`](../agent/kubernetes.alloy): container metrics from the node's kubelet, pod logs from `/var/log/pods` ([Kubernetes nodes](kubernetes.md)). |
-| **Prometheus** | `argus-prometheus` ([`prometheus/prometheus.yml`](../prometheus/prometheus.yml)) | Stores metrics for 30 days or 8 GB. Accepts agent pushes, and **scrapes** the exporters and the probe results; which targets is read from `targets/*.json` on the server (file service discovery), so no addresses live in the repo. |
-| **blackbox_exporter** | `argus-blackbox` ([`blackbox/blackbox.yml`](../blackbox/blackbox.yml)) | Probes web services (HTTP status, TLS certificate) and DNS servers on Prometheus' behalf. Not published on the host. |
-| **Exporters** | upstream images (and Varken), pinned in [`docker-compose.yml`](../docker-compose.yml) | Translate a service's API into metrics: pihole-exporter, unpoller (UniFi), snmp-exporter (NAS), exportarr and qbittorrent-exporter (media apps), gitlab-ci-pipelines-exporter (GitLab CI, through GitLab's API), prometheus-pve-exporter (Proxmox VE nodes, guests, storage), tdarr-exporter (Tdarr's libraries, queues and workers), Varken (Tautulli's streams and libraries, Sonarr's and Radarr's queues and missing items; HoneyBearTech's own image), the Plex exporter (beside Plex) and the NVIDIA GPU exporter (on a GPU host), both from `agent/compose.yml`. Home Assistant, PeaNUT, Uptime Kuma and Steerhouse expose metrics themselves. Each reads its credentials from `secrets/`. |
-| **IPMI exporter** | Debian's `prometheus-ipmi-exporter`, on each server whose hardware Argus reads ([`deploy/ipmi/`](../deploy/ipmi/), [IPMI](ipmi.md)) | Reads the server's own BMC through `/dev/ipmi0`: sensor states, temperatures, fans, power draw, the event log's free space. Runs as an unprivileged user that may run four read-only FreeIPMI command lines through sudo; listens on the server's address with basic auth. Outside the compose stack, like the agent's host. |
-| **node_exporter (hwmon only)** | Debian's `prometheus-node-exporter`, on a server without the agent whose add-in GPU Argus reads ([`deploy/hwmon/`](../deploy/hwmon/), [hwmon](hwmon.md)) | Serves the hardware sensors the server's kernel drivers read (hwmon), such as an add-in GPU's temperature and fan, which the BMC can't see; no other collector. Runs as an unprivileged user without sudo; listens on the server's address with basic auth. Outside the compose stack. |
-| **Intel GPU exporter** | Argus' [`scripts/intel_gpu_exporter.py`](../scripts/intel_gpu_exporter.py) with Debian's `intel_gpu_top`: a systemd service on a server whose i915 driver has the GPU ([`deploy/intelgpu/`](../deploy/intelgpu/)), or the `argus-intel-gpu-exporter` image in the agent's `intel-gpu` profile ([Intel GPU](intel-gpu.md)) | Reads an Intel GPU's engine load, clock and idle time from the i915 driver's performance counters. Its only privilege is `CAP_PERFMON`; listens with basic auth. |
-| **Loki** | `argus-loki` ([`logs/loki.yaml`](../logs/loki.yaml)) | Stores logs for 30 days. Runs in the main stack (`loki` profile) or on a host with more disk ([`logs/compose.yml`](../logs/compose.yml)). |
-| **Grafana** | `argus-grafana` (dashboards, datasources and alerting baked in) | Dashboards, the alert rules and the Discord contact point, all provisioned from files; editing them in the UI is blocked, so the repository stays the source of truth. |
+- **Component:** **Argus agent**
+  - **Image:** `argus-agent` (Grafana Alloy +
+    [`agent/config.alloy`](../agent/config.alloy))
+  - **Role:** One container per monitored host. Embedded node_exporter and
+    cAdvisor collect host and container metrics, which it **pushes** to
+    Prometheus (remote write); it tails Docker container logs and, where
+    configured, Nginx Proxy Manager access logs and homelab-pull's deploy logs,
+    and pushes them to Loki; where homelab-pull runs, its node_exporter also
+    reads homelab-pull's metrics files (textfile collector). It only makes
+    outbound connections. On a Kubernetes node the same image runs as a
+    DaemonSet with [`agent/kubernetes.alloy`](../agent/kubernetes.alloy):
+    container metrics from the node's kubelet, pod logs from `/var/log/pods`
+    ([Kubernetes nodes](kubernetes.md)).
+
+- **Component:** **Prometheus**
+  - **Image:** `argus-prometheus`
+    ([`prometheus/prometheus.yml`](../prometheus/prometheus.yml))
+  - **Role:** Stores metrics for 30 days or 8 GB. Accepts agent pushes, and
+    **scrapes** the exporters and the probe results; which targets is read from
+    `targets/*.json` on the server (file service discovery), so no addresses
+    live in the repo.
+
+- **Component:** **blackbox_exporter**
+  - **Image:** `argus-blackbox`
+    ([`blackbox/blackbox.yml`](../blackbox/blackbox.yml))
+  - **Role:** Probes web services (HTTP status, TLS certificate) and DNS servers
+    on Prometheus' behalf. Not published on the host.
+
+- **Component:** **Exporters**
+  - **Image:** upstream images (and Varken), pinned in
+    [`docker-compose.yml`](../docker-compose.yml)
+  - **Role:** Translate a service's API into metrics: pihole-exporter, unpoller
+    (UniFi), snmp-exporter (NAS), exportarr and qbittorrent-exporter (media
+    apps), gitlab-ci-pipelines-exporter (GitLab CI, through GitLab's API),
+    prometheus-pve-exporter (Proxmox VE nodes, guests, storage), tdarr-exporter
+    (Tdarr's libraries, queues and workers), Varken (Tautulli's streams and
+    libraries, Sonarr's and Radarr's queues and missing items; HoneyBearTech's
+    own image), the Plex exporter (beside Plex) and the NVIDIA GPU exporter (on
+    a GPU host), both from `agent/compose.yml`. Home Assistant, PeaNUT, Uptime
+    Kuma and Steerhouse expose metrics themselves. Each reads its credentials
+    from `secrets/`.
+
+- **Component:** **IPMI exporter**
+  - **Image:** Debian's `prometheus-ipmi-exporter`, on each server whose
+    hardware Argus reads ([`deploy/ipmi/`](../deploy/ipmi/), [IPMI](ipmi.md))
+  - **Role:** Reads the server's own BMC through `/dev/ipmi0`: sensor states,
+    temperatures, fans, power draw, the event log's free space. Runs as an
+    unprivileged user that may run four read-only FreeIPMI command lines through
+    sudo; listens on the server's address with basic auth. Outside the compose
+    stack, like the agent's host.
+
+- **Component:** **node_exporter (hwmon only)**
+  - **Image:** Debian's `prometheus-node-exporter`, on a server without the
+    agent whose add-in GPU Argus reads ([`deploy/hwmon/`](../deploy/hwmon/),
+    [hwmon](hwmon.md))
+  - **Role:** Serves the hardware sensors the server's kernel drivers read
+    (hwmon), such as an add-in GPU's temperature and fan, which the BMC can't
+    see; no other collector. Runs as an unprivileged user without sudo; listens
+    on the server's address with basic auth. Outside the compose stack.
+
+- **Component:** **Intel GPU exporter**
+  - **Image:** Argus'
+    [`scripts/intel_gpu_exporter.py`](../scripts/intel_gpu_exporter.py) with
+    Debian's `intel_gpu_top`: a systemd service on a server whose i915 driver
+    has the GPU ([`deploy/intelgpu/`](../deploy/intelgpu/)), or the
+    `argus-intel-gpu-exporter` image in the agent's `intel-gpu` profile
+    ([Intel GPU](intel-gpu.md))
+  - **Role:** Reads an Intel GPU's engine load, clock and idle time from the
+    i915 driver's performance counters. Its only privilege is `CAP_PERFMON`;
+    listens with basic auth.
+
+- **Component:** **Loki**
+  - **Image:** `argus-loki` ([`logs/loki.yaml`](../logs/loki.yaml))
+  - **Role:** Stores logs for 30 days. Runs in the main stack (`loki` profile)
+    or on a host with more disk ([`logs/compose.yml`](../logs/compose.yml)).
+
+- **Component:** **Grafana**
+  - **Image:** `argus-grafana` (dashboards, datasources and alerting baked in)
+  - **Role:** Dashboards, the alert rules and the Discord contact point, all
+    provisioned from files; editing them in the UI is blocked, so the repository
+    stays the source of truth.
 
 ## How data flows
 
-1. **Metrics.** Agents push host (`job="node"`) and container (`job="cadvisor"`) series every 15–30 s,
-   labelled with the host's name (`host`). Prometheus scrapes everything else on its own schedule
-   (15 s by default, 30–60 s for slower exporters), with targets and their labels from `targets/`.
-2. **Probes.** For each URL in `targets/blackbox_http.json` (and DNS server in `blackbox_dns.json`),
-   Prometheus asks blackbox_exporter to probe it once a minute and stores `probe_success`, timings and
-   certificate expiry. Each probe, and each redirect it follows, looks the name up again, so list the URL
-   a service ends on (its login page, for example) rather than one that redirects there.
-3. **Logs.** The agent reads container logs through the Docker socket, labels them (`host`, `container`,
-   `compose_project`), drops lines older than an hour (first-start backfill) and pushes them to Loki.
-   GitLab Runner's CI job containers are skipped, for both logs and container metrics. NPM
-   access logs are parsed into `site`, `status` and `method`, and Argus' own probes are dropped.
-4. **Dashboards.** Grafana queries Prometheus (PromQL) and Loki (LogQL) through datasources with fixed
-   uids (`prometheus`, `loki`), so dashboards keep working on any installation; the Steerhouse dashboards
-   also read Steerhouse's database (SQL, uid `steerhouse-db`) as a read-only role.
-5. **Alerts.** Grafana evaluates the [alert rules](../provisioning/alerting/rules.yaml) every 1–5 minutes:
-   each rule is a query (`A`) and a threshold (`C`), one alert per series. Firing and resolved alerts go
+1. **Metrics.** Agents push host (`job="node"`) and container (`job="cadvisor"`)
+   series every 15–30 s,
+   labelled with the host's name (`host`). Prometheus scrapes everything else on
+   its own schedule
+   (15 s by default, 30–60 s for slower exporters), with targets and their
+   labels from `targets/`.
+2. **Probes.** For each URL in `targets/blackbox_http.json` (and DNS server in
+   `blackbox_dns.json`),
+   Prometheus asks blackbox_exporter to probe it once a minute and stores
+   `probe_success`, timings and
+   certificate expiry. Each probe, and each redirect it follows, looks the name
+   up again, so list the URL
+   a service ends on (its login page, for example) rather than one that
+   redirects there.
+3. **Logs.** The agent reads container logs through the Docker socket, labels
+   them (`host`, `container`,
+   `compose_project`), drops lines older than an hour (first-start backfill) and
+   pushes them to Loki.
+   GitLab Runner's CI job containers are skipped, for both logs and container
+   metrics. NPM
+   access logs are parsed into `site`, `status` and `method`, and Argus' own
+   probes are dropped.
+4. **Dashboards.** Grafana queries Prometheus (PromQL) and Loki (LogQL) through
+   datasources with fixed
+   uids (`prometheus`, `loki`), so dashboards keep working on any installation;
+   the Steerhouse dashboards
+   also read Steerhouse's database (SQL, uid `steerhouse-db`) as a read-only
+   role.
+5. **Alerts.** Grafana evaluates the
+   [alert rules](../provisioning/alerting/rules.yaml) every 1–5 minutes:
+   each rule is a query (`A`) and a threshold (`C`), one alert per series.
+   Firing and resolved alerts go
    to Discord, grouped per rule and repeated every 12 hours.
 
-A silent agent is detected as "series that existed in the last day but not now", since pushed metrics
+A silent agent is detected as "series that existed in the last day but not now",
+since pushed metrics
 have no scrape `up` to go to 0.
 
 ## From repository to running system
 
-- **Images.** Each server image is a pinned upstream image (by version and digest) with Argus' files
-  copied in ([`images/`](../images/), [`agent/Dockerfile`](../agent/Dockerfile)). A version tag makes the
-  release workflow build all six for amd64 and arm64 (the Intel GPU exporter for amd64 only), sign them and publish them to GHCR and Docker Hub
+- **Images.** Each server image is a pinned upstream image (by version and
+  digest) with Argus' files
+  copied in ([`images/`](../images/),
+  [`agent/Dockerfile`](../agent/Dockerfile)). A version tag makes the
+  release workflow build all six for amd64 and arm64 (the Intel GPU exporter for
+  amd64 only), sign them and publish them to GHCR and Docker Hub
   ([verifying-releases.md](verifying-releases.md)).
-- **Installation.** `docker-compose.yml` runs the published images; what is specific to one network stays
-  on the server: `.env` (settings), `targets/` (what to watch) and `secrets/` (credentials), all
-  gitignored. Upgrading is changing `ARGUS_VERSION` ([upgrading.md](upgrading.md)).
-- **Development.** `docker-compose.source.yml` builds the images from the checkout and bind-mounts
-  `dashboards/`, `provisioning/` and the configs, so edits show up without a rebuild.
-- **GitLab copy.** [`.gitlab-ci.yml`](../.gitlab-ci.yml) is the pipeline of the copy on the maintainer's
-  self-hosted GitLab: it mirrors GitHub on a schedule and re-runs the checks that need no Docker daemon.
+- **Installation.** `docker-compose.yml` runs the published images; what is
+  specific to one network stays
+  on the server: `.env` (settings), `targets/` (what to watch) and `secrets/`
+  (credentials), all
+  gitignored. Upgrading is changing `ARGUS_VERSION`
+  ([upgrading.md](upgrading.md)).
+- **Development.** `docker-compose.source.yml` builds the images from the
+  checkout and bind-mounts
+  `dashboards/`, `provisioning/` and the configs, so edits show up without a
+  rebuild.
+- **GitLab copy.** [`.gitlab-ci.yml`](../.gitlab-ci.yml) is the pipeline of the
+  copy on the maintainer's
+  self-hosted GitLab: it mirrors GitHub on a schedule and re-runs the checks
+  that need no Docker daemon.
 
 ## Key properties
 
-- **Configuration as code.** Every dashboard, alert rule, datasource, scrape job and probe module is a
+- **Configuration as code.** Every dashboard, alert rule, datasource, scrape job
+  and probe module is a
   file in this repository, reviewed in a pull request, checked and tested in CI
-  ([CONTRIBUTING.md](../CONTRIBUTING.md#when-and-how-tests-run)) and provisioned read-only.
-- **Nothing private in the repository.** Addresses, host names and credentials live only on the server;
-  CI rejects private IP addresses and a private list of internal names in any committed file.
-- **Push from hosts, pull from services.** A new host needs only the agent, no server change or firewall
+  ([CONTRIBUTING.md](../CONTRIBUTING.md#when-and-how-tests-run)) and provisioned
+  read-only.
+- **Nothing private in the repository.** Addresses, host names and credentials
+  live only on the server;
+  CI rejects private IP addresses and a private list of internal names in any
+  committed file.
+- **Push from hosts, pull from services.** A new host needs only the agent, no
+  server change or firewall
   rule; services that can't run an agent are scraped.
-- **Bounded resources.** Retention limits on Prometheus (time and size) and Loki (time, ingestion rate),
-  keep-lists and drop rules for exporters that emit too many series (Home Assistant, qBittorrent), and
+- **Bounded resources.** Retention limits on Prometheus (time and size) and Loki
+  (time, ingestion rate),
+  keep-lists and drop rules for exporters that emit too many series (Home
+  Assistant, qBittorrent), and
   cAdvisor's expensive metric groups turned off.
 
 ## Technology
 
-| Area | Choice |
-| --- | --- |
-| Dashboards and alerting | Grafana 13 (provisioned dashboards, Grafana-managed alert rules) |
-| Metrics | Prometheus 3 (remote-write receiver, file service discovery), PromQL |
-| Logs | Loki 3 (single process, filesystem storage, TSDB index), LogQL |
-| Agent | Grafana Alloy 1.x with embedded node_exporter and cAdvisor |
-| Probes | blackbox_exporter |
-| Packaging | Docker images (amd64, arm64), Docker Compose |
-| Checks and tests | Python 3 (pytest, ruff, yamllint), promtool, actionlint, hadolint, GitHub Actions |
+- **Area:** Dashboards and alerting
+  - **Choice:** Grafana 13 (provisioned dashboards, Grafana-managed alert rules)
+
+- **Area:** Metrics
+  - **Choice:** Prometheus 3 (remote-write receiver, file service discovery),
+    PromQL
+
+- **Area:** Logs
+  - **Choice:** Loki 3 (single process, filesystem storage, TSDB index), LogQL
+
+- **Area:** Agent
+  - **Choice:** Grafana Alloy 1.x with embedded node_exporter and cAdvisor
+
+- **Area:** Probes
+  - **Choice:** blackbox_exporter
+
+- **Area:** Packaging
+  - **Choice:** Docker images (amd64, arm64), Docker Compose
+
+- **Area:** Checks and tests
+  - **Choice:** Python 3 (pytest, ruff, yamllint), promtool, actionlint,
+    hadolint, GitHub Actions
