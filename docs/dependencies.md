@@ -122,6 +122,10 @@ retained.
   - **Renovate manager:** GitHub Actions
   - **Notes:** Minor and patch updates remain grouped
 
+- **Files and declarations:** `.pre-commit-config.yaml` repository `rev:` pins
+  - **Renovate manager:** pre-commit (explicitly enabled)
+  - **Notes:** Tracks all six hook repositories through the native manager
+
 - **Files and declarations:** `requirements-dev.in`, `requirements-dev.txt`
   - **Renovate manager:** pip_requirements and pip-compile
   - **Notes:** Source declarations and hash-pinned compiled check and test
@@ -135,8 +139,8 @@ retained.
 - **Files and declarations:** Literal third-party image operands in `docker run`
   commands in `.github/workflows/ci.yml` and `scan.yml`
   - **Renovate manager:** Regex custom manager
-  - **Notes:** Matches only the listed image operands, captures just the tag,
-    and preserves any existing digest text on replacement
+  - **Notes:** Matches only the listed image operands, extracts normalized
+    digests, and supports digest-only and coupled tag/digest updates
 
 The Dependabot coverage migrated in T1 maps Docker `/agent`, `/images/grafana`,
 `/images/prometheus`,
@@ -147,10 +151,12 @@ pip. GitLab CI
 images are now covered by the GitLab CI manager, and workflow shell-run images
 by the custom manager.
 
-CI workflow image tags with digests are intentionally matched by the shell
-manager only at the tag token; the
-digest remains verbatim. Existing Dockerfile and Compose digests are also
-retained. `argus-*:source`,
+The workflow shell manager updates existing digests independently or together
+with tags when Renovate supplies a new digest. A tag update without a new digest
+retains the existing digest. Tag-only operands stay tag-only; digest pinning is
+disabled for this custom manager. Replacement preserves the surrounding shell
+commands. Dockerfile and Compose digests remain covered by their native
+managers. `argus-*:source`,
 `argus-*:ci`, and `argus-intel-gpu-exporter:ci` are local build outputs and are
 excluded from registry updates.
 
