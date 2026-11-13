@@ -1,0 +1,80 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "America/Chicago",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ]
+  },
+  "docker-compose": {
+    "managerFilePatterns": [
+      "/^docker-compose.*\\.ya?ml$/",
+      "/^agent\\/compose\\.ya?ml$/",
+      "/^logs\\/compose\\.ya?ml$/"
+    ]
+  },
+  "github-actions": {
+    "managerFilePatterns": [
+      "/^\\.github\\/workflows\\/.*\\.ya?ml$/"
+    ]
+  },
+  "gitlabci": {
+    "managerFilePatterns": [
+      "/^\\.gitlab-ci\\.yml$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Literal docker run image operands in workflow shell blocks",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/(ci|scan)\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?m)^(?<prefix>[ \\t]*(?:run:[ \\t]*)?(?:docker run\\b[^\\n]*?[ \\t]+)?(?:--entrypoint[ \\t]+[^ \\t]+[ \\t]+)?)(?<depName>(?:rhysd/actionlint|hadolint/hadolint|grafana/alloy|prom/prometheus|prom/snmp-exporter|prom/blackbox-exporter|grafana/loki|aquasec/trivy)):(?<currentValue>[A-Za-z0-9._-]+)(?<currentDigest>@sha256:[a-f0-9]{64})?(?<separator>\\s|$)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker",
+      "autoReplaceStringTemplate": "{{{prefix}}}{{{depName}}}:{{{newValue}}}{{{currentDigest}}}{{{separator}}}"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "GitHub Actions minor and patch updates"
+    },
+    {
+      "matchPackageNames": [
+        "/^(?:.*\\/)?argus-/"
+      ],
+      "enabled": false
+    }
+  ],
+  "pip_requirements": {
+    "managerFilePatterns": [
+      "/^requirements-dev\\.(in|txt)$/"
+    ]
+  },
+  "dockerfile": {
+    "managerFilePatterns": [
+      "/^agent\\/Dockerfile$/",
+      "/^images\\/(grafana|prometheus|blackbox|loki|intel-gpu-exporter)\\/Dockerfile$/"
+    ]
+  }
+}

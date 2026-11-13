@@ -42,14 +42,38 @@ Released Argus images carry an SBOM listing every package in them ([verifying-re
 
 ## Tracking dependencies
 
-- **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly for new versions of
-  the base images, the exporter images in all three compose files, the GitHub Actions and the Python
-  tools, and opens a pull request for each. Dependabot alerts and security updates are on.
-- Pull requests are **merged by hand**, not automatically: an upstream bump can change how provisioning or
-  a config behaves, so it's loaded in a sandbox first, and the matching version in `ci.yml` (and for
-  Grafana, the README badge) moves with it.
-- CI images in workflow `run:` steps and the images in `.gitlab-ci.yml` aren't seen by Dependabot; they're
-  bumped together with the image they check (for example promtool with the Prometheus base image).
+**Renovate** ([`renovate.json`](../renovate.json)) checks weekly in the `America/Chicago` timezone and opens
+labeled pull requests; automerge is disabled. The migration pull request body contains the heading `Migrated from Dependabot`, the T1 coverage mapping, and the post-merge note to verify that GitHub security alerts and security updates remain enabled. That note applies to the migration pull request only. This migration does not change repository security settings; Dependabot alerts are retained.
+
+| Files and declarations | Renovate manager | Notes |
+| --- | --- | --- |
+| `agent/Dockerfile`, `images/*/Dockerfile` | Docker | Dockerfile base images; Dockerfile paths are explicitly included |
+| `docker-compose*.yml`, `agent/compose.yml`, `logs/compose.yml` | Docker Compose | Includes Compose image defaults and external exporter images |
+| `.github/workflows/*.yml` action `uses:` references | GitHub Actions | Minor and patch updates remain grouped |
+| `requirements-dev.in`, `requirements-dev.txt` | pip_requirements and pip-compile | Source declarations and hash-pinned compiled check and test dependencies |
+| `.gitlab-ci.yml` `image:` and nested `image.name:` | GitLab CI | Explicitly included; Renovate covers all top-level and nested declarations |
+| Literal third-party image operands in `docker run` commands in `.github/workflows/ci.yml` and `scan.yml` | Regex custom manager | Matches only the listed image operands, captures just the tag, and preserves any existing digest text on replacement |
+
+The Dependabot coverage migrated in T1 maps Docker `/agent`, `/images/grafana`, `/images/prometheus`,
+`/images/blackbox`, `/images/loki`, and `/images/intel-gpu-exporter` to Docker; Compose `/`, `/agent`, and
+`/logs` to Docker Compose; GitHub Actions `/` to GitHub Actions; and pip `/` to pip. GitLab CI
+images are now covered by the GitLab CI manager, and workflow shell-run images by the custom manager.
+
+CI workflow image tags with digests are intentionally matched by the shell manager only at the tag token; the
+digest remains verbatim. Existing Dockerfile and Compose digests are also retained. `argus-*:source`,
+`argus-*:ci`, and `argus-intel-gpu-exporter:ci` are local build outputs and are excluded from registry updates.
+
+The configurable Argus release defaults `${ARGUS_VERSION:-latest}`, `${ARGUS_AGENT_IMAGE:-...}`, and
+`${ARGUS_INTEL_GPU_EXPORTER_IMAGE:-...}` remain configurable. Argus maintainers own these selections; update
+them through the release workflow or local source build, with overrides in `.env`. Compose interpolation
+handles the defaults. There are no independent image-valued `.env` declarations and no Ansible image fields
+or roles in this repository. GitHub security alerts and security updates remain enabled; repository security
+settings are unchanged.
+
+Pull requests are merged by hand after the upstream bump is loaded in a sandbox, since changes can affect
+provisioning or config behavior. Keep related image tags synchronized across Dockerfiles, Compose, GitLab CI,
+and workflow shell commands where comments identify a shared image. Update the Grafana README badge with its
+image bump.
 
 ## Policy for vulnerabilities in dependencies
 
@@ -58,12 +82,12 @@ Known vulnerabilities are found by:
 - the weekly **image scan** ([`.github/workflows/scan.yml`](../.github/workflows/scan.yml)): Trivy scans
   all six Argus images for HIGH and CRITICAL vulnerabilities that have a fix available, and reports each
   one as a [code scanning alert](https://github.com/HoneyBearTech/Argus/security/code-scanning);
-- **Dependabot alerts** for the GitHub Actions and Python tools;
+- **GitHub security alerts** for the GitHub Actions and Python tools;
 - upstream security advisories for Grafana, Prometheus, Loki and Alloy, which the maintainer follows.
 
 Each finding is triaged within 14 days:
 
-1. **If a fixed upstream release exists**, bump to it (a Dependabot pull request usually already does),
+1. **If a fixed upstream release exists**, bump to it (a Renovate pull request usually already does),
    test it in the sandbox and merge. A fix for an exploitable critical or high-severity vulnerability goes
    out in a patch release within 30 days; others go out with the next release.
 2. **If upstream hasn't released a fix**, assess whether the vulnerable code is reachable in Argus'
