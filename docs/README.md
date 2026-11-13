@@ -40,14 +40,13 @@ alerts, and how to run it.
   - **For:** Moving to a new release, and rolling back
 
 - **Document:** [Auto-deploy](auto-deploy.md)
-  - **For:** Letting a server that runs from a checkout follow `main` by itself
+  - **For:** Automatically updating a server that runs from a checkout
 
 - **Document:** [Verifying releases](verifying-releases.md)
-  - **For:** Checking that images and release files came from this repository,
-    unchanged
+  - **For:** Checking published images and release files
 
 - **Document:** [Security requirements](security.md)
-  - **For:** What Argus protects, and what it deliberately doesn't
+  - **For:** Trust boundaries, exposure and hardening guidance
 
 - **Document:** [Assurance case](assurance-case.md)
   - **For:** The threat model, trust boundaries and why the security

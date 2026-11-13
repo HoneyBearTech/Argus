@@ -30,7 +30,8 @@ agent on every monitored host pushes its metrics and logs there. Grafana loads
 every dashboard under [`dashboards/`](dashboards/) through file provisioning —
 each subfolder becomes a Grafana folder, and UI edits are blocked so this repo
 stays the source of truth. The same compose file runs production and a local
-sandbox; per-install settings come from a gitignored `.env`.
+sandbox; per-install settings come from a gitignored `.env`, while targets
+and credentials stay in gitignored `targets/` and `secrets/` directories.
 
 ```text
 dashboards/          dashboard JSON, one folder per Grafana folder
@@ -52,7 +53,8 @@ scripts/             repo checks and the PromQL test builder, run in CI; the
                      Steerhouse dashboard port
 tests/               unit tests (pytest) and PromQL tests (tests/promql/, run
                      with promtool)
-docs/                user, security and project documentation
+docs/                setup, operations, architecture, security and project
+                     documentation
 ```
 
 ## Dashboards
@@ -336,16 +338,28 @@ specific to your network: scrape targets, credentials and `.env`.
 
 ```sh
 git clone --depth 1 https://github.com/HoneyBearTech/Argus.git && cd Argus
+chmod 700 .                     # keep the checkout private on the host
 cp .env.example .env              # set GRAFANA_ROOT_URL
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp \
   secrets.example/* secrets/
-# Grafana's admin password (user admin)
-openssl rand -base64 24 > secrets/grafana_admin_password
+# Required Grafana admin password; generate without printing it
+(umask 077 && openssl rand -base64 24 > secrets/grafana_admin_password)
+chmod 644 secrets/grafana_admin_password  # readable by Grafana's container user
+# set local-trial binds in .env as described below before starting
 # put your real addresses in targets/ and credentials in secrets/ — delete what
 # you don't use
 docker compose up -d
 ```
 
+Keep the checkout directory private on the host; mounted credential files
+need mode 644 so the containers can read them. See the
+[quick start](docs/quick-start.md#1-start-the-server) for details.
+
+For a local trial, set `GRAFANA_BIND`, `PROMETHEUS_BIND` and `LOKI_BIND` in
+`.env` to `127.0.0.1:3000`, `127.0.0.1:9090` and `127.0.0.1:3101` before
+starting the server. This keeps the services reachable only from the server
+itself. For agents on other hosts, configure binds and network access
+deliberately as described in [security requirements](docs/security.md).
 Then run the agent on each host you want to watch (next section). Grafana is on
 port 3000; the home page is the Homelab Overview. Edits to `targets/*.json` are
 picked up by Prometheus without a restart.
@@ -648,6 +662,14 @@ supply-chain practices weekly (see the badge above), and Dependabot opens weekly
 PRs for the upstream images, GitHub Actions and the check tools. Image updates
 are merged by hand after a sandbox run. How dependencies are handled is in
 [docs/dependencies.md](docs/dependencies.md).
+
+## Operations
+
+For routine maintenance, see [upgrading](docs/upgrading.md),
+[release verification](docs/verifying-releases.md) and
+[security requirements](docs/security.md). For deployment setup, see
+[auto-deploy](docs/auto-deploy.md); for a service or port lookup, use
+[interfaces](docs/interfaces.md).
 
 ## Documentation
 

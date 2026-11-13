@@ -11,22 +11,28 @@ your machine.
 
 ```sh
 git clone --depth 1 https://github.com/HoneyBearTech/Argus.git && cd Argus
+chmod 700 .                     # keep the checkout private on the host
 cp .env.example .env
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp \
   secrets.example/* secrets/
 ```
 
-Put a password of your choice for Grafana's `admin` user in
-`secrets/grafana_admin_password` (Grafana
-won't start while that file is empty), for example a random one:
+Create a password file for Grafana's `admin` user at
+`secrets/grafana_admin_password`. Grafana won't start while that required file
+is empty or unreadable. Generate a random password without printing it:
 
 ```sh
-openssl rand -base64 24 > secrets/grafana_admin_password && cat \
-  secrets/grafana_admin_password
+(umask 077 && openssl rand -base64 24 > secrets/grafana_admin_password)
+chmod 644 secrets/grafana_admin_password
 ```
 
-Edit `.env`: for a trial on your own machine, change the three `*_BIND` lines to
-listen on loopback only:
+Keep the checkout directory accessible only to your host account
+(`chmod 700 .` above). Credential files mounted into containers need mode 644 because
+services run as unprivileged users; Docker mounts them directly, without the
+checkout's parent directory. Keep `secrets/` itself traversable for Prometheus'
+directory mount. See [container permissions](security.md#hardening).
+
+Edit `.env` and set these three binds for a local-only trial:
 `GRAFANA_BIND=127.0.0.1:3000`, `PROMETHEUS_BIND=127.0.0.1:9090`,
 `LOKI_BIND=127.0.0.1:3101`.
 
@@ -43,8 +49,7 @@ until there's something to watch.
 
 ## 2. Watch some services
 
-Edit `targets/blackbox_http.json` and list a few web services you run (or any
-public sites), each with
+Edit `targets/blackbox_http.json` and list a few web services you run, each with
 the name and group the dashboards show:
 
 ```json
@@ -103,14 +108,14 @@ you search their output.
 
 ## What next
 
-- Add more hosts: run the same agent on each, pointing at the server's address
-  instead of `127.0.0.1`
-  (and set the server's `*_BIND` back to `0.0.0.0` so the agents can reach it).
-  See
-  [Adding a host](../README.md#adding-a-host).
+- Add more hosts: run the same agent on each, setting `ARGUS_HOST`,
+  `ARGUS_PROMETHEUS_URL` and `ARGUS_LOKI_URL` in its `.env` to the host name
+  and reachable server endpoints. Configure server binds and firewall access
+  for those agents deliberately; see [Adding a host](../README.md#adding-a-host)
+  and [security requirements](security.md).
 - Light up the other dashboards (Pi-hole, UniFi, NAS, Home Assistant, media
   apps, UPS) by adding their
-  targets and credentials; the README's [table](../README.md#running-it) lists
+  targets and credentials; the README's [list](../README.md#running-it) lists
   what each needs.
 - Send alerts to Discord by putting the channel's webhook URL in
   `secrets/discord_webhook_url` and running
@@ -122,6 +127,8 @@ you search their output.
   hosts push to it.
 - Pin `ARGUS_VERSION` in `.env` to a release and
   [verify it](verifying-releases.md).
+- For upgrades, rollbacks and security guidance, see [upgrading](upgrading.md)
+  and [security requirements](security.md).
 
 To remove everything: `docker rm -f argus-agent && docker compose down -v` (the
 `-v` deletes the stored
