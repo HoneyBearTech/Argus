@@ -33,6 +33,9 @@
       "/^\\.gitlab-ci\\.yml$/"
     ]
   },
+  "pre-commit": {
+    "enabled": true
+  },
   "customManagers": [
     {
       "customType": "regex",
@@ -41,11 +44,10 @@
         "/^\\.github/workflows/(ci|scan)\\.yml$/"
       ],
       "matchStrings": [
-        "(?m)^(?<prefix>[ \\t]*(?:run:[ \\t]*)?(?:docker run\\b[^\\n]*?[ \\t]+)?(?:--entrypoint[ \\t]+[^ \\t]+[ \\t]+)?)(?<depName>(?:rhysd/actionlint|hadolint/hadolint|grafana/alloy|prom/prometheus|prom/snmp-exporter|prom/blackbox-exporter|grafana/loki|aquasec/trivy)):(?<currentValue>[A-Za-z0-9._-]+)(?<currentDigest>@sha256:[a-f0-9]{64})?(?<separator>\\s|$)"
+        "(?m)^(?<prefix>[ \\t]*(?:run:[ \\t]*)?(?:docker run\\b[^\\n]*?[ \\t]+)?(?:--entrypoint[ \\t]+[^ \\t]+[ \\t]+)?)(?<depName>(?:rhysd/actionlint|hadolint/hadolint|grafana/alloy|prom/prometheus|prom/snmp-exporter|prom/blackbox-exporter|grafana/loki|aquasec/trivy)):(?<currentValue>[A-Za-z0-9._-]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?(?<separator>\\s|$)"
       ],
       "datasourceTemplate": "docker",
-      "versioningTemplate": "docker",
-      "autoReplaceStringTemplate": "{{{prefix}}}{{{depName}}}:{{{newValue}}}{{{currentDigest}}}{{{separator}}}"
+      "versioningTemplate": "docker"
     }
   ],
   "packageRules": [
