@@ -24,13 +24,12 @@ explicitly accepted (2), the design follows secure design principles (3), and
 the implementation counters
 common weaknesses and is continuously verified (4, 5).
 
-Argus contains no server code of its own; its "implementation" is configuration
-for upstream components
-(Grafana, Prometheus, Loki, Alloy, blackbox_exporter, exporters), the image
-build and release workflows,
-and the Python checks in `scripts/`. The argument is therefore mostly about how
-those components are
-configured, packaged and delivered.
+Argus primarily configures upstream components (Grafana, Prometheus, Loki,
+Alloy, blackbox_exporter and exporters), with image build and release workflows
+and repository checks. Its own runtime code also includes the Intel GPU metrics
+exporter and the optional deployment helper. The argument covers their documented
+roles as well as how the upstream components are configured, packaged and
+delivered; see [architecture](architecture.md).
 
 ## 1. Threat model
 
@@ -196,9 +195,9 @@ The full list of ports, files and variables is in
 ## 3. Secure design principles
 
 - **Principle:** Economy of mechanism
-  - **How Argus applies it:** No server code: standard components with small,
-    readable configuration files. One agent container per host instead of
-    several.
+  - **How Argus applies it:** Standard components with small, readable
+    configuration files, plus a focused Intel GPU exporter and optional
+    deployment helper. One agent container per host instead of several.
 
 - **Principle:** Fail-safe defaults
   - **How Argus applies it:** TLS verification on; sign-up and anonymous access
@@ -301,14 +300,18 @@ The full list of ports, files and variables is in
     everything provisioned" CI step
 
 - **Weakness:** Use of components with known vulnerabilities (CWE-1395)
-  - **Countermeasure:** Dependabot for images, Actions and tools; weekly Trivy
-    scan of all images
+  - **Countermeasure:** Renovate's checked-in dependency policy when its
+    integration is enabled; weekly Trivy scan of all images
   - **Evidence:** [dependencies.md](dependencies.md)
 
-The repository's own Python code (`scripts/`) only reads repository files and
-runs `git ls-files` with a
-fixed argument list; it parses YAML with `yaml.safe_load` and JSON with the
-standard library.
+The repository checks in `scripts/` read repository data, use `git ls-files`
+with fixed arguments, and parse YAML with `yaml.safe_load` and JSON with the
+standard library. The optional [deployment helper](auto-deploy.md) performs the
+documented fetch, deployment, health-check and rollback operations. The
+[Intel GPU exporter](intel-gpu.md) starts `intel_gpu_top` and exposes hardware
+metrics, with basic authentication when a password hash is configured. These
+runtime roles have different access needs from the repository checks; see the
+[security requirements](security.md#hardening).
 
 ## 5. Verification evidence
 

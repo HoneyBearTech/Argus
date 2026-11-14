@@ -72,7 +72,8 @@ in
     host with the agent's `intel-gpu` profile, `:9836`
   - **Protocol and authentication:** HTTP `/metrics`, basic auth (user `argus`,
     `secrets/intel_gpu_password`; the server or agent keeps only its bcrypt
-    hash)
+    hash) when a hash is configured. Without a hash, metrics are unauthenticated;
+    follow the [Intel GPU security guidance](intel-gpu.md#security-notes)
   - **Used by:** Prometheus (`targets/intel_gpu.json`)
 
 - **Endpoint:** Agent
@@ -123,10 +124,16 @@ Outbound connections:
 `GRAFANA_ROOT_URL`, `ARGUS_VERSION`, `ARGUS_REGISTRY`,
 `COMPOSE_FILE` (source mode, proxy network), `ARGUS_PROXY_NETWORK`,
 `GRAFANA_BIND`, `PROMETHEUS_BIND`, `LOKI_BIND`,
-`PROMETHEUS_RETENTION_TIME`, `PROMETHEUS_RETENTION_SIZE`, `COMPOSE_PROFILES`
-(`loki`, `snmp`, one per
-media app), `UNIFI_VERIFY_SSL`, `LOKI_URL`, `STEERHOUSE_DB_ADDRESS`
+`PROMETHEUS_RETENTION_TIME`, `PROMETHEUS_RETENTION_SIZE`, `CONFIG_ROOT`,
+`COMPOSE_PROFILES` (`loki`, `snmp`, `radarr`, `radarr4k`, `sonarr`, `sonarr4k`,
+`lidarr`, `bazarr`, `prowlarr`, `sabnzbd`, `qbittorrent`, `gitlab`, `proxmox`,
+`tdarr`, `varken`), `UNIFI_VERIFY_SSL`, `LOKI_URL`, `STEERHOUSE_DB_ADDRESS`
 (Steerhouse's PostgreSQL, `host:port`).
+Grafana, Prometheus, blackbox, pihole-exporter and unpoller always start; the
+other server services require their profiles. `CONFIG_ROOT` must be defined
+even when `varken` is disabled because Compose interpolates its bind mount at
+parse time. With `varken` enabled, `CONFIG_ROOT/varken/config` persists its
+configuration and data and must belong to uid 1000.
 Grafana's admin password and the Discord webhook are files in
 `secrets/` (below); `GF_SECURITY_ADMIN_PASSWORD` and `DISCORD_WEBHOOK_URL` in
 `.env` are no longer passed to
@@ -148,6 +155,10 @@ data is in a volume at `/var/lib/alloy/data`. It needs
 the host's PID and network namespaces and the `DAC_OVERRIDE` capability, not
 `--privileged`
 ([security.md](security.md#hardening)).
+
+On [Kubernetes nodes](kubernetes.md), `ARGUS_HOST` must be the node name and
+`ARGUS_NODE_IP` is additionally required for the kubelet scrape. The DaemonSet
+supplies both from node fields; Docker hosts do not need `ARGUS_NODE_IP`.
 
 **Targets** (`targets/<job>.json`, Prometheus
 [file service discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config)
@@ -244,6 +255,11 @@ GPU exporters' basic auth; see
   - **Notes:** linux/amd64 and linux/arm64; tags `X.Y.Z`, `X.Y`, `latest`;
     cosign signature, SBOM and SLSA provenance on each
 
+- **Artifact:** Image `argus-intel-gpu-exporter`
+  - **Where:** `ghcr.io/honeybeartech/…`, `docker.io/honeybeartech/…`
+  - **Notes:** linux/amd64 only; the same release tags, signature, SBOM and
+    provenance as the five dual-platform images above
+
 - **Artifact:** Source archive, `images.txt` (digests), `SHA256SUMS` (signed),
   build provenance
   - **Where:** the
@@ -256,7 +272,8 @@ dashboards in
 `/etc/blackbox/blackbox.yml`;
 `/etc/loki/loki.yaml`; `/etc/alloy/config.alloy`. Data volumes: `grafana_data`,
 `prometheus_data`,
-`loki_data`, `agent_data`.
+`loki_data`, `agent_data`. Varken uses the persistent bind mount
+`CONFIG_ROOT/varken/config` at `/config`, not a named volume.
 
 A change to any interface above is listed in [CHANGELOG.md](../CHANGELOG.md),
 under "Upgrading" when you

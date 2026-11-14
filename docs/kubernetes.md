@@ -42,12 +42,16 @@ the disk list.
   requires one,
   `ARGUS_PROMETHEUS_PASSWORD`. Create it in the cluster, never in git:
 
+  When server authentication is enabled, type or paste the Prometheus password
+  on standard input, then Enter and Ctrl-D. Otherwise omit the `--from-file`
+  argument and the preceding line's continuation backslash; no password input
+  is needed. Keep the password out of command-line arguments.
+
   ```sh
   kubectl create namespace argus
   kubectl -n argus create secret generic argus-agent \
     --from-literal=ARGUS_PROMETHEUS_URL=http://argus-server:9090 \
     --from-literal=ARGUS_LOKI_URL=http://argus-server:3101 \
-    # type or paste it, Enter, Ctrl-D
     --from-file=ARGUS_PROMETHEUS_PASSWORD=/dev/stdin
   ```
 
