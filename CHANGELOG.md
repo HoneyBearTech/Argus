@@ -12,6 +12,8 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Pin published image defaults to release `0.9.0`; track release selectors with
+  Renovate, group minor and patch updates, and label majors for manual review.
 - Varken 3.5.0: nothing changes in what Varken does, exports or logs. Its code
   is checked with a wider set of
   lint rules and three more of its modules have tests. Nothing to do when
