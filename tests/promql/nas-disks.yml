@@ -1,0 +1,174 @@
+# Disk labels stay distinct with legacy hexadecimal and current readable identifiers.
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'diskModel{job="snmp", host="old", diskID="0x4469736B2031", diskModel="drive"}'
+        values: "1x5"
+      - series: 'diskStatus{job="snmp", host="old", diskID="0x4469736B2031"}'
+        values: "1x5"
+      - series: 'diskHealthStatus{job="snmp", host="old", diskID="0x4469736B2031"}'
+        values: "1x5"
+      - series: 'diskTemperature{job="snmp", host="old", diskID="0x4469736B2031"}'
+        values: "30x5"
+      - series: 'diskBadSector{job="snmp", host="old", diskID="0x4469736B2031"}'
+        values: "0x5"
+      - series: 'diskModel{job="snmp", host="old", diskID="0x4469736B2032", diskModel="drive"}'
+        values: "1x5"
+      - series: 'diskStatus{job="snmp", host="old", diskID="0x4469736B2032"}'
+        values: "1x5"
+      - series: 'diskHealthStatus{job="snmp", host="old", diskID="0x4469736B2032"}'
+        values: "1x5"
+      - series: 'diskTemperature{job="snmp", host="old", diskID="0x4469736B2032"}'
+        values: "40x5"
+      - series: 'diskBadSector{job="snmp", host="old", diskID="0x4469736B2032"}'
+        values: "0x5"
+      - series: 'diskModel{job="snmp", host="old", diskID="0x4469736B203132", diskModel="drive"}'
+        values: "1x5"
+      - series: 'diskStatus{job="snmp", host="old", diskID="0x4469736B203132"}'
+        values: "1x5"
+      - series: 'diskHealthStatus{job="snmp", host="old", diskID="0x4469736B203132"}'
+        values: "1x5"
+      - series: 'diskTemperature{job="snmp", host="old", diskID="0x4469736B203132"}'
+        values: "50x5"
+      - series: 'diskBadSector{job="snmp", host="old", diskID="0x4469736B203132"}'
+        values: "0x5"
+      - series: 'diskModel{job="snmp", host="new", diskID="Disk 1", diskModel="drive"}'
+        values: "1x5"
+      - series: 'diskStatus{job="snmp", host="new", diskID="Disk 1"}'
+        values: "1x5"
+      - series: 'diskHealthStatus{job="snmp", host="new", diskID="Disk 1"}'
+        values: "1x5"
+      - series: 'diskTemperature{job="snmp", host="new", diskID="Disk 1"}'
+        values: "31x5"
+      - series: 'diskBadSector{job="snmp", host="new", diskID="Disk 1"}'
+        values: "0x5"
+      - series: 'diskModel{job="snmp", host="new", diskID="Disk 2", diskModel="drive"}'
+        values: "1x5"
+      - series: 'diskStatus{job="snmp", host="new", diskID="Disk 2"}'
+        values: "1x5"
+      - series: 'diskHealthStatus{job="snmp", host="new", diskID="Disk 2"}'
+        values: "1x5"
+      - series: 'diskTemperature{job="snmp", host="new", diskID="Disk 2"}'
+        values: "41x5"
+      - series: 'diskBadSector{job="snmp", host="new", diskID="Disk 2"}'
+        values: "0x5"
+      - series: 'diskModel{job="snmp", host="new", diskID="Disk 12", diskModel="drive"}'
+        values: "1x5"
+      - series: 'diskStatus{job="snmp", host="new", diskID="Disk 12"}'
+        values: "1x5"
+      - series: 'diskHealthStatus{job="snmp", host="new", diskID="Disk 12"}'
+        values: "1x5"
+      - series: 'diskTemperature{job="snmp", host="new", diskID="Disk 12"}'
+        values: "51x5"
+      - series: 'diskBadSector{job="snmp", host="new", diskID="Disk 12"}'
+        values: "0x5"
+    promql_expr_test:
+      - dashboard: argus-nas
+        panel: 3
+        ref_id: A
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{disk="Disk 1", diskID="0x4469736B2031", diskModel="drive", host="old", key="old/Disk 1"}'
+            value: 1
+          - labels: '{disk="Disk 2", diskID="0x4469736B2032", diskModel="drive", host="old", key="old/Disk 2"}'
+            value: 1
+          - labels: '{disk="Disk 12", diskID="0x4469736B203132", diskModel="drive", host="old", key="old/Disk 12"}'
+            value: 1
+          - labels: '{disk="Disk 1", diskID="Disk 1", diskModel="drive", host="new", key="new/Disk 1"}'
+            value: 1
+          - labels: '{disk="Disk 2", diskID="Disk 2", diskModel="drive", host="new", key="new/Disk 2"}'
+            value: 1
+          - labels: '{disk="Disk 12", diskID="Disk 12", diskModel="drive", host="new", key="new/Disk 12"}'
+            value: 1
+      - dashboard: argus-nas
+        panel: 3
+        ref_id: B
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{key="old/Disk 1"}'
+            value: 1
+          - labels: '{key="old/Disk 2"}'
+            value: 1
+          - labels: '{key="old/Disk 12"}'
+            value: 1
+          - labels: '{key="new/Disk 1"}'
+            value: 1
+          - labels: '{key="new/Disk 2"}'
+            value: 1
+          - labels: '{key="new/Disk 12"}'
+            value: 1
+      - dashboard: argus-nas
+        panel: 3
+        ref_id: C
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{key="old/Disk 1"}'
+            value: 1
+          - labels: '{key="old/Disk 2"}'
+            value: 1
+          - labels: '{key="old/Disk 12"}'
+            value: 1
+          - labels: '{key="new/Disk 1"}'
+            value: 1
+          - labels: '{key="new/Disk 2"}'
+            value: 1
+          - labels: '{key="new/Disk 12"}'
+            value: 1
+      - dashboard: argus-nas
+        panel: 3
+        ref_id: D
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{key="old/Disk 1"}'
+            value: 30
+          - labels: '{key="old/Disk 2"}'
+            value: 40
+          - labels: '{key="old/Disk 12"}'
+            value: 50
+          - labels: '{key="new/Disk 1"}'
+            value: 31
+          - labels: '{key="new/Disk 2"}'
+            value: 41
+          - labels: '{key="new/Disk 12"}'
+            value: 51
+      - dashboard: argus-nas
+        panel: 3
+        ref_id: E
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{key="old/Disk 1"}'
+            value: 0
+          - labels: '{key="old/Disk 2"}'
+            value: 0
+          - labels: '{key="old/Disk 12"}'
+            value: 0
+          - labels: '{key="new/Disk 1"}'
+            value: 0
+          - labels: '{key="new/Disk 2"}'
+            value: 0
+          - labels: '{key="new/Disk 12"}'
+            value: 0
+      - dashboard: argus-nas
+        panel: 4
+        ref_id: A
+        vars: {host: ".*"}
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="diskTemperature", disk="Disk 1", diskID="0x4469736B2031", host="old", job="snmp"}'
+            value: 30
+          - labels: '{__name__="diskTemperature", disk="Disk 2", diskID="0x4469736B2032", host="old", job="snmp"}'
+            value: 40
+          - labels: '{__name__="diskTemperature", disk="Disk 12", diskID="0x4469736B203132", host="old", job="snmp"}'
+            value: 50
+          - labels: '{__name__="diskTemperature", disk="Disk 1", diskID="Disk 1", host="new", job="snmp"}'
+            value: 31
+          - labels: '{__name__="diskTemperature", disk="Disk 2", diskID="Disk 2", host="new", job="snmp"}'
+            value: 41
+          - labels: '{__name__="diskTemperature", disk="Disk 12", diskID="Disk 12", host="new", job="snmp"}'
+            value: 51
