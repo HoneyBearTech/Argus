@@ -571,7 +571,7 @@ docker run -d --name argus-agent --restart unless-stopped \
     /var/run/docker.sock:/var/run/docker.sock:ro \
   -v /run/containerd:/run/containerd:ro -v \
     argus-agent-data:/var/lib/alloy/data \
-  ghcr.io/honeybeartech/argus-agent:latest
+  ghcr.io/honeybeartech/argus-agent:0.9.0
 ```
 
 It runs as root in the host's network and PID namespaces with the host mounted
