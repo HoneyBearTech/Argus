@@ -8,9 +8,10 @@ Argus' dependencies are almost all **container images**: the upstream images its
 own images are built
 from, and the exporter images the compose files run. The rest are the GitHub
 Actions in its workflows and
-the Python tools its checks and tests use. Argus' own images contain no packages
-beyond their upstream
-base.
+the Python tools its checks and tests use, plus Debian packages for hardware
+exporters. The agent applies base-package updates. The Intel GPU image adds
+`intel-gpu-tools`, `python3-bcrypt` and the Python exporter to its Debian base;
+the other images primarily add configuration to their upstream bases.
 
 ## Choosing a dependency
 
@@ -43,6 +44,14 @@ always gets the same bytes:
     [`agent/Dockerfile`](../agent/Dockerfile)
   - **Pinned by:** version tag and multi-arch digest
   - **Fetched by:** Docker / BuildKit
+
+- **Dependency:** Debian base and `intel-gpu-tools`, `python3-bcrypt` for the
+  Intel GPU exporter image (linux/amd64 only)
+  - **Declared in:**
+    [`images/intel-gpu-exporter/Dockerfile`](../images/intel-gpu-exporter/Dockerfile)
+  - **Pinned by:** base-image digest; packages receive Debian updates at build
+    time, without fixed package versions
+  - **Fetched by:** Docker / BuildKit and apt from the Debian archive
 
 - **Dependency:** Exporter images (pihole-exporter, unpoller, snmp-exporter,
   exportarr, qbittorrent-exporter, gitlab-ci-pipelines-exporter,
@@ -99,17 +108,18 @@ Released Argus images carry an SBOM listing every package in them
 
 ## Tracking dependencies
 
-**Renovate** ([`renovate.json`](../renovate.json)) checks weekly in the
+When its integration is enabled, **Renovate** follows
+[`renovate.json`](../renovate.json): it checks weekly in the
 `America/Chicago` timezone, opens labeled pull requests, and maintains a
 Dependency Dashboard. Minor and patch updates across all managers share one
 pull request; major updates receive an additional `major` label. Automerge is
 explicitly disabled, and dependency and security labels remain enabled.
 
-After merge, perform this manual repository settings action:
-Disable *Dependabot security updates* (keep *Dependabot alerts*) in
-Settings → Code security.
-This change does not alter repository settings. Verify that the Renovate app
-is installed after merge; its installation status has not been checked here.
+Maintainers should verify that the Renovate integration is installed and
+review Settings → Code security for overlapping update automation: keep
+*Dependabot alerts* and disable *Dependabot security updates* when Renovate owns
+update PRs. These are ongoing manual checks; the policy file does not establish
+installation status or remote settings.
 
 - **Files and declarations:** `agent/Dockerfile`, `images/*/Dockerfile`
   - **Renovate manager:** Docker
@@ -151,16 +161,6 @@ is installed after merge; its installation status has not been checked here.
   - **Renovate manager:** Regex custom manager using GitHub releases
   - **Notes:** Tracks the shared `HoneyBearTech/Argus` release, strips the `v`
     prefix, and updates all eight default version values together
-
-No Dependabot configuration is currently tracked, so none is removed by this
-change. The historical Dependabot coverage maps Docker `/agent`, `/images/grafana`,
-`/images/prometheus`,
-`/images/blackbox`, `/images/loki`, and `/images/intel-gpu-exporter` to Docker;
-Compose `/`, `/agent`, and
-`/logs` to Docker Compose; GitHub Actions `/` to GitHub Actions; and pip `/` to
-pip. GitLab CI
-images are now covered by the GitLab CI manager, and workflow shell-run images
-by the custom manager.
 
 The workflow shell manager updates existing digests independently or together
 with tags when Renovate supplies a new digest. A tag update without a new digest
@@ -264,7 +264,7 @@ exhaustion, or a crash); none allows code execution or data access.
   server listens on the host's
   loopback only; the Grafana plugins talk to Grafana over a local channel, not
   the network. Fixed by the
-  Dependabot bumps once upstream ships builds with the fixed Go; the alerts stay
+  dependency updates once upstream ships builds with the fixed Go; the alerts stay
   open until then.
 - **gRPC-Go, CVE-2026-84445**, in Grafana's bundled Prometheus datasource
   plugin: **fixed by Grafana

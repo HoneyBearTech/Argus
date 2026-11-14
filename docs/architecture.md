@@ -5,10 +5,9 @@ Argus is monitoring for a home lab, built from standard open-source components
 Loki, blackbox_exporter, Grafana Alloy and a set of exporters) and the
 configuration that ties them
 together: dashboards, alert rules, scrape jobs, probe modules and the agent
-pipeline. Argus writes no
-server code of its own; what it ships is that configuration, baked into images,
-plus the checks and tests
-that keep it correct.
+pipeline. Argus is configuration-led, with a small Python Intel GPU metrics
+exporter, an optional deployment helper and repository checks and tests alongside
+the configuration baked into its images.
 
 ## Components
 
@@ -71,8 +70,9 @@ Argus server (one host)
     libraries, Sonarr's and Radarr's queues and missing items; HoneyBearTech's
     own image), the Plex exporter (beside Plex) and the NVIDIA GPU exporter (on
     a GPU host), both from `agent/compose.yml`. Home Assistant, PeaNUT, Uptime
-    Kuma and Steerhouse expose metrics themselves. Each reads its credentials
-    from `secrets/`.
+    Kuma and Steerhouse expose metrics themselves. Server-side integration
+    credentials come from `secrets/`; exporters beside the agent use the host's
+    environment configuration, as described in [interfaces](interfaces.md).
 
 - **Component:** **IPMI exporter**
   - **Image:** Debian's `prometheus-ipmi-exporter`, on each server whose
@@ -101,7 +101,8 @@ Argus server (one host)
     ([Intel GPU](intel-gpu.md))
   - **Role:** Reads an Intel GPU's engine load, clock and idle time from the
     i915 driver's performance counters. Its only privilege is `CAP_PERFMON`;
-    listens with basic auth.
+    listens with basic auth when a password hash is configured, and otherwise
+    serves metrics without authentication ([Intel GPU security](intel-gpu.md#security-notes)).
 
 - **Component:** **Loki**
   - **Image:** `argus-loki` ([`logs/loki.yaml`](../logs/loki.yaml))
@@ -156,18 +157,21 @@ have no scrape `up` to go to 0.
 
 ## From repository to running system
 
-- **Images.** Each server image is a pinned upstream image (by version and
-  digest) with Argus' files
-  copied in ([`images/`](../images/),
-  [`agent/Dockerfile`](../agent/Dockerfile)). A version tag makes the
-  release workflow build all six for amd64 and arm64 (the Intel GPU exporter for
-  amd64 only), sign them and publish them to GHCR and Docker Hub
+- **Images.** Grafana, Prometheus, blackbox and Loki images add configuration
+  to pinned upstream images; the agent also applies base-package updates
+  ([`images/`](../images/), [`agent/Dockerfile`](../agent/Dockerfile)). The
+  Intel GPU image adds Debian packages and the Python exporter. A version tag
+  makes the release workflow build five images (Grafana, Prometheus, blackbox,
+  Loki and agent) for amd64 and arm64, and the Intel GPU exporter for amd64
+  only, sign them and publish them to GHCR and Docker Hub
   ([verifying-releases.md](verifying-releases.md)).
 - **Installation.** `docker-compose.yml` runs the published images; what is
   specific to one network stays
   on the server: `.env` (settings), `targets/` (what to watch) and `secrets/`
   (credentials), all
-  gitignored. Upgrading is changing `ARGUS_VERSION`
+  gitignored. Named volumes hold service data; Varken instead persists its
+  configuration and data in the `CONFIG_ROOT/varken/config` bind mount, owned
+  by uid 1000. Upgrading is changing `ARGUS_VERSION`
   ([upgrading.md](upgrading.md)).
 - **Development.** `docker-compose.source.yml` builds the images from the
   checkout and bind-mounts
@@ -217,7 +221,8 @@ have no scrape `up` to go to 0.
   - **Choice:** blackbox_exporter
 
 - **Area:** Packaging
-  - **Choice:** Docker images (amd64, arm64), Docker Compose
+  - **Choice:** Docker images (amd64 and arm64; Intel GPU exporter amd64 only),
+    Docker Compose
 
 - **Area:** Checks and tests
   - **Choice:** Python 3 (pytest, ruff, yamllint), promtool, actionlint,

@@ -46,15 +46,16 @@ Loki must not be reachable from outside it.
    Grafana refuses to start
    without an admin password (`secrets/grafana_admin_password` missing, empty or
    unreadable).
-5. **Only three services listen on the network**: Grafana, Prometheus and Loki
-   (plus, where enabled, the
-   Plex exporter on a Plex host and the GPU exporter on a GPU host; both serve
-   metrics only, without a
-   login; and the IPMI exporter on a server whose hardware Argus reads, and the
-   Intel GPU exporter, both
-   behind basic auth). blackbox_exporter and the exporters are reachable only
-   from the compose
-   network, and the agent accepts no connections from other machines.
+5. **Network listeners are limited to the documented services**: Grafana,
+   Prometheus and Loki, plus optional host exporters. Plex and NVIDIA GPU
+   exporters serve metrics without a login. IPMI exporters use basic auth,
+   as does hwmon-only node_exporter on servers without the agent. The Intel GPU
+   exporter uses
+   basic auth only when a password hash is configured and otherwise serves
+   unauthenticated metrics. Keep these listeners on the trusted network and
+   configure authentication as documented below. blackbox_exporter and the
+   main stack's exporters are reachable only from the compose network, and
+   the agent accepts no connections from other machines.
 6. **TLS is verified by default** on every outgoing connection that uses it: web
    probes (an invalid or
    expired certificate fails the probe), the UniFi console (unless
@@ -208,8 +209,10 @@ Loki must not be reachable from outside it.
   only capability is `CAP_PERFMON`, which lets it read performance counters and
   change nothing; the server's
   `perf_event_paranoid` stays as it is. It serves GPU load, clocks and PCI
-  addresses, with basic auth without
-  TLS; the server keeps only the password's bcrypt hash.
+  addresses, with basic auth without TLS when a password hash is configured;
+  without a hash it serves metrics unauthenticated. Configure the hash as
+  described in the [Intel GPU guide](intel-gpu.md#security-notes) and firewall the
+  port to the Argus server; the server keeps only the password's bcrypt hash.
 
 ## Hardening
 

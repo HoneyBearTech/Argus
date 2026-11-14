@@ -22,11 +22,13 @@ agent for each host.
 
 ## How it works
 
-Grafana, Prometheus, blackbox_exporter, Loki and exporters for Pi-hole, UniFi,
-SNMP, the media apps, Tdarr, Tautulli (through Varken), GitLab CI and Proxmox
-run on one server from [`docker-compose.yml`](docker-compose.yml) (the optional
-ones behind Compose profiles, and Loki on another host if you prefer); an Argus
-agent on every monitored host pushes its metrics and logs there. Grafana loads
+Grafana, Prometheus, blackbox_exporter, pihole-exporter and unpoller (UniFi)
+always run on the main server from [`docker-compose.yml`](docker-compose.yml).
+Loki and the SNMP, media, Tdarr, Varken, GitLab CI and Proxmox exporters are
+optional Compose profile services; Loki can run on another host. Exporters
+beside Plex or GPUs and the hardware exporters run on the monitored hosts,
+not in the main server stack. An Argus agent on each monitored Docker host or
+Kubernetes node pushes its metrics and logs to the server. Grafana loads
 every dashboard under [`dashboards/`](dashboards/) through file provisioning —
 each subfolder becomes a Grafana folder, and UI edits are blocked so this repo
 stays the source of truth. The same compose file runs production and a local
@@ -35,8 +37,8 @@ and credentials stay in gitignored `targets/` and `secrets/` directories.
 
 ```text
 dashboards/          dashboard JSON, one folder per Grafana folder
-provisioning/        Grafana datasources (pinned uids) and the dashboard
-                     provider
+provisioning/        Grafana datasources (pinned uids), dashboard provider
+                     and alert rules
 prometheus/          Prometheus config — scrape jobs, no addresses
 blackbox/            blackbox_exporter probe modules (HTTP service check, DNS
                      resolve)
@@ -49,8 +51,10 @@ targets.example/     placeholder scrape/probe targets; real ones go in targets/
                      (gitignored)
 secrets.example/     placeholder credentials Prometheus scrapes with; real ones
                      go in secrets/ (gitignored)
-scripts/             repo checks and the PromQL test builder, run in CI; the
-                     Steerhouse dashboard port
+deploy/              host exporter setup scripts and deployment units
+snmp/                custom SNMP module for Synology SSD caches
+scripts/             repo checks, PromQL test builder, Intel GPU exporter,
+                     deployment helper and Steerhouse dashboard port
 tests/               unit tests (pytest) and PromQL tests (tests/promql/, run
                      with promtool)
 docs/                setup, operations, architecture, security and project
@@ -324,10 +328,12 @@ Alerts are grouped per rule and repeat every 12 hours while firing.
 
 ## Running it
 
-**Requirements:** Docker with Compose v2.24 or later, on amd64 or arm64. One
-host runs the server; every host you want to watch runs the agent.
+**Requirements:** Linux with Docker Compose v2.24 or later, Git and OpenSSL
+for the setup below, on amd64 or arm64. One host runs the server; monitored
+Docker hosts and Kubernetes nodes run the agent using their respective guides.
 
-Argus ships as images for amd64 and arm64 on GHCR
+Five Argus images (Grafana, Prometheus, blackbox, Loki and agent) support amd64
+and arm64; the Intel GPU exporter image supports amd64 only. Images ship on GHCR
 (`ghcr.io/honeybeartech/argus-*`) and Docker Hub (`honeybeartech/argus-*`; set
 `ARGUS_REGISTRY=docker.io/honeybeartech` in `.env` to use it). The Grafana image
 has every dashboard, datasource and alert rule baked in; the Prometheus,
@@ -346,10 +352,14 @@ mkdir -p targets secrets && cp targets.example/*.json targets/ && cp \
 (umask 077 && openssl rand -base64 24 > secrets/grafana_admin_password)
 chmod 644 secrets/grafana_admin_password  # readable by Grafana's container user
 # set local-trial binds in .env as described below before starting
-# put your real addresses in targets/ and credentials in secrets/ — delete what
-# you don't use
+# put your real addresses in targets/ and credentials in secrets/
+# keep required mounted credential templates, even for unused integrations
 docker compose up -d
 ```
+
+Keep `CONFIG_ROOT` from the copied `.env.example` defined: Compose requires
+it when parsing even if `varken` is disabled. When enabling `varken`, prepare
+`CONFIG_ROOT/varken/config` as its persistent data directory, owned by uid 1000.
 
 Keep the checkout directory private on the host; mounted credential files
 need mode 644 so the containers can read them. See the
@@ -552,6 +562,11 @@ them.
 
 ## Adding a host
 
+Set the required `ARGUS_HOST`, `ARGUS_PROMETHEUS_URL` and `ARGUS_LOKI_URL`
+for every agent. The Docker-host setup below collects Docker metrics and logs;
+[Kubernetes nodes](docs/kubernetes.md) use the same image with node-specific
+configuration and a DaemonSet.
+
 Each monitored host runs one container, the **Argus agent** (`agent/`): Grafana
 Alloy with embedded node_exporter and cAdvisor that pushes host metrics,
 container metrics and container logs to the Argus server. Nothing on the server
@@ -658,12 +673,26 @@ Alongside it: [CodeQL](https://codeql.github.com/) analyses the Python checks
 and the workflows on every push and pull request and weekly, a weekly
 [Trivy](https://trivy.dev/) scan reports known vulnerabilities in the six
 images, [OpenSSF Scorecard](https://scorecard.dev/) scores the repo's
-supply-chain practices weekly (see the badge above), and Dependabot opens weekly
-PRs for the upstream images, GitHub Actions and the check tools. Image updates
+supply-chain practices weekly (see the badge above). When its integration is
+enabled, Renovate follows [`renovate.json`](renovate.json): weekly dependency
+PRs, grouped minor and patch updates, and no automatic merging. Image updates
 are merged by hand after a sandbox run. How dependencies are handled is in
 [docs/dependencies.md](docs/dependencies.md).
 
 ## Operations
+
+Check service status and recent server logs without changing the deployment:
+
+```sh
+docker compose ps
+docker compose logs --tail=100 grafana prometheus blackbox pihole-exporter unpoller
+```
+
+Check Grafana's `/api/health` on its configured port 3000 bind and Prometheus'
+`/-/ready` on its configured port 9090 bind; Prometheus requires authentication
+when enabled. Use its Targets page to inspect scrape errors. If startup fails,
+check `.env`, required mounted credential files and container read permissions
+before retrying; see the [quick start](docs/quick-start.md#1-start-the-server).
 
 For routine maintenance, see [upgrading](docs/upgrading.md),
 [release verification](docs/verifying-releases.md) and

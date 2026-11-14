@@ -2,8 +2,8 @@
 
 Run the Argus server and one agent on a single machine, and see host, container
 and service dashboards in
-about ten minutes. You need Docker with Compose v2.24 or later on Linux (amd64
-or arm64); on macOS or
+about ten minutes. You need Git, OpenSSL and Docker with Compose v2.24 or later
+on Linux (amd64 or arm64); on macOS or
 Windows the server works, but the agent sees Docker Desktop's VM rather than
 your machine.
 
@@ -16,6 +16,14 @@ cp .env.example .env
 mkdir -p targets secrets && cp targets.example/*.json targets/ && cp \
   secrets.example/* secrets/
 ```
+
+Keep `CONFIG_ROOT` defined in the copied `.env`: Compose requires it at parse
+time even with `varken` disabled. If enabling that profile, prepare its
+persistent `CONFIG_ROOT/varken/config` directory with uid 1000 ownership.
+Keep required mounted credential templates in `secrets/` even when their
+integration is unused, including Grafana's Steerhouse password and CA files,
+unpoller's password and Prometheus' credential files. Fill only the integrations
+you use; do not delete required mounts.
 
 Create a password file for Grafana's `admin` user at
 `secrets/grafana_admin_password`. Grafana won't start while that required file
@@ -46,6 +54,21 @@ docker compose up -d
 Open <http://localhost:3000> and sign in as `admin`. The home page is the
 Homelab Overview; it's empty
 until there's something to watch.
+
+Verify service status and inspect startup errors:
+
+```sh
+docker compose ps
+docker compose logs --tail=100 grafana prometheus blackbox pihole-exporter unpoller
+```
+
+For this local trial, Grafana's health endpoint is
+<http://localhost:3000/api/health> and Prometheus' readiness endpoint is
+<http://localhost:9090/-/ready>. If Prometheus authentication is enabled, its
+health endpoints require the same credentials. Check Prometheus' Targets page
+for scrape errors. Missing-file or permission errors usually mean a required
+credential template was removed or a mounted file is unreadable by its user;
+check the templates and [container permissions](security.md#hardening).
 
 ## 2. Watch some services
 
