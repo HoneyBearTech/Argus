@@ -10,8 +10,20 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Fixed (unreleased)
+
+- NAS disk tables and temperature charts accept both legacy hexadecimal and
+  readable disk identifiers, preserving separate disks when upgrading the SNMP
+  exporter.
+
 ### Changed
 
+- Updated the probe exporter to 0.29.1, DNS exporter to 1.3.1, network
+  controller exporter to 5.9.5, SNMP exporter to 0.31.0, virtualization exporter
+  to 3.11.0 and download exporter to 2.0.4.
+
+- Pin published image defaults to release `0.9.0`; track release selectors with
+  Renovate, group minor and patch updates, and label majors for manual review.
 - Varken 3.5.0: nothing changes in what Varken does, exports or logs. Its code
   is checked with a wider set of
   lint rules and three more of its modules have tests. Nothing to do when

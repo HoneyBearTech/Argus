@@ -6,7 +6,7 @@ name: argus-agent
 
 services:
   agent:
-    image: ${ARGUS_AGENT_IMAGE:-ghcr.io/honeybeartech/argus-agent:latest}
+    image: ${ARGUS_AGENT_IMAGE:-ghcr.io/honeybeartech/argus-agent:0.9.0}
     container_name: argus-agent
     restart: unless-stopped
     # What the agent still needs, and why, is in docs/security.md#hardening.
@@ -116,7 +116,7 @@ services:
   # basic auth: the password's bcrypt hash in ARGUS_INTEL_GPU_PASSWORD_HASH,
   # single-quoted in .env). The image is amd64-only (docs/intel-gpu.md).
   intel-gpu-exporter:
-    image: ${ARGUS_INTEL_GPU_EXPORTER_IMAGE:-ghcr.io/honeybeartech/argus-intel-gpu-exporter:latest}
+    image: ${ARGUS_INTEL_GPU_EXPORTER_IMAGE:-ghcr.io/honeybeartech/argus-intel-gpu-exporter:0.9.0}
     container_name: argus-intel-gpu-exporter
     restart: unless-stopped
     profiles: [intel-gpu]

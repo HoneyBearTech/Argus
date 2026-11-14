@@ -6,7 +6,7 @@ name: argus-logs
 
 services:
   loki:
-    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-loki:${ARGUS_VERSION:-latest}
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-loki:${ARGUS_VERSION:-0.9.0}
     container_name: argus-loki
     restart: unless-stopped
     # Runs as uid 10001 with no capabilities, can't gain any, and writes only

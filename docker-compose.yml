@@ -32,7 +32,7 @@ x-exportarr: &exportarr
 services:
   prometheus:
     <<: *hardened
-    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-prometheus:${ARGUS_VERSION:-latest}
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-prometheus:${ARGUS_VERSION:-0.9.0}
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -61,7 +61,7 @@ services:
   # it, so it publishes no port.
   blackbox:
     <<: *hardened
-    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-blackbox:${ARGUS_VERSION:-latest}
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-blackbox:${ARGUS_VERSION:-0.9.0}
     restart: unless-stopped
 
   # Pi-hole v6 stats. Which Pi-holes, and their app passwords, come from the
@@ -69,7 +69,7 @@ services:
   # file the exporter starts but has nothing to scrape.
   pihole-exporter:
     <<: *hardened
-    image: ekofr/pihole-exporter:v1.2.0
+    image: ekofr/pihole-exporter:v1.3.1
     # The image runs as root; it needs no file of its own.
     user: "65534:65534"
     restart: unless-stopped
@@ -83,7 +83,7 @@ services:
   # is fixed here.
   unpoller:
     <<: *hardened
-    image: ghcr.io/unpoller/unpoller:v5.7.0
+    image: ghcr.io/unpoller/unpoller:v5.9.5
     # The image runs as root; it only reads its password file.
     user: "65534:65534"
     restart: unless-stopped
@@ -110,7 +110,7 @@ services:
   # enabled (COMPOSE_PROFILES=snmp in .env) and that file exists.
   snmp-exporter:
     <<: *hardened
-    image: prom/snmp-exporter:v0.30.1
+    image: prom/snmp-exporter:v0.31.0
     # The image runs as root; it only reads its configuration.
     user: "65534:65534"
     restart: unless-stopped
@@ -206,7 +206,7 @@ services:
 
   qbittorrent-exporter:
     <<: *hardened
-    image: ghcr.io/martabal/qbittorrent-exporter:v2.0.3
+    image: ghcr.io/martabal/qbittorrent-exporter:v2.0.4
     # The image runs as root; it only reads its password file.
     user: "65534:65534"
     restart: unless-stopped
@@ -240,7 +240,7 @@ services:
   # Prometheus names the node to ask in each scrape (targets/pve.json).
   pve-exporter:
     <<: *hardened
-    image: prompve/prometheus-pve-exporter:3.10.1
+    image: prompve/prometheus-pve-exporter:3.11.0
     restart: unless-stopped
     profiles: [proxmox]
     command: [--config.file=/run/secrets/pve.yml]
@@ -332,7 +332,7 @@ services:
   # at it either way.
   loki:
     <<: *hardened
-    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-loki:${ARGUS_VERSION:-latest}
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-loki:${ARGUS_VERSION:-0.9.0}
     restart: unless-stopped
     profiles: [loki]
     volumes:
@@ -342,7 +342,7 @@ services:
 
   grafana:
     <<: *hardened
-    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-grafana:${ARGUS_VERSION:-latest}
+    image: ${ARGUS_REGISTRY:-ghcr.io/honeybeartech}/argus-grafana:${ARGUS_VERSION:-0.9.0}
     restart: unless-stopped
     depends_on:
       - prometheus

@@ -100,13 +100,16 @@ Released Argus images carry an SBOM listing every package in them
 ## Tracking dependencies
 
 **Renovate** ([`renovate.json`](../renovate.json)) checks weekly in the
-`America/Chicago` timezone and opens
-labeled pull requests; automerge is disabled. The migration pull request body
-contains the heading `Migrated from Dependabot`, the T1 coverage mapping, and
-the post-merge note to verify that GitHub security alerts and security updates
-remain enabled. That note applies to the migration pull request only. This
-migration does not change repository security settings; Dependabot alerts are
-retained.
+`America/Chicago` timezone, opens labeled pull requests, and maintains a
+Dependency Dashboard. Minor and patch updates across all managers share one
+pull request; major updates receive an additional `major` label. Automerge is
+explicitly disabled, and dependency and security labels remain enabled.
+
+After merge, perform this manual repository settings action:
+Disable *Dependabot security updates* (keep *Dependabot alerts*) in
+Settings → Code security.
+This change does not alter repository settings. Verify that the Renovate app
+is installed after merge; its installation status has not been checked here.
 
 - **Files and declarations:** `agent/Dockerfile`, `images/*/Dockerfile`
   - **Renovate manager:** Docker
@@ -115,12 +118,13 @@ retained.
 - **Files and declarations:** `docker-compose*.yml`, `agent/compose.yml`,
   `logs/compose.yml`
   - **Renovate manager:** Docker Compose
-  - **Notes:** Includes Compose image defaults and external exporter images
+  - **Notes:** Tracks external exporter images; Argus release defaults use the
+    release custom manager below
 
 - **Files and declarations:** `.github/workflows/*.yml` action `uses:`
   references
   - **Renovate manager:** GitHub Actions
-  - **Notes:** Minor and patch updates remain grouped
+  - **Notes:** Minor and patch updates join the global nonmajor group
 
 - **Files and declarations:** `.pre-commit-config.yaml` repository `rev:` pins
   - **Renovate manager:** pre-commit (explicitly enabled)
@@ -142,7 +146,14 @@ retained.
   - **Notes:** Matches only the listed image operands, extracts normalized
     digests, and supports digest-only and coupled tag/digest updates
 
-The Dependabot coverage migrated in T1 maps Docker `/agent`, `/images/grafana`,
+- **Files and declarations:** `.env.example`, `docker-compose.yml`,
+  `logs/compose.yml`, `agent/compose.yml` release selectors
+  - **Renovate manager:** Regex custom manager using GitHub releases
+  - **Notes:** Tracks the shared `HoneyBearTech/Argus` release, strips the `v`
+    prefix, and updates all eight default version values together
+
+No Dependabot configuration is currently tracked, so none is removed by this
+change. The historical Dependabot coverage maps Docker `/agent`, `/images/grafana`,
 `/images/prometheus`,
 `/images/blackbox`, `/images/loki`, and `/images/intel-gpu-exporter` to Docker;
 Compose `/`, `/agent`, and
@@ -160,17 +171,15 @@ managers. `argus-*:source`,
 `argus-*:ci`, and `argus-intel-gpu-exporter:ci` are local build outputs and are
 excluded from registry updates.
 
-The configurable Argus release defaults `${ARGUS_VERSION:-latest}`,
-`${ARGUS_AGENT_IMAGE:-...}`, and
-`${ARGUS_INTEL_GPU_EXPORTER_IMAGE:-...}` remain configurable. Argus maintainers
-own these selections; update
-them through the release workflow or local source build, with overrides in
-`.env`. Compose interpolation
-handles the defaults. There are no independent image-valued `.env` declarations
-and no Ansible image fields
-or roles in this repository. GitHub security alerts and security updates remain
-enabled; repository security
-settings are unchanged.
+The configurable Argus release defaults `${ARGUS_VERSION:-0.9.0}`,
+`${ARGUS_AGENT_IMAGE:-...}`, and `${ARGUS_INTEL_GPU_EXPORTER_IMAGE:-...}`
+select release `0.9.0`, matching `ARGUS_VERSION=0.9.0` in `.env.example`.
+Override these values in `.env` to select another release or registry. The
+release custom manager keeps all eight defaults synchronized without adding a
+`v` to container tags. Published and local `argus-*` images remain excluded
+from registry updates; the release manager owns the published defaults instead.
+There are no independent image-valued `.env` declarations, Ansible image fields,
+or roles in this repository.
 
 Pull requests are merged by hand after the upstream bump is loaded in a sandbox,
 since changes can affect

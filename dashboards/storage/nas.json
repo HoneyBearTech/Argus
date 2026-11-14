@@ -978,7 +978,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_join(label_replace(max by (host, diskID, diskModel) (diskModel{job=\"snmp\", host=~\"$host\"}), \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\")",
+          "expr": "label_join(label_replace(label_replace(max by (host, diskID, diskModel) (diskModel{job=\"snmp\", host=~\"$host\"}), \"disk\", \"$1\", \"diskID\", \"(.+)\"), \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\")",
           "legendFormat": "__auto",
           "refId": "A",
           "instant": true,
@@ -990,7 +990,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(label_replace(diskStatus{job=\"snmp\", host=~\"$host\"}, \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
+          "expr": "max by (key) (label_join(label_replace(label_replace(diskStatus{job=\"snmp\", host=~\"$host\"}, \"disk\", \"$1\", \"diskID\", \"(.+)\"), \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
           "legendFormat": "__auto",
           "refId": "B",
           "instant": true,
@@ -1002,7 +1002,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(label_replace(diskHealthStatus{job=\"snmp\", host=~\"$host\"}, \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
+          "expr": "max by (key) (label_join(label_replace(label_replace(diskHealthStatus{job=\"snmp\", host=~\"$host\"}, \"disk\", \"$1\", \"diskID\", \"(.+)\"), \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
           "legendFormat": "__auto",
           "refId": "C",
           "instant": true,
@@ -1014,7 +1014,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(label_replace(diskTemperature{job=\"snmp\", host=~\"$host\"}, \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
+          "expr": "max by (key) (label_join(label_replace(label_replace(diskTemperature{job=\"snmp\", host=~\"$host\"}, \"disk\", \"$1\", \"diskID\", \"(.+)\"), \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
           "legendFormat": "__auto",
           "refId": "D",
           "instant": true,
@@ -1026,7 +1026,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (key) (label_join(label_replace(diskBadSector{job=\"snmp\", host=~\"$host\"}, \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
+          "expr": "max by (key) (label_join(label_replace(label_replace(diskBadSector{job=\"snmp\", host=~\"$host\"}, \"disk\", \"$1\", \"diskID\", \"(.+)\"), \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\"), \"key\", \"/\", \"host\", \"disk\"))",
           "legendFormat": "__auto",
           "refId": "E",
           "instant": true,
@@ -1358,7 +1358,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_replace(diskTemperature{job=\"snmp\", host=~\"$host\"}, \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\")",
+          "expr": "label_replace(label_replace(diskTemperature{job=\"snmp\", host=~\"$host\"}, \"disk\", \"$1\", \"diskID\", \"(.+)\"), \"disk\", \"Disk $1$2\", \"diskID\", \"0x4469736B203(\\\\d)(?:3(\\\\d))?\")",
           "legendFormat": "{{host}} {{disk}}",
           "refId": "A"
         },
