@@ -25,9 +25,12 @@ repos:
     rev: v0.17.1
     hooks:
       - id: ruff
-        args: [--fix]
       - id: ruff-format
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0
     hooks:
       - id: gitleaks
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.15.1
+    hooks:
+      - id: hadolint
