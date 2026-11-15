@@ -1,0 +1,25 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: probe_ssl_last_chain_expiry_timestamp_seconds{job="blackbox_http",instance="failed",service="tls"}
+    values: 864900x20
+  - series: probe_ssl_last_chain_expiry_timestamp_seconds{job="blackbox_http",instance="healthy",service="tls"}
+    values: 1728900x20
+  - series: probe_ssl_last_chain_expiry_timestamp_seconds{job="blackbox_http",instance="boundary",service="tls"}
+    values: 1210500x20
+  - series: probe_ssl_last_chain_expiry_timestamp_seconds{job="other",instance="excluded"}
+    values: '0x20'
+  promql_expr_test:
+  - rule: argus-cert-expiring
+    eval_time: 15m
+    exp_samples:
+    - labels: '{instance="failed",service="tls"}'
+      value: 10
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-cert-expiring
+    eval_time: 15m
+    exp_samples: []

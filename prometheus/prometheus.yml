@@ -351,3 +351,10 @@ scrape_configs:
     file_sd_configs:
       - files: [/etc/prometheus/targets/blackbox_dns.json]
     relabel_configs: *blackbox_relabel
+
+  # vLLM's native /metrics endpoint. Targets carry no write credentials and
+  # remain operator-owned; see docs/local-models.md.
+  - job_name: vllm
+    scrape_interval: 30s
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/vllm.json]

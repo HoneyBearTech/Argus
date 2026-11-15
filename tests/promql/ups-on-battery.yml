@@ -1,0 +1,25 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: ups_input_voltage{ups="failed",instance="a"}
+    values: '0x20'
+  - series: ups_input_voltage{ups="failed",instance="b"}
+    values: 120x20
+  - series: ups_input_voltage{ups="healthy"}
+    values: 120x20
+  - series: ups_input_voltage{ups="boundary"}
+    values: 90x20
+  promql_expr_test:
+  - rule: argus-ups-on-battery
+    eval_time: 15m
+    exp_samples:
+    - labels: '{ups="failed"}'
+      value: 1
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-ups-on-battery
+    eval_time: 15m
+    exp_samples: []

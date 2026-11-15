@@ -1,0 +1,12 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: Notifications
+    receivers:
+      - uid: argus-slack
+        type: slack
+        disableResolveMessage: false
+        settings:
+          url: $__file{/run/secrets/notification_endpoint}
+          title: '{{ template "default.title" . }}'
+          text: '{{ template "default.message" . }}'

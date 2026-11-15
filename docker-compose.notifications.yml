@@ -1,0 +1,21 @@
+# Add this overlay to COMPOSE_FILE and select email, slack or ntfy in .env.
+services:
+  grafana:
+    environment:
+      ARGUS_EMAIL_ADDRESSES: ${ARGUS_EMAIL_ADDRESSES:-}
+      GF_SMTP_ENABLED: ${ARGUS_SMTP_ENABLED:-false}
+      GF_SMTP_HOST: ${ARGUS_SMTP_HOST:-localhost:587}
+      GF_SMTP_USER: ${ARGUS_SMTP_USER:-}
+      GF_SMTP_PASSWORD__FILE: /run/secrets/smtp_password
+      GF_SMTP_FROM_ADDRESS: ${ARGUS_SMTP_FROM_ADDRESS:-argus@example.invalid}
+      GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
+    secrets:
+      - notification_endpoint
+      - smtp_password
+    volumes:
+      - ./deploy/notifications/${ARGUS_NOTIFICATION_CHANNEL:?select email, slack or ntfy}.yaml:/etc/grafana/provisioning/alerting/contact-points.yaml:ro
+      - ./deploy/notifications/policies.yaml:/etc/grafana/provisioning/alerting/policies.yaml:ro
+
+secrets:
+  notification_endpoint: {file: ./secrets/notification_endpoint}
+  smtp_password: {file: ./secrets/smtp_password}

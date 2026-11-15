@@ -138,12 +138,15 @@ installation status or remote settings.
 
 - **Files and declarations:** `.pre-commit-config.yaml` repository `rev:` pins
   - **Renovate manager:** pre-commit (explicitly enabled)
-  - **Notes:** Tracks all six hook repositories through the native manager
+  - **Notes:** Tracks all seven hook repositories through the native manager
 
 - **Files and declarations:** `requirements-dev.in`, `requirements-dev.txt`
-  - **Renovate manager:** pip_requirements and pip-compile
-  - **Notes:** Source declarations and hash-pinned compiled check and test
-    dependencies
+  - **Renovate manager:** pip-compile
+  - **Notes:** Explicitly matches the compiled `requirements-dev.txt` output and
+    reads its header to regenerate hashes from `requirements-dev.in`, using the
+    recorded Python version. The independent pip_requirements manager is disabled
+    to avoid updating the compiled file separately. Lock-file maintenance refreshes
+    the unversioned source requirements and their transitive dependencies.
 
 - **Files and declarations:** `.gitlab-ci.yml` `image:` and nested `image.name:`
   - **Renovate manager:** GitLab CI

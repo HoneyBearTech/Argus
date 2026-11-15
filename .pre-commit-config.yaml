@@ -6,7 +6,8 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-        args: [--allow-multiple-documents]
+        # Compose overlays use the !override tag; validate YAML syntax without constructing tags.
+        args: [--allow-multiple-documents, --unsafe]
       - id: check-added-large-files
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0

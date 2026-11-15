@@ -1,0 +1,144 @@
+# Absent metrics do not fabricate firing series; Grafana handles no-data separately.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-host-down
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-service-down
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-dns-down
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-exporter-down
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-database-down
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-pve-quorum-lost
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-pve-qdevice-down
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-gpu-not-reporting
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-intel-gpu-not-reporting
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-disk-full
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-pool-full
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-cert-expiring
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-pve-memory-high
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-pve-memory-overcommitted
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-ups-on-battery
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-ups-battery-low
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-nas-disk-unhealthy
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-nas-pool-degraded
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-nas-disk-hot
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-unifi-hot
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-gpu-hot
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-ipmi-sensor-critical
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-ipmi-sensor-warning
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-ipmi-bmc-unreadable
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-ipmi-sel-full
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-wan-failover
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-internet-drops
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-internet-slow
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-speedtest-stale
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-pihole-sync
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-log-pipeline-stalled
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-container-restarting
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-gitlab-component-down
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-gitlab-pipeline-failing
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-tdarr-errors
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-tdarr-stalled
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-tautulli-unreachable
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-tautulli-stale
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-deploy-agent-silent
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-deploy-failing
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-deploy-agent-erroring
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-deploy-paused
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-steerhouse-failure-ratio
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-steerhouse-signin-failures
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-steerhouse-notification-backlog
+    eval_time: 15m
+    exp_samples: []
+  - rule: argus-steerhouse-database-down
+    eval_time: 15m
+    exp_samples: []

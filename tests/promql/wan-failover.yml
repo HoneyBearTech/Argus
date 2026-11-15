@@ -1,0 +1,23 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: unpoller_wan_interface_state{wan_interface="Internet 2"}
+    values: 1x20
+  - series: unpoller_wan_interface_state{wan_interface="Internet 1"}
+    values: 1x20
+  - series: unpoller_wan_interface_state{wan_interface="backup-down"}
+    values: '0x20'
+  promql_expr_test:
+  - rule: argus-wan-failover
+    eval_time: 15m
+    exp_samples:
+    - labels: '{wan_interface="Internet 2"}'
+      value: 1
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-wan-failover
+    eval_time: 15m
+    exp_samples: []

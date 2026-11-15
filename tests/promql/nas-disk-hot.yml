@@ -1,0 +1,25 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: diskTemperature{host="nas",diskID="failed",instance="a"}
+    values: 56x20
+  - series: diskTemperature{host="nas",diskID="failed",instance="b"}
+    values: 30x20
+  - series: diskTemperature{host="nas",diskID="healthy"}
+    values: 35x20
+  - series: diskTemperature{host="nas",diskID="boundary"}
+    values: 55x20
+  promql_expr_test:
+  - rule: argus-nas-disk-hot
+    eval_time: 15m
+    exp_samples:
+    - labels: '{host="nas",diskID="failed"}'
+      value: 56
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-nas-disk-hot
+    eval_time: 15m
+    exp_samples: []

@@ -144,6 +144,7 @@ Grafana (auto-deploy still falls back to `DISCORD_WEBHOOK_URL`).
 `ARGUS_HOST` (the `host` label), `ARGUS_PROMETHEUS_URL`, `ARGUS_LOKI_URL` (all
 required);
 `ARGUS_PROMETHEUS_PASSWORD` (Prometheus' password, if it requires one);
+`ARGUS_LOKI_PASSWORD` (basic auth for the optional TLS push proxy);
 `NPM_LOG_DIR`; `HOMELAB_PULL_DIR`; `COMPOSE_PROFILES=plex` with `PLEX_SERVER`
 and `PLEX_TOKEN`, and/or `gpu`, and/or `intel-gpu` with
 `ARGUS_INTEL_GPU_PASSWORD_HASH` (and optionally
@@ -278,3 +279,20 @@ dashboards in
 A change to any interface above is listed in [CHANGELOG.md](../CHANGELOG.md),
 under "Upgrading" when you
 need to act.
+
+## Optional operator interfaces
+
+The [TLS push overlay](push-security.md) publishes HTTPS on port 8443 with
+basic authentication as `argus`, allowing only the Prometheus remote-write and
+Loki push paths. It binds the native query APIs to loopback. Existing native
+endpoints keep their default behavior when the overlay is not selected.
+
+The [notification overlay](notifications.md) selects `email`, `slack`, or
+`ntfy` through `ARGUS_NOTIFICATION_CHANNEL`, with endpoint and SMTP passwords
+in secret files. SMTP options and e-mail recipients are documented there and
+in `.env.example`. [Heartbeat](heartbeat.md) sends a configured HTTPS ping
+only after local readiness checks succeed. [Operator tools](operator-tools.md)
+provide guided setup, release upgrades and a static read-only Overview snapshot;
+the snapshot contains metric labels and should be served with appropriate
+access control. [vLLM](local-models.md) is an optional scrape target and adds
+no model administration access.

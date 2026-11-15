@@ -1,14 +1,20 @@
 # Argus
 
 [![CI](https://github.com/HoneyBearTech/Argus/actions/workflows/ci.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/ci.yml)
-[![Release images](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml)
+[![Release
+images](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/release.yml)
 [![CodeQL](https://github.com/HoneyBearTech/Argus/actions/workflows/codeql.yml/badge.svg)](https://github.com/HoneyBearTech/Argus/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HoneyBearTech/Argus/badge)](https://scorecard.dev/viewer/?uri=github.com/HoneyBearTech/Argus)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15224/badge)](https://www.bestpractices.dev/projects/15224)
-[![OpenSSF Baseline](https://www.bestpractices.dev/projects/15224/baseline)](https://www.bestpractices.dev/projects/15224)
-[![Docker Pulls](https://img.shields.io/docker/pulls/honeybeartech/argus-grafana?logo=docker&logoColor=white)](https://hub.docker.com/r/honeybeartech/argus-grafana)
+[![OpenSSF
+Scorecard](https://api.scorecard.dev/projects/github.com/HoneyBearTech/Argus/badge)](https://scorecard.dev/viewer/?uri=github.com/HoneyBearTech/Argus)
+[![OpenSSF Best
+Practices](https://www.bestpractices.dev/projects/15224/badge)](https://www.bestpractices.dev/projects/15224)
+[![OpenSSF
+Baseline](https://www.bestpractices.dev/projects/15224/baseline)](https://www.bestpractices.dev/projects/15224)
+[![Docker
+Pulls](https://img.shields.io/docker/pulls/honeybeartech/argus-grafana?logo=docker&logoColor=white)](https://hub.docker.com/r/honeybeartech/argus-grafana)
 [![Version](https://img.shields.io/github/v/tag/HoneyBearTech/Argus?sort=semver&logo=docker&logoColor=white&label=version)](https://hub.docker.com/r/honeybeartech/argus-grafana/tags)
-[![Agent image size](https://img.shields.io/docker/image-size/honeybeartech/argus-agent/latest?logo=docker&logoColor=white&label=agent%20image)](https://hub.docker.com/r/honeybeartech/argus-agent)
+[![Agent image
+size](https://img.shields.io/docker/image-size/honeybeartech/argus-agent/latest?logo=docker&logoColor=white&label=agent%20image)](https://hub.docker.com/r/honeybeartech/argus-agent)
 [![Grafana](https://img.shields.io/badge/grafana-13.2.4-F46800?logo=grafana&logoColor=white)](images/grafana/Dockerfile)
 [![License](https://img.shields.io/github/license/HoneyBearTech/Argus)](LICENSE)
 
@@ -19,6 +25,14 @@ the smart home, GitLab CI, Steerhouse (an Ansible web UI), Tdarr, Plex's current
 streams (through Tautulli) and the Proxmox VE cluster — edited in VS Code,
 provisioned automatically, and shipped as Docker images with a one-container
 agent for each host.
+
+Operator tools: [guided setup, published-image upgrades and status
+snapshots](docs/operator-tools.md).
+Optional integrations: [authenticated TLS push
+endpoints](docs/push-security.md),
+[notification channels](docs/notifications.md), [external
+heartbeat](docs/heartbeat.md),
+and [local model servers](docs/local-models.md).
 
 ## How it works
 
@@ -90,12 +104,19 @@ docs/                setup, operations, architecture, security and project
     [docs/intel-gpu.md](docs/intel-gpu.md)) with temperature and power from
     hwmon
 
+- **Dashboard:** Local Model Servers
+  - **Folder:** hosts
+  - **Answers:** Which models are loaded, and are requests or KV cache
+    saturated?
+  - **Data:** vLLM's native `/metrics` endpoint; see
+    [docs/local-models.md](docs/local-models.md)
+
 - **Dashboard:** Databases
   - **Folder:** hosts
   - **Answers:** Are the shared database servers up, and is any app close to
     running out of connections, cache or room?
   - **Data:**
-    [postgres_exporter](https://github.com/prometheus-community/postgres_exporter)
+[postgres_exporter](https://github.com/prometheus-community/postgres_exporter)
     and [mysqld_exporter](https://github.com/prometheus/mysqld_exporter),
     running beside PostgreSQL and MariaDB
 
@@ -138,7 +159,8 @@ docs/                setup, operations, architecture, security and project
   - **Answers:** What's on Plex, who's watching from where, and what are Sonarr,
     Radarr and Seerr waiting on?
   - **Data:** The original
-    [Varken dashboard](https://github.com/HoneyBearTech/Varken/tree/main/dashboard),
+    [Varken
+    dashboard](https://github.com/HoneyBearTech/Varken/tree/main/dashboard),
     ported to Prometheus, with Seerr in place of Ombi and without SickChill:
     Varken 3.0's metrics with `stream_details` on (viewer names, titles and
     cities) and GeoIP on (a MaxMind account: `maxmind_license_key` secret,
@@ -197,7 +219,7 @@ docs/                setup, operations, architecture, security and project
   - **Answers:** Are pipelines healthy, are the runners keeping up, and is
     GitLab itself healthy?
   - **Data:**
-    [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter)
+[gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter)
     with a `read_api` token (`gitlab` profile); GitLab Runner's metrics
     endpoint; a subset of GitLab's bundled Prometheus (Omnibus), read through
     `/federate`
@@ -229,7 +251,7 @@ docs/                setup, operations, architecture, security and project
   - **Answers:** Are the Proxmox nodes overcommitted, are the guests that should
     run running, and how is storage filling?
   - **Data:**
-    [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter)
+[prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter)
     with a read-only API token (`proxmox` profile)
 
 - **Dashboard:** Server Hardware
@@ -238,7 +260,7 @@ docs/                setup, operations, architecture, security and project
     supplies, batteries, power draw, room in the BMCs' event logs, and add-in
     GPUs, including how busy an Intel GPU is?
   - **Data:**
-    [prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter)
+[prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter)
     on each server (Debian package), reading its own BMC through `/dev/ipmi0` —
     see [docs/ipmi.md](docs/ipmi.md); add-in GPUs, which the BMC can't see, from
     [node_exporter](https://github.com/prometheus/node_exporter)'s hwmon
@@ -258,7 +280,9 @@ Grafana-managed alert rules live in
 [`provisioning/alerting/rules.yaml`](provisioning/alerting/rules.yaml) (edit
 there — UI changes are blocked) and notify a Discord channel through the webhook
 in `secrets/discord_webhook_url` (its template points nowhere, so a sandbox
-can't post). Each rule is a raw PromQL measurement (`A`) plus a threshold (`C`),
+can't post). Optional [e-mail, Slack and ntfy channels](docs/notifications.md)
+can replace Discord. Each rule is a raw PromQL or LogQL measurement (`A`) plus a
+threshold (`C`),
 one alert per series:
 
 - **Group:** Availability
@@ -614,7 +638,8 @@ predictable upgrades. The compose file also covers five extras:
   spec current). An older Engine uses NVIDIA's runtime hook, and the container
   loses the GPU at every `systemctl daemon-reload` (apt and unattended-upgrades
   run one): `nvidia-smi` fails with "Failed to initialize NVML: Unknown Error"
-  ([NVIDIA container-toolkit issue #48](https://github.com/NVIDIA/nvidia-container-toolkit/issues/48))
+  ([NVIDIA container-toolkit issue
+  #48](https://github.com/NVIDIA/nvidia-container-toolkit/issues/48))
   and the "GPU not reporting" alert fires. To check a host:
   `sudo systemctl daemon-reload`, then
   `docker exec argus-gpu-exporter nvidia-smi -L` still lists the GPU. A host

@@ -10,7 +10,23 @@ Each release's notes on GitHub are its section here.
 
 ## [Unreleased]
 
+### Added (unreleased)
+
+- Authenticated TLS push proxy for Prometheus and Loki, including agent Loki
+  credentials and a tested deployment recipe.
+- Optional e-mail, Slack-compatible and ntfy notification contact points
+  selected through `.env`, and an external readiness-gated heartbeat timer.
+- Guided configuration, published-image upgrades with health checks and image
+  rollback, and static status snapshots generated from Overview queries.
+- Native vLLM monitoring and a reproducible dashboard generator with drift
+  checks.
+- Query fixtures for every provisioned alert: 46 PromQL rules tested with
+  Prometheus and the proxy error LogQL rule evaluated in Loki.
+
 ### Fixed (unreleased)
+
+- Renovate now regenerates the compiled Python dependency file and hashes with
+  pip-compile instead of directly editing the compiled requirements.
 
 - NAS disk tables and temperature charts accept both legacy hexadecimal and
   readable disk identifiers, preserving separate disks when upgrading the SNMP
@@ -166,7 +182,7 @@ Each release's notes on GitHub are its section here.
   normal state, temperatures, fans, live power draw, BMC firmware and BIOS
   versions, and how full the BMC's
   event log is. New `ipmi` scrape job for
-  [prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter)
+[prometheus-ipmi-exporter](https://github.com/prometheus-community/ipmi_exporter)
   running on each server and reading its own BMC (`targets/ipmi.json` with a
   `host` label, basic auth with
   `secrets/ipmi_password`), and
@@ -407,7 +423,7 @@ Each release's notes on GitHub are its section here.
   storage space with days until full, and a table of every VM and container.
   Data comes from the Proxmox API
   through
-  [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter)
+[prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter)
   3.10.1, behind
   the new `proxmox` compose profile: a read-only API token (`PVEAuditor`) in
   `secrets/pve.yml`, the cluster's CA
@@ -507,7 +523,8 @@ Each release's notes on GitHub are its section here.
   webhook file, falling back to `DISCORD_WEBHOOK_URL` in `.env`.
 - The agent's `docker run` command (README, quick start) changed: no
   `--privileged`, but
-  `--read-only --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt no-new-privileges:true`
+  `--read-only --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt
+  no-new-privileges:true`
   and a data volume
   (`-v argus-agent-data:/var/lib/alloy/data`).
 
@@ -835,7 +852,7 @@ Each release's notes on GitHub are its section here.
   durations, how long jobs wait for a runner, and the latest run of every job
   with its failure reason. It
   reads GitLab's API through
-  [gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter),
+[gitlab-ci-pipelines-exporter](https://github.com/mvisonneau/gitlab-ci-pipelines-exporter),
   behind the new `gitlab` compose profile: put GitLab's URL in
   `secrets/gitlab.yml`, a `read_api` token in
   `secrets/gitlab.env` (templates in `secrets.example/`) and the exporter in

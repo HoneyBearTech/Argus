@@ -10,6 +10,13 @@ volumes and is kept across upgrades; dashboards and alert rules come from the
 image, so they're replaced
 by the new version's.
 
+For published-image installations, `python3 scripts/upgrade.py latest` selects
+and validates a stable release, checks configuration, pulls and starts images,
+and restores the previous release if health checks fail. Preview with
+`--dry-run` and read the [operator-tool requirements](operator-tools.md) first.
+Back up persistent data before upgrading; image rollback cannot undo a data
+migration.
+
 ## Server (published images)
 
 1. Read the release notes, and do the "Upgrading" steps for every release
