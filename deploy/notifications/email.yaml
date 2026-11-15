@@ -1,0 +1,11 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: Notifications
+    receivers:
+      - uid: argus-email
+        type: email
+        disableResolveMessage: false
+        settings:
+          addresses: $ARGUS_EMAIL_ADDRESSES
+          singleEmail: true

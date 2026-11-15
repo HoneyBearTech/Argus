@@ -95,9 +95,7 @@
     }
   ],
   "pip_requirements": {
-    "managerFilePatterns": [
-      "/^requirements-dev\\.(in|txt)$/"
-    ]
+    "enabled": false
   },
   "dockerfile": {
     "managerFilePatterns": [
@@ -105,5 +103,10 @@
       "/^images\\/(grafana|prometheus|blackbox|loki|intel-gpu-exporter)\\/Dockerfile$/"
     ]
   },
-  "automerge": false
+  "automerge": false,
+  "pip-compile": {
+    "managerFilePatterns": [
+      "/^requirements-dev\\.txt$/"
+    ]
+  }
 }

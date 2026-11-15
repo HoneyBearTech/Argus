@@ -1,0 +1,12 @@
+# User unit; assumes the checkout is ~/Argus. See docs/heartbeat.md.
+[Unit]
+Description=Check Argus and ping its external heartbeat
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Argus
+ExecStart=/usr/bin/python3 %h/Argus/scripts/heartbeat.py
+TimeoutStartSec=45s
+NoNewPrivileges=true

@@ -7,6 +7,11 @@ on Linux (amd64 or arm64); on macOS or
 Windows the server works, but the agent sees Docker Desktop's VM rather than
 your machine.
 
+For guided configuration, run `python3 scripts/setup.py` from the checkout.
+It preserves existing files, prepares target and secret templates, generates a
+Grafana password, and uses loopback port bindings. See
+[operator tools](operator-tools.md) before connecting remote agents.
+
 ## 1. Start the server
 
 ```sh

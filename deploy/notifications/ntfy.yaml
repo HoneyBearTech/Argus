@@ -1,0 +1,13 @@
+# ntfy accepts POSTs to a topic URL; the notification body is Grafana's JSON.
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: Notifications
+    receivers:
+      - uid: argus-ntfy
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: $__file{/run/secrets/notification_endpoint}
+          httpMethod: POST
+          maxAlerts: '10'

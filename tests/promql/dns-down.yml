@@ -1,0 +1,23 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: probe_success{job="blackbox_dns",instance="failed"}
+    values: '0x20'
+  - series: probe_success{job="blackbox_dns",instance="healthy"}
+    values: 1x20
+  - series: probe_success{job="blackbox_http",instance="other-job"}
+    values: '0x20'
+  promql_expr_test:
+  - rule: argus-dns-down
+    eval_time: 15m
+    exp_samples:
+    - labels: '{job="blackbox_dns",instance="failed",__name__="probe_success"}'
+      value: 0
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-dns-down
+    eval_time: 15m
+    exp_samples: []

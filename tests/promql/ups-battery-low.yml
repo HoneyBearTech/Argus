@@ -1,0 +1,23 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: ups_battery_charge{ups="failed"}
+    values: 49x20
+  - series: ups_battery_charge{ups="healthy"}
+    values: 95x20
+  - series: ups_battery_charge{ups="boundary"}
+    values: 50x20
+  promql_expr_test:
+  - rule: argus-ups-battery-low
+    eval_time: 15m
+    exp_samples:
+    - labels: '{__name__="ups_battery_charge",ups="failed"}'
+      value: 49
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-ups-battery-low
+    eval_time: 15m
+    exp_samples: []

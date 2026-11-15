@@ -1,0 +1,52 @@
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="vllm", instance="model:8000"}'
+        values: '1x10'
+      - series: 'vllm:num_requests_running{job="vllm", instance="model:8000", model_name="example"}'
+        values: '0x10'
+      - series: 'vllm:num_requests_waiting{job="vllm", instance="model:8000", model_name="example"}'
+        values: '2x10'
+      - series: 'vllm:kv_cache_usage_perc{job="vllm", instance="model:8000", model_name="example"}'
+        values: '0.75x10'
+      - series: 'vllm:generation_tokens_total{job="vllm", instance="model:8000", model_name="example"}'
+        values: '0+60x10'
+    promql_expr_test:
+      - dashboard: argus-local-models
+        panel: 1
+        eval_time: 10m
+        exp_samples:
+          - labels: 'up{job="vllm", instance="model:8000"}'
+            value: 1
+      # Zero running requests still identifies a loaded model.
+      - dashboard: argus-local-models
+        panel: 2
+        eval_time: 10m
+        exp_samples:
+          - labels: '{instance="model:8000", model_name="example"}'
+            value: 1
+      - dashboard: argus-local-models
+        panel: 3
+        eval_time: 10m
+        exp_samples:
+          - labels: 'vllm:num_requests_running{job="vllm", instance="model:8000", model_name="example"}'
+            value: 0
+      - dashboard: argus-local-models
+        panel: 4
+        eval_time: 10m
+        exp_samples:
+          - labels: 'vllm:num_requests_waiting{job="vllm", instance="model:8000", model_name="example"}'
+            value: 2
+      - dashboard: argus-local-models
+        panel: 5
+        eval_time: 10m
+        exp_samples:
+          - labels: 'vllm:kv_cache_usage_perc{job="vllm", instance="model:8000", model_name="example"}'
+            value: 0.75
+      - dashboard: argus-local-models
+        panel: 6
+        eval_time: 10m
+        exp_samples:
+          - labels: '{job="vllm", instance="model:8000", model_name="example"}'
+            value: 1

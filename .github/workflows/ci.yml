@@ -76,7 +76,9 @@ jobs:
           coverage report
 
       - name: Dashboard and public-repo checks
-        run: python scripts/check_dashboards.py
+        run: |
+          python scripts/check_dashboards.py
+          python scripts/generate_dashboards.py --check
         env:
           # Internal domains/hostnames to reject, one regex per line (repo secret).
           ARGUS_FORBIDDEN_PATTERNS: ${{ secrets.ARGUS_FORBIDDEN_PATTERNS }}
@@ -124,6 +126,23 @@ jobs:
             -v "$PWD/logs/loki.yaml:/etc/loki/loki.yaml:ro" \
             grafana/loki:3.7.8 \
             -config.file=/etc/loki/loki.yaml -verify-config
+
+      # The proxy error alert uses LogQL, so promtool cannot evaluate it.
+      - name: Loki alert query integration
+        run: |
+          loki_id=$(docker run -d --rm -p 127.0.0.1::3100 --tmpfs /loki:uid=10001,gid=10001 \
+            -v "$PWD/logs/loki.yaml:/etc/loki/local-config.yaml:ro" \
+            grafana/loki:3.7.8@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193 \
+            -config.file=/etc/loki/local-config.yaml)
+          trap 'docker stop "$loki_id" >/dev/null' EXIT
+          loki_port=$(docker port "$loki_id" 3100 | cut -d: -f2)
+          export ARGUS_TEST_LOKI_URL="http://127.0.0.1:$loki_port"
+          for _ in $(seq 45); do
+            if curl -fsS "$ARGUS_TEST_LOKI_URL/ready" >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS "$ARGUS_TEST_LOKI_URL/ready"
+          pytest -q tests/test_loki_alert.py
 
       - name: Images
         run: |
@@ -224,6 +243,12 @@ jobs:
           [ "$self" = 1 ] || fail "Prometheus can't scrape itself with its password"
           echo "Prometheus requires its password; Grafana and Prometheus' own scrape send it"
 
+      - name: Optional notification provisioning
+        run: ARGUS_TEST_GRAFANA=1 pytest -q tests/test_notification_provisioning.py
+
+      - name: TLS push proxy authentication
+        run: ARGUS_TEST_TLS=1 pytest -q tests/test_push_security.py
+
       - name: Compose files
         env:
           CONFIG_ROOT: /srv/config # required by the compose file, as in .env.example
@@ -233,3 +258,7 @@ jobs:
           ARGUS_PROXY_NETWORK=ci docker compose -f docker-compose.yml -f docker-compose.source.yml -f docker-compose.proxy.yml config --quiet
           ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex --profile intel-gpu config --quiet
           docker compose -f logs/compose.yml config --quiet
+          COMPOSE_PROFILES=loki docker compose -f docker-compose.yml -f docker-compose.tls.yml config --quiet
+          for channel in email slack ntfy; do
+            ARGUS_NOTIFICATION_CHANNEL="$channel" docker compose -f docker-compose.yml -f docker-compose.notifications.yml config --quiet
+          done

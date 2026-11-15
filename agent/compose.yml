@@ -36,6 +36,7 @@ services:
       ARGUS_PROMETHEUS_URL: ${ARGUS_PROMETHEUS_URL:?set ARGUS_PROMETHEUS_URL in .env}
       ARGUS_LOKI_URL: ${ARGUS_LOKI_URL:?set ARGUS_LOKI_URL in .env}
       ARGUS_PROMETHEUS_PASSWORD: ${ARGUS_PROMETHEUS_PASSWORD:-}
+      ARGUS_LOKI_PASSWORD: ${ARGUS_LOKI_PASSWORD:-}
     volumes:
       - /:/rootfs:ro,rslave
       - /sys:/sys:ro

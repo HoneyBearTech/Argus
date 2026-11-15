@@ -8,6 +8,7 @@
 //   ARGUS_LOKI_URL        Argus Loki, e.g. http://argus.lan:3101 (required)
 //   ARGUS_PROMETHEUS_PASSWORD  password of Prometheus' `argus` user, if it
 //                         requires one (optional)
+//   ARGUS_LOKI_PASSWORD  password of the TLS proxy's `argus` user (optional)
 // Optional: mount Nginx Proxy Manager's data/logs directory at /var/log/npm to
 // also ship its access logs, and the state directory of homelab-pull (a
 // pull-based deploy agent) at /var/lib/homelab-pull to report its deploys.
@@ -30,6 +31,11 @@ prometheus.remote_write "argus" {
 loki.write "argus" {
 	endpoint {
 		url = sys.env("ARGUS_LOKI_URL") + "/loki/api/v1/push"
+
+		basic_auth {
+			username = "argus"
+			password = sys.env("ARGUS_LOKI_PASSWORD")
+		}
 	}
 	external_labels = {
 		host = sys.env("ARGUS_HOST"),

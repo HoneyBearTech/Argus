@@ -58,6 +58,22 @@ alerts, and how to run it.
 - **Document:** [Roadmap](roadmap.md)
   - **For:** What's planned for the next year, and what Argus will not do
 
+- **Document:** [Operator tools](operator-tools.md)
+  - **For:** Guided setup, one-command published-image upgrades and static
+    status snapshots
+
+- **Document:** [TLS push endpoints](push-security.md)
+  - **For:** TLS and basic authentication for Prometheus and Loki agent traffic
+
+- **Document:** [Notifications](notifications.md)
+  - **For:** Selecting e-mail, Slack-compatible webhooks or ntfy in `.env`
+
+- **Document:** [External heartbeat](heartbeat.md)
+  - **For:** Detecting an unavailable Argus server from outside the server
+
+- **Document:** [Local model servers](local-models.md)
+  - **For:** vLLM metrics and dashboards generated from code
+
 Project policies live at the top of the repository:
 [CONTRIBUTING.md](../CONTRIBUTING.md),
 [GOVERNANCE.md](../GOVERNANCE.md), [SECURITY.md](../SECURITY.md),

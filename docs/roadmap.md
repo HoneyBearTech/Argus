@@ -8,10 +8,10 @@ GitHub issue before work starts. Suggestions are welcome in
 ## Where it stands
 
 As of November 2026, the latest release is **0.9.0** (29 October). The current
-checkout contains 25 dashboards and 47 provisioned alert rules, with alerts
-sent to Discord. It covers hosts, containers, logs, databases, network and ISP
+checkout contains 26 dashboards and 47 provisioned alert rules, with alerts
+sent to Discord by default. It covers hosts, containers, logs, databases, network and ISP
 health, storage, smart home, media, power, server hardware, GPUs, deployments,
-GitLab and Steerhouse. See the [README](../README.md) for the full inventory
+GitLab, Steerhouse and vLLM. See the [README](../README.md) for the full inventory
 and [changelog](../CHANGELOG.md) for release and unreleased changes.
 
 The server runs with Docker Compose on Linux. A one-container push agent runs
@@ -26,9 +26,11 @@ Already delivered from the original roadmap:
   on the GitLab CI dashboard.
 - Internet speed history and connection-drop monitoring on the Internet / ISP
   dashboard, using the UniFi gateway's speed tests.
-- Optional [Prometheus password protection](security.md#requiring-a-password-for-prometheus),
-  including agents that push with credentials. Agent traffic still needs a TLS
-  proxy when crossing an untrusted network; Loki has no built-in authentication.
+- Optional [Prometheus password
+  protection](security.md#requiring-a-password-for-prometheus),
+  including agents that push with credentials. Agent traffic crossing an
+  untrusted network uses the optional authenticated
+  TLS push proxy; Loki itself has no built-in authentication.
 - Documented [upgrade and rollback procedures](upgrading.md), plus optional
   [automatic source deployments](auto-deploy.md) after the required check
   passes, with health checks and rollback.
@@ -37,46 +39,77 @@ The project checks lint, unit tests, PromQL and configuration, builds images,
 and starts Grafana to validate provisioning. Releases include signed images,
 SBOMs and provenance ([verifying-releases.md](verifying-releases.md)).
 
-## Remaining work through October 2027
+## Implemented in the current checkout
+
+The following items are implemented as unreleased changes. They become
+available to published-image users when the corresponding images are released.
 
 ### Security and operations
 
-- A complete, documented TLS reverse-proxy setup for both push endpoints,
-  including Loki authentication and the corresponding agent credentials, so
-  operators have a tested recipe for networks that aren't fully trusted.
-- Notification channels beyond Discord (e-mail, ntfy, Slack-compatible webhooks)
-  as provisioned contact points selected in `.env`.
-- A "watch the watcher": an external heartbeat so that the Argus server being
-  down is noticed.
-- Replacing or rebuilding components whose upstream images go stale on
-  security fixes ([dependencies.md](dependencies.md)); this is ongoing upkeep.
+- [Authenticated TLS push endpoints](push-security.md) for Prometheus and
+  Loki, with agent credentials, loopback native listeners and an integration
+  test that exercises TLS verification, authentication and path restrictions.
+- [Notification channels](notifications.md): e-mail, Slack-compatible incoming
+  webhooks and ntfy, provisioned through an optional Compose overlay selected
+  in `.env`. Grafana provisioning tests load each channel.
+- [External heartbeat](heartbeat.md): a systemd user timer sends an HTTPS ping
+  only after Grafana and Prometheus are ready. Operators supply their external
+  dead-man-switch service and notification policy.
+- [Dependency automation](dependencies.md): Renovate tracks container images,
+  workflow actions, pre-commit hooks, release defaults and hash-compiled Python
+  tooling. Its configuration passes the official strict validator; pip-compile
+  owns the requirements source/output pair.
 
 ### Dashboards and integrations
 
-- Local model servers (loaded models, memory), once they expose metrics.
-- More PromQL tests, until every alert rule has one. The current query fixtures
-  cover 36 of 47 provisioned rules; expand them to the remaining rules and
-  continue adding cases for new behavior.
+- [Local model servers](local-models.md): native vLLM metrics for exported
+  model inventory, requests, KV cache occupancy and token throughput. Other
+  servers need a compatible metrics endpoint before an integration can be
+  provided; total GPU memory remains on the GPUs dashboard.
+- All **47 alert queries** have executable fixtures: 46 PromQL rules run in
+  Prometheus and the proxy error LogQL rule runs in Loki. The coverage guard
+  requires firing and absent-series cases for each Prometheus alert. These
+  query tests do not replace Grafana's provisioning and alert timing checks.
 
 ### Ease of use
 
-- An install script or guided `.env` setup.
-- A one-command upgrade for published-image installations, including the
-  release selection and configuration checks that are currently manual.
-- A read-only status page generated from the Overview data.
-- Generating repetitive dashboards from code (Jsonnet/Grafonnet) if the JSON
-  keeps growing.
+- [Guided setup](operator-tools.md#guided-setup), preserving existing operator
+  files and generating a private initial configuration and random password.
+- [Published-image upgrades](operator-tools.md#upgrade-published-images) with
+  stable release selection, target configuration checks, health checks and
+  rollback of the image selector. Data migration rollback still requires an
+  operator backup; the command does not update the checkout or remote agents.
+- A [read-only status snapshot](operator-tools.md#read-only-status-page)
+  generated from the shipped Overview expressions, with no browser access to
+  Prometheus or embedded credentials.
+- [Dashboard generation from code](local-models.md#generating-dashboards),
+  starting with the repetitive model-server panels. Generated output is checked
+  for drift in CI; a separate Jsonnet/Grafonnet dependency is unnecessary for
+  this implementation.
 
-**1.0**: a stable interface ([interfaces.md](interfaces.md)) with upgrades that
-need no manual steps within a major version, once the items above that change
-configuration have landed.
+## Continuing maintenance and the 1.0 release gate
+
+Dependency security upkeep is ongoing: review vulnerability findings, rebuild
+or replace abandoned components, and run the sandbox checks for upstream bumps
+as described in [dependencies.md](dependencies.md). It cannot be permanently
+completed by a single change.
+
+**1.0** remains a release milestone, not a claim that this unreleased checkout
+has been deployed. Before tagging it, merge and validate these configuration
+changes, exercise an upgrade and restore against a real installation with
+backups, and confirm the stable [interface contract](interfaces.md). Within a
+major version, releases must preserve that contract and avoid manual migration
+steps. Version 0.x upgrades can still require the documented configuration
+changes.
 
 ## What Argus will not do
 
 - **Be a hosted service or a multi-tenant platform.** Argus is for one
   operator's own network; it won't separate data between users or customers.
-- **Be exposed directly to the internet.** Only Grafana, behind the operator's
-  TLS proxy, is meant to be reachable from outside.
+- **Be exposed directly to the internet.** Grafana needs the operator's TLS
+  proxy for outside access. The optional
+  authenticated push proxy exposes only two HTTPS ingestion paths; query APIs
+  remain on the trusted network.
 - **Run the server on Kubernetes, through Helm or without Docker.** Docker
   Compose on Linux remains the supported server installation. Monitoring
   Kubernetes nodes with the agent is supported as described above.

@@ -227,3 +227,25 @@ def test_every_shipped_spec_resolves(tmp_path: Path) -> None:
     """The real tests/promql/ files name queries that exist (promtool runs them in CI)."""
     assert promql_tests.main(["--out", str(tmp_path)]) == 0
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted(p.name for p in promql_tests.SPECS.glob("*.yml"))
+
+
+def test_every_prometheus_alert_has_firing_and_missing_series_cases() -> None:
+    rules = promql_tests.load_rules()
+    prometheus_rules = {
+        uid
+        for uid, rule in rules.items()
+        if any(query["refId"] == "A" and query["datasourceUid"] == "prometheus" for query in rule["data"])
+    }
+    firing = set()
+    missing = set()
+    for path in promql_tests.SPECS.glob("*.yml"):
+        for group in yaml.safe_load(path.read_text()).get("tests", []):
+            for entry in group.get("promql_expr_test", []):
+                if "rule" not in entry or entry.get("measurement"):
+                    continue
+                if entry.get("exp_samples"):
+                    firing.add(entry["rule"])
+                if not group.get("input_series") and entry.get("exp_samples") == []:
+                    missing.add(entry["rule"])
+    assert prometheus_rules <= firing, f"alerts without a firing case: {prometheus_rules - firing}"
+    assert prometheus_rules <= missing, f"alerts without an absent-series case: {prometheus_rules - missing}"

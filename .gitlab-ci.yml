@@ -12,8 +12,8 @@
 #   and PromQL tests, blackbox_exporter's config check and the Compose files. The image builds and the Grafana boot
 #   test need a daemon (Docker-in-Docker, so a privileged runner) and run on GitHub only, as do the Loki config
 #   check (its image has no shell for a GitLab job) and the snmp_exporter one (its image isn't pinned by digest).
-# Images are pinned by tag and digest. Dependabot doesn't read this file: they're bumped by hand
-# (docs/dependencies.md), together with ci.yml and the Dockerfiles that use the same image.
+# Images are pinned by tag and digest and tracked by Renovate, together with the matching images
+# in ci.yml and the Dockerfiles (docs/dependencies.md).
 
 workflow:
   rules:
@@ -64,6 +64,11 @@ compose-config:
     - ARGUS_PROXY_NETWORK=ci docker compose -f docker-compose.yml -f docker-compose.source.yml -f docker-compose.proxy.yml config --quiet
     - ARGUS_HOST=ci ARGUS_PROMETHEUS_URL=http://ci ARGUS_LOKI_URL=http://ci docker compose -f agent/compose.yml --profile plex config --quiet
     - docker compose -f logs/compose.yml config --quiet
+    - COMPOSE_PROFILES=loki docker compose -f docker-compose.yml -f docker-compose.tls.yml config --quiet
+    - |
+      for channel in email slack ntfy; do
+        ARGUS_NOTIFICATION_CHANNEL="$channel" docker compose -f docker-compose.yml -f docker-compose.notifications.yml config --quiet
+      done
 
 # check_dashboards.py and the tests run git (ls-files), which the slim image lacks; it comes from Debian's signed
 # archive. The resolved PromQL tests go to the promtool job.
@@ -86,6 +91,7 @@ checks:
     - coverage run -m pytest -q
     - coverage report
     - python scripts/check_dashboards.py
+    - python scripts/generate_dashboards.py --check
     - python scripts/promql_tests.py --out promql-tests
   artifacts:
     paths: [promql-tests/]

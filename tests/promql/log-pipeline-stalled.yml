@@ -1,0 +1,27 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: loki_distributor_lines_received_total{instance="loki"}
+    values: '0x20'
+  promql_expr_test:
+  - rule: argus-log-pipeline-stalled
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- interval: 1m
+  input_series:
+  - series: loki_distributor_lines_received_total{instance="loki"}
+    values: 0+60x20
+  promql_expr_test:
+  - rule: argus-log-pipeline-stalled
+    eval_time: 15m
+    exp_samples: []
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-log-pipeline-stalled
+    eval_time: 15m
+    exp_samples: []

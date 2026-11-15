@@ -1,0 +1,25 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: unpoller_device_temperature_celsius{name="failed",sensor="a"}
+    values: 86x20
+  - series: unpoller_device_temperature_celsius{name="failed",sensor="b"}
+    values: 60x20
+  - series: unpoller_device_temperature_celsius{name="healthy"}
+    values: 40x20
+  - series: unpoller_device_temperature_celsius{name="boundary"}
+    values: 85x20
+  promql_expr_test:
+  - rule: argus-unifi-hot
+    eval_time: 15m
+    exp_samples:
+    - labels: '{name="failed"}'
+      value: 86
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-unifi-hot
+    eval_time: 15m
+    exp_samples: []

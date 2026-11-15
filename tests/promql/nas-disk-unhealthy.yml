@@ -1,0 +1,27 @@
+# Firing, healthy/boundary, and absent-series cases for the shipped query.
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: diskHealthStatus{host="nas",diskID="health-failed"}
+    values: 2x20
+  - series: diskStatus{host="nas",diskID="status-failed"}
+    values: 3x20
+  - series: diskHealthStatus{host="nas",diskID="healthy"}
+    values: 1x20
+  - series: diskStatus{host="nas",diskID="healthy"}
+    values: 1x20
+  promql_expr_test:
+  - rule: argus-nas-disk-unhealthy
+    eval_time: 15m
+    exp_samples:
+    - labels: '{host="nas",diskID="health-failed"}'
+      value: 2
+    - labels: '{host="nas",diskID="status-failed"}'
+      value: 3
+- interval: 1m
+  input_series: []
+  promql_expr_test:
+  - rule: argus-nas-disk-unhealthy
+    eval_time: 15m
+    exp_samples: []
