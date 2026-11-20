@@ -1,6 +1,6 @@
 # Argus Loki: single-process, local disk, 30-day retention.
 # Build context: repository root.
-FROM grafana/loki:3.7.8@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193
+FROM grafana/loki:3.7.10@sha256:b43c257ccfc925d4a50b8717cac61a3b51df8c48d01847936057e5c4075a24a7
 
 COPY logs/loki.yaml /etc/loki/loki.yaml
 
