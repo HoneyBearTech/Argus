@@ -10,7 +10,7 @@ Job `renovate-automerge` (#155).
 
 **Decision.** Renovate merges its pull requests itself once every check passes,
 majors included; new versions wait 3 days, security fixes and image rebuilds
-don't, on the model homelab-atlas already uses. Kept manual: nothing kept manual
+don't, on the model another of the owner's stacks already uses. Kept manual: nothing kept manual
 (the `argus-*` images stay switched off, as before). `platformAutomerge` is
 false: `main` has no required checks, so Renovate merges itself once every check
 on the pull request passes.
