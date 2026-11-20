@@ -58,9 +58,10 @@ always fork it.
   - **Responsibilities:** Report privately and allow time for a fix before
     disclosing, as described in [SECURITY.md](SECURITY.md).
 
-Automated tools also take part: Dependabot proposes updates to the upstream
+Automated tools also take part: Renovate proposes updates to the upstream
 images, exporter images,
-GitHub Actions and the Python check tools (the maintainer merges each by hand),
+GitHub Actions and the Python check tools and merges each one itself once every
+check on the pull request has passed (after a 3-day wait),
 and CI, CodeQL, the image
 scan and OpenSSF Scorecard check every change.
 
@@ -116,8 +117,8 @@ file's last change:
   - **Through:** GitHub
 
 - **Resource:** Automated changes
-  - **Who has access:** Dependabot (pull requests only; it can't merge, and the
-    required check must pass)
+  - **Who has access:** Renovate (pull requests, which it merges itself once
+    every check on the pull request has passed)
   - **Through:** GitHub
 
 There are no other collaborators. Workflows use the per-job `GITHUB_TOKEN`,

@@ -700,8 +700,9 @@ and the workflows on every push and pull request and weekly, a weekly
 images, [OpenSSF Scorecard](https://scorecard.dev/) scores the repo's
 supply-chain practices weekly (see the badge above). When its integration is
 enabled, Renovate follows [`renovate.json`](renovate.json): weekly dependency
-PRs, grouped minor and patch updates, and no automatic merging. Image updates
-are merged by hand after a sandbox run. How dependencies are handled is in
+PRs and grouped minor and patch updates. Renovate merges every update, majors
+included, by itself once every check on the pull request has passed and the new
+version is 3 days old. How dependencies are handled is in
 [docs/dependencies.md](docs/dependencies.md).
 
 ## Operations

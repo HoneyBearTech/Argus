@@ -112,8 +112,18 @@ When its integration is enabled, **Renovate** follows
 [`renovate.json`](../renovate.json): it checks weekly in the
 `America/Chicago` timezone, opens labeled pull requests, and maintains a
 Dependency Dashboard. Minor and patch updates across all managers share one
-pull request; major updates receive an additional `major` label. Automerge is
-explicitly disabled, and dependency and security labels remain enabled.
+pull request; major updates receive an additional `major` label. Dependency and
+security labels remain enabled.
+
+Renovate merges its pull requests by itself (squash), major updates included,
+once every check on the pull request has passed. Because `main` has no required
+status checks, GitHub's own auto-merge is off (`platformAutomerge: false`):
+Renovate does the merge on its next run, after the checks are green. A new
+version waits 3 days after its release before it is proposed
+(`minimumReleaseAge`, with `timestamp-optional` so a registry that reports no
+release date doesn't hold an update back forever). Fixes for vulnerability
+alerts and image rebuilds (a new digest under the same tag) skip the wait.
+Nothing is kept manual: every update merges the same way.
 
 Maintainers should verify that the Renovate integration is installed and
 review Settings → Code security for overlapping update automation: keep
@@ -184,9 +194,9 @@ from registry updates; the release manager owns the published defaults instead.
 There are no independent image-valued `.env` declarations, Ansible image fields,
 or roles in this repository.
 
-Pull requests are merged by hand after the upstream bump is loaded in a sandbox,
-since changes can affect
-provisioning or config behavior. Keep related image tags synchronized across
+Renovate merges these pull requests once every check has passed, including
+"Dashboards + config", the check that catches changes that affect provisioning
+or config behavior. Keep related image tags synchronized across
 Dockerfiles, Compose, GitLab CI,
 and workflow shell commands where comments identify a shared image. Update the
 Grafana README badge with its
