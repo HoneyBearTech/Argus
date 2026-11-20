@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Argus' entrypoint for Grafana: refuse to start without an admin password, then hand over to the
 # image's own /run.sh. Grafana falls back to admin/admin when the password is empty, so an empty
 # secrets/grafana_admin_password (its template is empty) must stop it here.

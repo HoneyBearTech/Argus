@@ -140,6 +140,14 @@ def test_grafana_image_starts_through_the_password_check() -> None:
     assert (ROOT / "images" / "grafana" / "start.sh").read_text().rstrip().endswith('exec /run.sh "$@"')
 
 
+def test_grafana_entrypoint_needs_only_sh() -> None:
+    """Regression test: grafana/grafana 13.3 dropped /bin/bash, so a bash shebang meant the image could not exec."""
+    script = (ROOT / "images" / "grafana" / "start.sh").read_text()
+    assert script.startswith("#!/bin/sh\n")
+    assert "[[ " not in script
+    assert "bash" not in script.split("\n", 1)[1].replace("/bin/bash", "")
+
+
 @pytest.mark.parametrize(
     ("password_file", "env_password", "refused"),
     [
