@@ -34,6 +34,8 @@ Each release's notes on GitHub are its section here.
 
 ### Changed
 
+- Renovate now merges its own pull requests, major updates included, once every
+  check on the pull request has passed and the new version is 3 days old.
 - Updated the probe exporter to 0.29.1, DNS exporter to 1.3.1, network
   controller exporter to 5.9.5, SNMP exporter to 0.31.0, virtualization exporter
   to 3.11.0 and download exporter to 2.0.4.
