@@ -53,12 +53,12 @@ jobs:
           IMAGE: ${{ matrix.image }}
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/out" \
-            aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
+            aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb \
             image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --no-progress \
             --format sarif --output /out/trivy.sarif "${IMAGE}:scan"
           jq -r '"\(.runs[0].results | length) finding(s)"' trivy.sarif
 
-      - uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+      - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           sarif_file: trivy.sarif
           category: trivy-${{ matrix.image }}

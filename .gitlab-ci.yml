@@ -36,7 +36,7 @@ stages: [mirror, config, checks]
 mirror:
   stage: mirror
   image:
-    name: alpine/git:v2.54.0@sha256:6a1fdb962814ca11508ca8d1bab94375b5b7ac4e4a9a40981c29fc32c02f095d
+    name: alpine/git:v2.54.1@sha256:2306e2b05ee0ef99f5d25b0779f645b24ae9f91ba187107503592fcdfe78da3a
     entrypoint: [""]
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $MIRROR_TOKEN
@@ -55,7 +55,7 @@ mirror:
 compose-config:
   extends: .checks
   stage: config
-  image: docker:29.8.2-cli@sha256:35cfcf893c20f2931f4909151b5407aaaeab711277de7ce8b8f521f095d54c32
+  image: docker:29.10.0-cli@sha256:34507eb5069d8be82c95dd3b6987d4250fd5fee49b82e2509b7d7a7030740d6d
   variables:
     CONFIG_ROOT: /srv/config # required by the compose file, as in .env.example
   script:
@@ -76,7 +76,7 @@ checks:
   extends: .checks
   stage: checks
   needs: []
-  image: python:3.14.8-slim-trixie@sha256:fbecd461fc72d21b2143c6eaba25143738079154a6d0ea3da3aec724f50eed4a
+  image: python:3.15.2-slim-trixie@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
   variables:
     DEBIAN_FRONTEND: noninteractive
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
@@ -104,7 +104,7 @@ promtool:
   stage: checks
   needs: [checks]
   image:
-    name: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    name: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
     entrypoint: [""]
   script:
     - ln -s "$CI_PROJECT_DIR/targets.example" /etc/prometheus/targets
@@ -119,7 +119,7 @@ alloy-fmt:
   stage: checks
   needs: []
   image:
-    name: grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
+    name: grafana/alloy:v1.22.0@sha256:9acc2529bc1edb7f5b2bd801dd8334ebc80c158e3a9e5526ecd7c9a273d43189
     entrypoint: [""]
   script:
     - alloy fmt agent/config.alloy | diff -u agent/config.alloy -
