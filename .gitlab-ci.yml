@@ -76,7 +76,7 @@ checks:
   extends: .checks
   stage: checks
   needs: []
-  image: python:3.14.8-slim-trixie@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2
+  image: python:3.14.8-slim-trixie@sha256:fbecd461fc72d21b2143c6eaba25143738079154a6d0ea3da3aec724f50eed4a
   variables:
     DEBIAN_FRONTEND: noninteractive
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
