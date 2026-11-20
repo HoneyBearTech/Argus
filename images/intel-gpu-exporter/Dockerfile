@@ -1,7 +1,7 @@
 # Argus Intel GPU exporter: scripts/intel_gpu_exporter.py with Debian's intel_gpu_top, for the Argus agent's
 # intel-gpu profile (agent/compose.yml; docs/intel-gpu.md). Build context: repository root.
 # amd64 only: Debian builds intel-gpu-tools for amd64 and i386.
-FROM debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
+FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
 
 # The base image's digest pins the release; the packages come with Debian's security updates at build time,
 # like the agent's (agent/Dockerfile), rather than pinned versions that a point release removes.
